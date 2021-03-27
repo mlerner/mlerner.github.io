@@ -1,0 +1,210 @@
+// Override initial variables here
+// You can add new ones or update existing ones:
+
+$blue: #72d0eb // Update blue
+$pink: #ffb3b3 // Add pink
+$header-font: "Opens Sans", sans-serif // Add a serif family
+$body-font: "Lato", sans-serif // Add a serif family
+
+@import bulma 
+
+*
+  padding: 0
+  margin: 0
+
+html
+  background: #fff
+
+body
+  background: #fff
+  text-rendering: optimizeLegibility;
+  line-height: 1.6;
+  font-size: 1rem;
+
+.vertical-center 
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
+
+p
+  color: black
+  font-family: $body-font
+  line-height: 24px
+  margin-bottom: 22px
+  -webkit-font-smoothing: antialiased
+
+.content 
+  margin-bottom: 100px
+
+ul
+  list-style: disc outside none
+  margin-left: 50px
+  li
+    color: black
+    font-family: $body-font
+    line-height: 24px
+    -webkit-font-smoothing: antialiased
+    &:last-child
+      margin-bottom: 22px
+    
+img
+  width: 100%
+
+a
+  color: blue 
+  font-weight: bold
+  text-decoration: none
+  border-bottom: 1px solid transparent
+  -webkit-transition: border .3s
+  transition: border .3s
+
+  &:hover
+    color: blue
+    border-bottom: 1px solid blue
+    -webkit-transition: border .3s
+    transition: border .3s
+
+
+#container
+  width: 100%
+  padding: 40px 20px 100px 20px
+
+.index
+  padding-top: 1.0rem
+  p
+    font-size: 17px
+
+        
+#books
+  display: grid;
+  grid-column-gap: 5px;
+  grid-row-gap: 5px;
+  grid-template-columns: 1fr .75fr min-content 70px;
+  grid-auto-rows: minmax(25px, auto);
+  div
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+#posts
+  display: grid;
+  grid-column-gap: 5px;
+  grid-row-gap: 5px;
+  grid-template-columns: 1fr min-content;
+  grid-auto-rows: minmax(25px, auto);
+  div
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+.link-date
+  color: grey
+  font-weight: bold
+  text-transform: uppercase
+  letter-spacing: -.012em;
+  white-space: pre;
+
+.frontmatter
+  font-style: italic
+
+.section
+  width: 100%
+  position: relative;
+  top: 25%;
+  max-width: 640px
+  padding: 0
+  overflow: visible
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+
+#index-blog
+  padding-top: 30px
+  .header
+    text-align: left
+
+// Overrides
+.main-nav.nav
+  padding-top: 20px
+  a.nav-item.driver-link
+    color: blue
+    text-decoration: none
+    font-size: 20px
+    border-bottom: 3px solid transparent 
+    -webkit-transition: border .3s
+    transition: border .3s
+    &:hover
+      border-bottom: 3px solid blue 
+      -webkit-transition: border .3s
+      transition: border .3s
+
+h1
+  font-size: 20px
+  font-weight: bold
+  line-height: 1
+  margin: 0 0 2.0rem
+  color: black
+
+h2
+  font-size: 17px
+  line-height: 1.5
+  font-weight: bold
+  margin: 0 0 1.4em 
+  color: black
+
+h3
+  font-family: $header-font
+  font-size: 17px
+  line-height: 1.5
+  font-weight: bold
+  margin: 0 0 1.4em 
+  color: black
+
+.rating
+  margin-top: 0px
+
+#single
+  width: 100%
+  margin: 4em auto 4rem
+  position: relative
+  z-index: 5
+  h1
+    font-size: 7vw
+    font-weight: bold
+    line-height: 1
+    margin: 0 0 2.0rem
+    text-align: center
+    color: black
+
+  span 
+    color: grey
+    font-weight: 500
+    text-transform: uppercase
+
+#email-form
+  line-height: 1.8
+
+#twitter 
+  height: 80px;
+  line-height: 80px;
+  text-align: center;
+  border-top: 2px solid black; 
+
+.star 
+  width: 13px;
+  height: 12px;
+  display: inline-block;
+  background: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTMiIGhlaWdodD0iMTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTYuMzA5IDkuMjJMMi40MDkgMTJsMS40NC00LjU2N0wwIDQuNTgzbDQuNzg4LS4wNDJMNi4zMDggMCA3LjgzIDQuNTRsNC43ODkuMDQ0LTMuODUgMi44NDlMMTAuMjA5IDEyeiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+");
+
+blockquote > p
+  margin-bottom: 0px
+
+
+@media only screen and (max-width: 600px), (max-height: 600px)
+  .section, #credit
+    min-width: 200px
+    max-width: 400px
+
+  #driver-single h2
+    width: 100%
+    font-size: 96%
