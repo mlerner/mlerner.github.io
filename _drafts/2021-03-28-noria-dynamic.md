@@ -6,7 +6,7 @@ categories:
 
 [Noria: dynamic, partially-stateful data-flow for high-performance web applications](https://pdos.csail.mit.edu/papers/noria:osdi18.pdf) Gjengset, Schwarzkopf, et al. OSDI 2018
 
-I started reading this paper after I started finding the work of [Jon Gjengset](https://thesquareplanet.com/) - he has great streams about Rust (in particular, I have been enjoying [Crust of Rust](https://www.youtube.com/playlist?list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa), where he goes over intermediate Rust topics). 
+I started reading this paper after finding the work of [Jon Gjengset](https://thesquareplanet.com/) - he has great streams about Rust (in particular, I have been enjoying [Crust of Rust](https://www.youtube.com/playlist?list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa), where he goes over intermediate Rust topics). 
 
 ## What is Noria?
 The Noria paper outlines a system that could replace a traditional two-tier architecture used in web applications to serve high read request volume. 
