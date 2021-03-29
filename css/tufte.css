@@ -204,7 +204,6 @@ figure {
 }
 
 figcaption {
-    float: right;
     clear: right;
     margin-top: 0;
     margin-bottom: 0;
@@ -213,6 +212,9 @@ figcaption {
     vertical-align: baseline;
     position: relative;
     max-width: 40%;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
 }
 
 figure.fullwidth figcaption {
@@ -491,5 +493,9 @@ ul.inline-bulleted li::after {
     margin-right: 10px;
 }
 
-header {
+
+img.maincolumn-img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
