@@ -499,3 +499,20 @@ img.maincolumn-img {
     margin-left: auto;
     margin-right: auto;
 }
+
+section > footer {
+    border: #ccc;
+    border-top-width: 1px;
+    border-top-style: solid;
+    text-align: center;
+}
+
+section > p.discussion {
+    border: #ccc;
+    border-top-width: 1px;
+    border-top-style: solid;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}

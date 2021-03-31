@@ -3,6 +3,7 @@ layout: post
 title: "Noria: dynamic, partially-stateful data-flow for high-performance web applications"
 categories:
 ---
+{% discussion 'https://micahlerner.com/'%}
 
 [Noria: dynamic, partially-stateful data-flow for high-performance web applications](https://pdos.csail.mit.edu/papers/noria:osdi18.pdf) Gjengset, Schwarzkopf, et al. OSDI 2018
 
