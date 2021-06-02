@@ -54,8 +54,6 @@ Facebook has large computing clusters and likely has many memcache servers faili
 
 ### Scaling among clusters within a region
 
-TODO image
-
 Within a region, the paper highlights that the biggest concern is data-replication between multiple copies of the cache. To solve this problem space, Facebook implemented three features: an invalidation daemon (a.k.a McSqueal) that replicates the cache invalidations across all cache copies in region, a _regional pool_ of memcache servers that all clusters in a region share for certain types of data, and a mechanism for preparing clusters before they come online.
 
 The invalidation daemon used to replicate cache-invalidations among clusters reads the MySQL commit log, transforming deletes into the impacted MySQL keys that need to be deleted from the cache, and eventually batching the deletes in a message to the _mcrouter_ that sits in front of the memcache servers. {% sidenote 'mcsqueal' 'Personal opinion: using the MySQL commit log as a stream that daemons operate on is a great design pattern (and was likely ahead of its time when the paper came out)!'%}
@@ -66,7 +64,9 @@ The last topic related to scaling among clusters within a region is the cluster 
 
 ### Scaling among regions
 
-Facebook uses many regions around the world to get computers closer to their customers (which in turn results in lower latency) and reduce the risk that abnormal events like a [fire](https://www.datacenterdynamics.com/en/news/fire-destroys-ovhclouds-sbg2-data-center-strasbourg/) or power outage bring your whole site down. Making a cache among these many regions is certainly difficult, and the paper discusses how _consistency_ is their primary concern at this level.
+{% maincolumn 'assets/fbmc/architecture.png' 'The same architecture image as above, but repeated for reference.' %}
+
+Facebook uses many regions around the world to get computers closer to their customers (which in turn results in lower latency) and reduce the risk that abnormal events like a [fire](https://www.datacenterdynamics.com/en/news/fire-destroys-ovhclouds-sbg2-data-center-strasbourg/) or power outage bring their whole site down. Making a cache among these many regions is certainly difficult, and the paper discusses how _consistency_ is their primary concern at this level.
 
 At the time of the paper's publication, Facebook relied on MySQL's replication to keep databases up to date between regions. One region would be the master, while the rest would be the slaves {% sidenote 'terms' 'I use the terms master/slave from the literature, rather than choosing them myself.' %}. Given the huge amount of data that Facebook has, they were willing to settle for eventual consistency (the system will tolerate out of sync data if the slave regions fall behind the master region).
 
