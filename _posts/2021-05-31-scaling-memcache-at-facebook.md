@@ -44,17 +44,19 @@ To reduce _load_ on the backing data store, three features were added: _leases_,
 
 Leases were implemented to address two main problems, _stale sets_ and _thundering herds_{% sidenote 'stalesets' 'A stale set is when a client sets a value with an old value, and a thundering herd is when a specific key undergoes heavy read or write volume.' %}, and are values given out to clients for a specific key. To solve stale sets, the backend server checks what is the most recent lease given out for a specific key, and will block writes from an old copy of the key. To solve thundering herds (for example, many clients trying to fetch data for the same key, but the key is not in the cache), leases are given out at a constant rate. If a client requests data for a key, but a lease for the key has already been given out, the lease request will fail and the client will need to retry. Meanwhile, the owner of the lease will cause the key to be filled from cache, and the client will succeed on retry. Crisis avoided.
 
-Another optimization occurred when Facebook realized that different datasets stored in memcache have different churn rates - for example, some keys in the cache change frequently, while others remain the same for the long time. If a long-lived key is in a cache with items that change frequently, based on an LRU caching policy long-lived the key is likely to be evicted. To fix this, keys with different churn rates can be separated (and the infrastructure for the different key sets can be sized appropriately).
+Another optimization occurred when Facebook realized that different datasets stored in memcached have different churn rates - for example, some keys in the cache change frequently, while others remain the same for the long time. If a long-lived key is in a cache with items that change frequently, based on an LRU caching policy long-lived the key is likely to be evicted. To fix this, keys with different churn rates can be separated (and the infrastructure for the different key sets can be sized appropriately).
 
 For small datasets (the dataset can fit in one or two memcache servers) that have high request rates, the data is replicated. Replicating the dataset across multiple servers means that the load can be spread out, limiting the chance of a bottleneck at any given server.
 
 #### Automatic failure recovery
 
-Facebook has large computing clusters and likely has many memcache servers failing every day because computers break in weird ways. To prevent these failures from cascading, Facebook built a system called _Gutter_. _Gutter_ kicks in if a memcache client doesn't get a response for a key. In this event, the data is fetched from the database and placed on the _Gutter_ server, essentially diverting that key away from the main cluster. This approach is explicitly chosen over the alternative of redistributing keys from a failed machine across the remaining healthy machines (which the paper argues is a more dangerous alternative that could overload the healthy servers).
+Facebook has large computing clusters and likely has many memcached servers failing every day because computers break in weird ways. To prevent these failures from cascading, Facebook built a system called _Gutter_. _Gutter_ kicks in if a memcache client doesn't get a response for a key. In this event, the data is fetched from the database and placed on the _Gutter_ server, essentially diverting that key away from the main cluster. This approach is explicitly chosen over the alternative of redistributing keys from a failed machine across the remaining healthy machines (which the paper argues is a more dangerous alternative that could overload the healthy servers).
 
 ### Scaling among clusters within a region
 
 Within a region, the paper highlights that the biggest concern is data-replication between multiple copies of the cache. To solve this problem space, Facebook implemented three features: an invalidation daemon (a.k.a McSqueal) that replicates the cache invalidations across all cache copies in region, a _regional pool_ of memcache servers that all clusters in a region share for certain types of data, and a mechanism for preparing clusters before they come online.
+
+{% maincolumn 'assets/fbmc/mcsqueal.png' '' %}
 
 The invalidation daemon used to replicate cache-invalidations among clusters reads the MySQL commit log, transforming deletes into the impacted MySQL keys that need to be deleted from the cache, and eventually batching the deletes in a message to the _mcrouter_ that sits in front of the memcache servers. {% sidenote 'mcsqueal' 'Personal opinion: using the MySQL commit log as a stream that daemons operate on is a great design pattern (and was likely ahead of its time when the paper came out)!'%}
 
@@ -82,7 +84,8 @@ Because the system is eventually consistent, data in the slave regions will be o
 
 ### Takeaways
 
-This paper contains an incredible amount of detail on how Facebook scaled their memcache infrastructure, although the paper was published in 2013 and 8 years is a long time - I would be willing to bet that their infrastructure has changed significantly since then, and it would be interesting to read the other KV store papers mentioned here to contrast their approaches with Facebook's.
+This paper contains an incredible amount of detail on how Facebook scaled their memcache infrastructure, although the paper was published in 2013 and 8 years is a long time. I would be willing to bet that their infrastructure has changed significantly since the paper was originally published. 
 
 Even with the knowledge that the underlying infrastructure has likely changed, this paper provides useful insights into how the engineering org made many tradeoffs in the design based on data from the production system (and with the ultimate goal of a maintaining as simple of a design as possible. 
 
+Since 2013, a number of other companies have built key value stores and published research on their architectures - in the future I hope to read those papers and contrast their approaches with Facebook's!
