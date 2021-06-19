@@ -61,43 +61,43 @@ First, the team considered which _type_ of hypervisor to choose. There are two t
 
 {% maincolumn 'assets/firecracker/Hypervisor.svg' 'Type 1 vs Type 2 Hypervisors. Scsami, CC0, via Wikimedia Commons' %}
 
-Linux has a robust hypervisor built into the kernel, called [Kernel Virtual Machine](https://www.kernel.org/doc/ols/2007/ols2007v1-pages-225-230.pdf) (a.k.a. KVM). [Different resources](https://serverfault.com/questions/855094/is-kvm-a-type-1-or-type-2-hypervisor) make [different arguments](https://virtualizationreview.com/Blogs/Mental-Ward/2009/02/KVM-BareMetal-Hypervisor.aspx) for whether KVM is a Type 1 or Type 2 hypervisor. 
+Linux has a robust hypervisor built into the kernel, called [Kernel Virtual Machine](https://www.kernel.org/doc/ols/2007/ols2007v1-pages-225-230.pdf) (a.k.a. KVM) that is arguably a Type 1 hypervisor{% sidenote 'type1' "[Different resources](https://serverfault.com/questions/855094/is-kvm-a-type-1-or-type-2-hypervisor) make [different arguments](https://virtualizationreview.com/Blogs/Mental-Ward/2009/02/KVM-BareMetal-Hypervisor.aspx) for whether KVM is a Type 1 or Type 2 hypervisor." %}.
 
-Either way, the paper cites research that argues for moving certain kernel components prone-to-exploitation into userspace - if the kernel components are in user space and they get pwned, the host itself hasn't been pwned. KVM provides an interface that allows this to happen - rather than passing all interactions with a guest kernel directly to the host kernel, some functions, in particular device interactions, go from a guest kernel to a _virtual machine monitor_ (a.k.a. VMM). One of the most popular VMMs is [QEMU](https://www.usenix.org/legacy/publications/library/proceedings/usenix05/tech/freenix/full_papers/bellard/bellard.pdf).
+Using a hypervisor like KVM allows for kernel components to be moved into userspace - if the kernel components are in user space and they get pwned, the host OS itself hasn't been pwned. Linux provides an interface, [virtio](https://wiki.libvirt.org/page/Virtio){% sidenote 'virtio' "Fun fact: the author of the paper on virtio, Rusty Russell, is now a key developer of a main [Bitcoin Lightning implementation](https://github.com/ElementsProject/lightning)."%}, that allows the user space kernel components to interact with the host OS. Rather than passing all interactions with a guest kernel directly to the host kernel, some functions, in particular device interactions, go from a guest kernel to a _virtual machine monitor_ (a.k.a. VMM). One of the most popular VMMs is [QEMU](https://www.usenix.org/legacy/publications/library/proceedings/usenix05/tech/freenix/full_papers/bellard/bellard.pdf).
 {% maincolumn 'assets/firecracker/virt.png' '' %}
 
-Unfortunately, QEMU has a significant amount of code (again, more code means more potential attack surface), as it supports a full range of functionality - even functionality that a Lambda would never use, like USB drivers. Rather than trying to pare down QEMU, the team forked [crosvm](https://opensource.google/projects/crosvm){% sidenote 'crosvmfork' "I enjoyed [this](https://prilik.com/blog/post/crosvm-paravirt/) post on crosvm from a former Google intern."  %} (a VMM open-sourced by Google, and developed for ChromeOS), in the process significantl rewriting core functionality for Firecracker's use case. The end result was a slimmer library with only code that would conceivably be used by a Lambda - resulting in 50k lines of Rust (versus > 1.4 million lines of C in QEMU{% sidenote 'QEMU' 'Relatedly, there was an interesting [blog post](http://blog.vmsplice.net/2020/08/why-qemu-should-move-from-c-to-rust.html) about QEMU security issues and thoughts on Rust from a QEMU maintainer.' %}).
+Unfortunately, QEMU has a significant amount of code (again, more code means more potential attack surface), as it supports a full range of functionality - even functionality that a Lambda would never use, like USB drivers. Rather than trying to pare down QEMU, the team forked [crosvm](https://opensource.google/projects/crosvm){% sidenote 'crosvmfork' "I enjoyed [this](https://prilik.com/blog/post/crosvm-paravirt/) post on crosvm from a former Google intern."  %} (a VMM open-sourced by Google, and developed for ChromeOS), in the process significantly rewriting core functionality for Firecracker's use case. The end result was a slimmer library with only code that would conceivably be used by a Lambda - resulting in 50k lines of Rust (versus > 1.4 million lines of C in QEMU{% sidenote 'QEMU' 'Relatedly, there was an interesting [blog post](http://blog.vmsplice.net/2020/08/why-qemu-should-move-from-c-to-rust.html) about QEMU security issues and thoughts on Rust from a QEMU maintainer.' %}). Because the goal of Firecracker is to be as small as possible, the paper calls the project a _MicroVM_, rather than "VM".
 
-## How do Firecracker VMs get run on AWS?
+## How do Firecracker MicroVMs get run on AWS?
 
 Now that we roughly understand how Firecracker works, let's dive into how it is used in running Lambda. First, we will look at how the Lambda architecture works on a high level, followed by a look at how the running the Lambda itself works.
 
 ### High-level architecture of AWS Lambda
 
-When a developer runs (or _Invokes_, in AWS terminology) a Lambda, the ensuing HTTP request hits an AWS Load Balancer {% sidenote 'aws' "Lambdas can also start via other events - like integrations with other AWS services including storage (S3), queue (SQS), streaming data (Kinesis) and database (DynamoDB) services."%}.
+When a developer runs (or _Invokes_, in AWS terminology) a Lambda, the ensuing HTTP request hits an AWS Load Balancer {% sidenote 'aws' "Lambdas can also start via other events - like 'integrations with other AWS services including storage (S3), queue (SQS), streaming data (Kinesis) and database (DynamoDB) services.'"%}.
 
 {% maincolumn 'assets/firecracker/arch.png' '' %}
 
 There are a four main infrastructure components involved in running a Lambda once it has been invoked:
 
-- _Workers_: The components that actually run a Lambda's code. Each worker runs many VMs in "slots", and other services schedule code to be run in the VMs when a customer _Invokes_ a Lambda.
+- _Workers_: The components that actually run a Lambda's code. Each worker runs many MicroVMs in "slots", and other services schedule code to be run in the MicroVMs when a customer _Invokes_ a Lambda.
 - _Frontend_: The entrance into the Lambda system. It receives _Invoke_ requests, and communicates with the  _Worker Manager_ to determine where to run the Lambda, then directly communicates with the _Workers_.
 - _Worker Manager_: Ensures that the same Lambda is routed to the same set of _Workers_ (this routing impacts performance, as we will see in the next section). It keeps tracks of where a Lambda has been scheduled previously. These previous runs correspond to "slots" for a function. If all of the slots for a function are in use, the _Worker Manager_ works with the _Placement_ service to find more slots in the _Workers_ fleet.
 -  _Placement_ service: Makes scheduling decisions when it needs to assign a Lambda invocation to a _Worker_. It makes these decision in order to "optimize the placement of slots for a single function across the worker fleet, ensuring that the utilization of resources including CPU, memory, network, and storage is even across the fleet and the potential for correlated resource allocation on each individual worker is minimized".
 
 ### Lambda worker architecture
 
-Each Lambda worker has thousands of individual VMs. 
+Each Lambda worker has thousands of individual MicroVMs. 
 
 {% maincolumn 'assets/firecracker/lambdaworker.png' '' %}
 
-Each VM is associated with resource constraints (configured when a Lambda is setup) and communicates with several components that allow for scheduling, isolated execution, and teardown of customer code inside of a Lambda:
+Each MicroVM is associated with resource constraints (configured when a Lambda is setup) and communicates with several components that allow for scheduling, isolated execution, and teardown of customer code inside of a Lambda:
 
 - _Firecracker VM_: All of the goodness we talked about earlier.
 - _Shim process_: A process inside of the VM that communicates with an external side car called the _Micro Manager_.
 - _Micro Manager_: a sidecar that communicates over TCP with a _Shim process_ running inside the VM. It reports metadata that it receives back to the _Placement_ service, and can be called by the _Frontend_ in order to _Invoke_ a specific function. On function completion, the _Micro Manager_ also receives the response from the _Shim process_ running inside the VM (passing it back to the client as needed).
 
-While slots can be filled as needed, the _Micro Manager_ also starts up Firecracker VMs in advance - this helps with performance (as we will see in the next section).
+While slots can be filled on demand, the _Micro Manager_ also starts up Firecracker VMs in advance - this helps with performance (as we will see in the next section).
 
 ## Performance
 
