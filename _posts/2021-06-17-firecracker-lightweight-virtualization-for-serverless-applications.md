@@ -18,15 +18,15 @@ Now that you are excited about Firecracker, let's jump into the paper!
 
 There are two main contributions from the paper: the Firecracker system itself (already discussed above), and the usage of Firecracker to power AWS Lambda (Amazon's platform for running serverless workloads).
 
-Before we jump in, it is important to understand the motivation behind building Firecracker in the first place.
+Before we go further, it is important to understand the motivation behind building Firecracker in the first place.
 
 Originally, Lambda functions ran on a separate virtual machine (VM) for every customer (although functions from the same customer would run in the same VM). Allocating a separate VM for every customer was great for isolating customers from each other - you wouldn't want Company A to access Company B's code or functionality, nor for Company A's greedy resource consumption to starve Company B's Lambdas of resources. 
 
-Unfortunately, existing VM solutions required significant resources, and resulted in non-optimal utilization (for example, a customer might have a VM allocated to them, but the customer may run Lambdas frequently enough that the VM can't be turned down, but not often to use the VM to its full capacity). The system in this form was less-efficient, meaning it required more resources to scale (likely making the system more expensive for customers).
+Unfortunately, existing VM solutions required significant resources, and resulted in non-optimal utilization. For example, a customer might have a VM allocated to them, but the VM is not frequently used. Even though the VM isn't used to its full capacity, there is still memory and CPU being consumed to run the VM. The Lambda system in this form was less-efficient, meaning it required more resources to scale (likely making the system more expensive for customers).
 
 With the goal of increasing utilization (and lowering cost), the team established constraints of a possible future solution: 
 
-- _Overhead and density_: Run "thousands of functions on a single machine, with minimal waste". In other words, solving one of the main problems of their previous solution.
+- _Overhead and density_: Run "thousands of functions on a single machine, with minimal waste". In other words, solving one of the main problems of the existing architecture.
 - _Isolation_: Ensure that applications are completely separate from one another (can't read each other's data, nor learn about them through side channels). The existing solution had this property, but at high cost.
 - _Performance_: A new solution should have the same or better performance as before.
 - _Compatibility_: Run any binary "without code changes or recompilation". {% sidenote 'compat' "This requirement was there, even though Lambda oringally supported a small set of languages. Making a generic solution was planning for the long-term!" %}
@@ -39,7 +39,7 @@ The constraints were applied to three different categories of solutions: _Linux 
 
 There are several _Isolation_ downsides to using Linux containers. 
 
-First, Linux containers interact directly with a host OS using syscalls{% sidenote 'syscalls' "Syscalls are a standard way for programs to interact with an operating system. They're really neat. I highly reccommend [Beej's guide to Network Programming](http://beej.us/guide/bgnet/) for some fun syscall programming" %}. While you can lock-down which syscalls a program can make (the paper mentions using [Seccomp BPF](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)), and even which arguments the syscalls can use. 
+First, Linux containers interact directly with a host OS using syscalls{% sidenote 'syscalls' "Syscalls are a standard way for programs to interact with an operating system. They're really neat. I highly reccommend [Beej's guide to Network Programming](http://beej.us/guide/bgnet/) for some fun syscall programming" %}. One can lock-down which syscalls a program can make (the paper mentions using [Seccomp BPF](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)), and even which arguments the syscalls can use, as well as using other security features of container systems (the Fly.io article linked above discusses this topic in more depth).
 
 Even using other Linux isolation features, at the end of the day the container is still interacting with the OS. That means that if customer code in the container figures out a way to pwn the OS, or figures out a side channel to determine state of another container, _Isolation_ might break down. Not great.
 
@@ -55,7 +55,7 @@ Revisiting virtualization led to a focus on what about the existing virtualizati
 - _Overhead and density_: the components of virtualization (which we will get into further down) require too many resources, leading to low utilization
 - _Fast switching_: VMs take a while to boot and shut down, which doesn't mesh well with Lambda functions that need a VM quickly and may only use it for a few seconds (or less).
 
-They then applied the above requirements to the main components of the virtualization system: the hypervisor and the virtual machine monitor.
+The team then applied the above requirements to the main components of the virtualization system: the hypervisor and the virtual machine monitor.
 
 First, the team considered which _type_ of hypervisor to choose. There are two types of hypervisors, Type 1 and Type 2. The textbook definitions of hypervisors say that Type 1 hypervisors are integrated directly in the hardware, while Type 2 hypervisors run an operating system on top of the hardware (then run the hypervisor on top of that operating system). 
 
@@ -82,12 +82,12 @@ There are a four main infrastructure components involved in running a Lambda onc
 
 - _Workers_: The components that actually run a Lambda's code. Each worker runs many MicroVMs in "slots", and other services schedule code to be run in the MicroVMs when a customer _Invokes_ a Lambda.
 - _Frontend_: The entrance into the Lambda system. It receives _Invoke_ requests, and communicates with the  _Worker Manager_ to determine where to run the Lambda, then directly communicates with the _Workers_.
-- _Worker Manager_: Ensures that the same Lambda is routed to the same set of _Workers_ (this routing impacts performance, as we will see in the next section). It keeps tracks of where a Lambda has been scheduled previously. These previous runs correspond to "slots" for a function. If all of the slots for a function are in use, the _Worker Manager_ works with the _Placement_ service to find more slots in the _Workers_ fleet.
+- _Worker Manager_: Ensures that the same Lambda is routed to the same set of _Workers_ (this routing impacts performance for reasons that we will learn more about in the next section). It keeps tracks of where a Lambda has been scheduled previously. These previous runs correspond to "slots" for a function. If all of the slots for a function are in use, the _Worker Manager_ works with the _Placement_ service to find more slots in the _Workers_ fleet.
 -  _Placement_ service: Makes scheduling decisions when it needs to assign a Lambda invocation to a _Worker_. It makes these decision in order to "optimize the placement of slots for a single function across the worker fleet, ensuring that the utilization of resources including CPU, memory, network, and storage is even across the fleet and the potential for correlated resource allocation on each individual worker is minimized".
 
 ### Lambda worker architecture
 
-Each Lambda worker has thousands of individual MicroVMs. 
+Each Lambda worker has thousands of individual _MicroVMs_ that map to a "slot". 
 
 {% maincolumn 'assets/firecracker/lambdaworker.png' '' %}
 
@@ -123,6 +123,6 @@ Relative to the other options, Firecracker and the comparable solution of Intel'
 
 ## Conclusion
 
-Firecracker was interesting to learn about because it is a high-performance, low overhead VMM written in Rust. The paper also is a great study in pragmatic technical decision making - rather than rewriting already robust software (KVM), the team focused on a specific component of an existing system to improve. Along the way, we learned about how different methods for _isolating_ customer workloads from each other {% sidenote 'bpf' "In particular, I thought seccomp-bpf was interesting and look forward to learning more about BPF/eBPF. First stop: [Julia Evans' guide](https://jvns.ca/blog/2017/06/28/notes-on-bpf---ebpf/)" %} ) used to ensure customer workloads are isolated from each other.
+Firecracker was interesting to learn about because it is a high-performance, low overhead VMM written in Rust. The paper also is a great study in pragmatic technical decision making - rather than rewriting already robust software (KVM), the team focused on a specific component of an existing system to improve. Along the way, we learned about how different methods for _isolating_ customer workloads from each other {% sidenote 'bpf' "In particular, I thought seccomp-bpf was interesting and look forward to learning more about BPF/eBPF. First stop: [Julia Evans' guide](https://jvns.ca/blog/2017/06/28/notes-on-bpf---ebpf/)" %}.
 
 If you made it this far, you probably enjoyed the paper review - I post them on my [Twitter](https://twitter.com/micahlerner) every week!
