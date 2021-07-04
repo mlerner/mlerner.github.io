@@ -33,7 +33,7 @@ _Tasks_ are a stateless function execution that rely on their inputs in order to
 
 _Actors_ are functions that represent a stateful computation (like a counter), and can depend on or be depended on by other computations. Because they require maintenance of state, they are also more difficult to implement (for example, how is the state recovered in event of failure?).
 
-Resources can be explicitly allocated to _tasks_ and _actors_ - for example, an _actor_ can be annotated with the number of GPUs is needs.
+Resources can be explicitly allocated to _tasks_ and _actors_ - for example, an _actor_ can be annotated with the number of GPUs it needs.
 
 Because _Tasks_ and _Actors_ in an application can depend on one another, Ray represents their execution as a graph. The nodes in the graph are computation or state that computation produces, while the edges in the graph describe relationships between computations and/or data. Representing computation as a graph allows the state of an application be to re-executed as needed - for example, if part of the state is stored on a node that fails, that state can be recovered {% sidenote 'lineage' "Several of the authors dig further into representing "lineage" in a future paper [here](https://dl.acm.org/doi/pdf/10.1145/3341301.3359653)."%}.
 
