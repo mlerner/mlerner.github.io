@@ -8,7 +8,7 @@ _This week's paper review is the second in a series on "The Future of the Shell"
 
 [From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transient Functional Containers](https://www.usenix.org/system/files/atc19-fouladi.pdf)
 
-This week's paper discusses _gg_, a system designed to leverage cloud functions{% sidenote 'firecracker' "Like those running on AWS Lambda in [Firecracker VMs, as discussed in a previous paper review](/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html)." %} to parallelize commands initiated from a developer desktop - an alternative summary is that _gg_ allows a developer to, for a limited time period, "rent a supercomputer in the cloud". 
+This week's paper discusses _gg_, a system designed to  parallelize commands initiated from a developer desktop using cloud functions{% sidenote 'firecracker' "Like those running on AWS Lambda in [Firecracker VMs, as discussed in a previous paper review](/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html)." %} - an alternative summary is that _gg_ allows a developer to, for a limited time period, "rent a supercomputer in the cloud". 
 
 While parallelizing computation using cloud functions is not a new idea on its own{% sidenote 'simdiff' "Related systems, like [Ray](/2021/06/27/ray-a-distributed-framework-for-emerging-ai-applications.html), are discussed later in this paper review."%}, _gg_ focuses specifically on leveraging affordable cloud compute functions to speed up applications not natively designed for the cloud, like [make](https://www.gnu.org/software/make/)-based build systems (common in open source projects), unit tests, and video processing pipelines.
 
