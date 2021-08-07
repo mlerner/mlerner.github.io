@@ -1,5 +1,6 @@
 author: 'Micah'
 title: "www.micahlerner.com"
+url: "http://www.micahlerner.com"
 plugins:
   - jekyll-feed
 feed: 
