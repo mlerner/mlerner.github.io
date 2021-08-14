@@ -147,7 +147,7 @@ task :publish => [:generate] do
     message = "Site updated at #{Time.now.utc}"
     system "git add ."
     system "git commit -am #{message.shellescape}"
-    system "git push origin gh-pages --force"
+    # system "git push origin gh-pages --force"
     system "git checkout master"
     system "rm -rf _site/"
     system "echo yolo"
