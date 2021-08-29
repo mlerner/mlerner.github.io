@@ -4,7 +4,7 @@ title: "Systems Conferences 2021"
 categories:
 ---
 
-In an effort to keep track of conferences that I want to read papers from, I put together an incomplete list! The list is certainly non-exhaustive - feel free to send a pull request with suggestions!
+In an effort to keep track of conferences that I want to read papers from, I put together an incomplete list. The list is certainly non-exhaustive - feel free to send a pull request with suggestions!
 
 |Conference|Date|
 |---|---|
