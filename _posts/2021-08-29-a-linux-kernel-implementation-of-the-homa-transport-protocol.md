@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "A Linux Kernel Implementation of the Homa Transport Protocol, Part 2"
+title: "A Linux Kernel Implementation of the Homa Transport Protocol, Part II"
 categories:
 ---
 
@@ -8,7 +8,7 @@ _Programming note: I will be taking a several week break from writing paper revi
 
 [A Linux Kernel Implementation of the Homa Transport Protocol](https://www.usenix.org/system/files/atc21-ousterhout.pdf)
 
-This week's paper review is Part 2 in a series on the Homa Transport Protocol - part 1 is available [here](/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html). As a refresher, Homa is a transport protocol with the goal of replacing TCP in the data center. The first part of the series focuses on describing the goals of Homa, while this paper review discusses an implementation of the protocol as a Linux Kernel module{% sidenote 'linuxkernelmodule' "There is an excellent Kernel Module programming [guide](https://sysprog21.github.io/lkmpg/) that has been revamped continuously since the 2.2 kernel. Another great description of writing your own Linux Kernel module [here](https://linux-kernel-labs.github.io/refs/heads/master/labs/kernel_modules.html)."%}.
+This week's paper review is Part II in a series on the Homa Transport Protocol - part I is available [here](/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html). As a refresher, Homa is a transport protocol with the goal of replacing TCP in the data center. The first part of the series focuses on describing the goals of Homa, while this paper review discusses an implementation of the protocol as a Linux Kernel module{% sidenote 'linuxkernelmodule' "There is an excellent Kernel Module programming [guide](https://sysprog21.github.io/lkmpg/) that has been revamped continuously since the 2.2 kernel. Another great description of writing your own Linux Kernel module [here](https://linux-kernel-labs.github.io/refs/heads/master/labs/kernel_modules.html)."%}.
 
 The author (John Ousterhout, one of the inventors of the [Raft](https://raft.github.io/) consensus algorithm) has three goals in mind with implementing Homa as a Linux Kernel Module:
 
@@ -20,7 +20,7 @@ The author (John Ousterhout, one of the inventors of the [Raft](https://raft.git
 
 In accomplishing the three goals above, the paper makes two contributions:
 
-- Showing that Homa beats TCP and DCTCP{% sidenote 'dctcp' "DCTCP is a project that preceded Homa, but has a similar goal of replacing TCP in the dataceter. The paper is [here](https://people.csail.mit.edu/alizadeh/papers/dctcp-sigcomm10.pdf)." %}, replicating the results of the paper presented in [Part 1](/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html).
+- Showing that Homa beats TCP and DCTCP{% sidenote 'dctcp' "DCTCP is a project that preceded Homa, but has a similar goal of replacing TCP in the dataceter. The paper is [here](https://people.csail.mit.edu/alizadeh/papers/dctcp-sigcomm10.pdf)." %}, replicating the results of the paper presented in [Part I](/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html).
 - An analysis of Homa's limits. This study indicates potential future directions for research tackling the tension between faster network speeds and using more cores to handle increased bandwidth.
 
 ## Homa API
@@ -85,7 +85,7 @@ Homa aims to assign packet priorities and limit the amount of time packets spend
 
 ## Evaluation
 
-A primary goal of the paper was to evaluate Homa in a production-like environment, reproducing the results of the original Homa paper (covered in [Part 1](/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html)).
+A primary goal of the paper was to evaluate Homa in a production-like environment, reproducing the results of the original Homa paper (covered in [Part I](/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html)).
 
 To accomplish this goal, the paper tests the Linux implementation of Homa with four workloads from the original paper. The workloads cover a wide arrange of message sizes (including both small and large RPCs). Furthermore, the paper focuses on cases where there are many clients - Homa is not well suited for situations where there are few RPC clients (arguing that this situation does not arise in data center like environments). The same workloads are executed with TCP and DCTCP (a TCP-like protocol adapted for the datacenter), and compared to Homa's results. 
 
