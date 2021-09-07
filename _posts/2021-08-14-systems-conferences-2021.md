@@ -9,9 +9,11 @@ In an effort to keep track of conferences that I want to read papers from, I put
 |Conference|Date|
 |---|---|
 |[Conference on Innovative Data Systems Research (CIDR)](http://cidrdb.org/cidr2021/index.html)|January 11-15, 2021|
+|[File and Storage Technologies (FAST)](https://www.usenix.org/conference/fast21)|February 23 – 25, 2021|
 |[USENIX Symposium on Networked Systems Design and Implementation (NSDI)](https://www.usenix.org/conference/nsdi21)|April 12–14, 2021|
 |[EuroSys 2021](https://2021.eurosys.org/)|April 26—28, 2021|
 |[HotOS](https://sigops.org/s/conferences/hotos/2021/)|June 1 - 3, 2021|
+|[SIGMOD/PODS](https://2021.sigmod.org/)|June 20 - 25, 2021|
 |[DISTRIBUTED AND EVENT-BASED SYSTEMS (DEBS) 2021](https://2021.debs.org/full-program/)|June 28 - July 2, 2021|
 |[USENIX Symposium on Operating Systems Design and Implementation (OSDI)](https://www.usenix.org/conference/osdi21)|July 14–16, 2021|
 |[USENIX Annual Technical Conference](https://www.usenix.org/conference/atc21)|July 14–16, 2021|
