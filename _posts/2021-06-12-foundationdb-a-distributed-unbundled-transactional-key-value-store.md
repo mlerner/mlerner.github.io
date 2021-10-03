@@ -6,7 +6,7 @@ categories:
 
 [FoundationDB: A Distributed Unbundled Transactional Key Value Store](https://www.foundationdb.org/files/fdb-paper.pdf) Zhou, et al., 2021
 
-_I heard good things about FoundationDB{% sidenote 'jepsen' 'In particular, I read that FoundationDB passed Jepsen testing ["with flying colors on their first try"](https://web.archive.org/web/20150312112556/http://blog.foundationdb.com/foundationdb-vs-the-new-jepsen-and-why-you-should-care) and saw that there were many happy users of the system on [Hacker News](https://news.ycombinator.com/item?id=27424605).' %}, so after seeing that their paper was accepted to SIGMOD'21 (and made available), I decided to read it this week. Enjoy!_
+_I heard good things about FoundationDB{% sidenote 'jepsen' 'In particular, I read that FoundationDB passed Jepsen testing ["with flying colors on their first try"](https://web.archive.org/web/20150312112556/http://blog.foundationdb.com/foundationdb-vs-the-new-jepsen-and-why-you-should-care) and saw that there were many happy users of the system on [Hacker News](https://news.ycombinator.com/item?id=27424605).' %}, so after seeing that their paper was accepted to SIGMOD'21 (and made available), I decided to read it this week. As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://tinyletter.com/micahlerner/), or you can subscribe to the new [Atom feed](https://www.micahlerner.com/feed.xml)._
 
 ## What is FoundationDB?
 
