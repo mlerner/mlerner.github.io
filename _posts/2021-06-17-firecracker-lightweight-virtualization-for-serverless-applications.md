@@ -6,7 +6,7 @@ categories:
 
 [Firecracker: Lightweight Virtualization for Serverless Applications](https://www.usenix.org/conference/nsdi20/presentation/agache) Agache et al., NSDI '20
 
-_This week's paper review is a bit different than the past few weeks (which have been about distributed key-value stores). Inspired by all of the neat projects being built with the technology discussed in this paper, I decided to learn more. Enjoy!_
+_This week's paper review is a bit different than the past few weeks (which have been about distributed key-value stores). Inspired by all of the neat projects being built with the technology discussed in this paper, I decided to learn more. As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://tinyletter.com/micahlerner/), or you can subscribe to the new [Atom feed](https://www.micahlerner.com/feed.xml)._
 
 Firecracker is a high-performance virtualization solution built to run Amazon's serverless{% sidenote 'serverless' 'Serverless meaning that the resources for running a workload are provided on-demand, rather than being paid for over a prolonged time-period. Martin Fowler has some great docs on the topic [here](https://martinfowler.com/articles/serverless.html).'%} applications securely and with minimal resources. It now does so at immense scale (at the time the paper was published, it supported "millions of production workloads, and trillions of requests per month").
 
