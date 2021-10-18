@@ -22,17 +22,30 @@ The paper begins with a section describing the motivation for TAO's initial deve
 
 While inserting memcache into the stack worked for some period of time, the paper cites three main problems with the implementation: _inefficient edge lists_, _distributed control logic_, and _expensive read-after-write consistency_.
 
-Application developers within Facebook used _edge-lists_ to represent aggregations of the information in the graph - for example, a list of the friendships a user has (each friendship is an edge in the graph, and the users are the nodes). Unfortunately, maintaining these lists in memcache was inefficient - memcache is a simple key value store without support for lists, meaning that common list-related functionality (like that supported in [Redis](https://redis.io/topics/data-types#lists)) is inefficient. If a list needs to be updated (say for example, a friendship is deleted), the logic to update the list would be complicated (in particular, the part of the logic related to coordinating the update of the list across multiple copies of the same data across multiple data centers).
+### Inefficient edge lists
 
-Control logic (in the context of Facebook's graph store architecture) means the ability to manipulate how the system is accessed. Before TAO was implemented, the graph data store had _distributed control logic_ - clients communciated directly with the memcache nodes, and there is not a single source of control that can gate client access to the system. This property makes it difficult to guard against misbehaving clients, making problems like [thundering herds](https://instagram-engineering.com/thundering-herds-promises-82191c8af57d) harder to prevent.
+Application developers within Facebook used _edge-lists_ to represent aggregations of the information in the graph - for example, a list of the friendships a user has (each friendship is an edge in the graph, and the users are the nodes). Unfortunately, maintaining these lists in memcache was inefficient - memcache is a simple key value store without support for lists, meaning that common list-related functionality{% sidenote 'redis' 'Like that supported in [Redis](https://redis.io/topics/data-types#lists).' %}  is inefficient. If a list needs to be updated (say for example, a friendship is deleted), the logic to update the list would be complicated - in particular, the part of the logic related to coordinating the update of the list across several copies of the same data in multiple data centers.
 
-_Read-after-write consistency_ means that if a client writes data, then performs a read of the data, the client should see the result of the write that it performed. If a system doesn't have this property, users might be confused - "why did the like button they just pressed not register when they reloaded the page?". Ensuring read-after-write consistency was expensive and difficult for Facebook's memcache-based system, which used MySQL databases with master/slave replication to propagate database writes. While Facebook developed internal technology{% sidenote 'memcache' 'As described in my previous paper review, [Scaling Memcache at Facebook](https://www.micahlerner.com/2021/05/31/scaling-memcache-at-facebook.html).'%} to propagate writes between databases, existing systems that used the MySQL and memcache combo relied on forwarding reads for cache keys invalidated by a write to the leader database, increasing load and incurring potentially slow inter-regional communication. The goal of this new system is to avoid this overhead (with an approach described later in the paper).
+### Distributed Control Logic
+
+Control logic (in the context of Facebook's graph store architecture) means the ability to manipulate how the system is accessed. Before TAO was implemented, the graph data store had _distributed control logic_ - clients communciated directly with the memcache nodes, and there is not a single point of control to gate client access to the system. This property makes it difficult to guard against misbehaving clients and [thundering herds](https://instagram-engineering.com/thundering-herds-promises-82191c8af57d).
+
+### Expensive read-after-write consistency
+
+_Read-after-write consistency_ means that if a client writes data, then performs a read of the data, the client should see the result of the write that it performed. If a system doesn't have this property, users might be confused - "why did the like button they just pressed not register when they reloaded the page?". 
+
+Ensuring read-after-write consistency was expensive and difficult for Facebook's memcache-based system, which used MySQL databases with master/slave replication to propagate database writes between datacenters. While Facebook developed internal technology{% sidenote 'memcache' 'As described in my previous paper review, [Scaling Memcache at Facebook](https://www.micahlerner.com/2021/05/31/scaling-memcache-at-facebook.html).'%} to stream changes between databases, existing systems that used the MySQL and memcache combo relied on complicated cache-invalidation logic{% sidenote 'cacheinvalid' 'For example, followers would forward reads for cache keys invalidated by a write to the leader database, increasing load and incurring potentially slow inter-regional communication.'%} that incurred networking overhead. The goal of this new system is to avoid this overhead (with an approach described later in the paper).
 
 ## Data model and API
 
-TAO is an eventually consistent{% sidenote 'werner' "For a description of eventual consistency (and related topics!), I highly recommend [this post](https://www.allthingsdistributed.com/2008/12/eventually_consistent.html) from Werner Vogels."%} read-optimized data store for the Facebook graph that stores two entities - _objects_ and _associations_ (the relationships between objects). Now we get to learn why the graph datastore is called TAO - the name is an abbreviation that stands for "The Associations and Objects".
+TAO is an eventually consistent{% sidenote 'werner' "For a description of eventual consistency (and related topics!), I highly recommend [this post](https://www.allthingsdistributed.com/2008/12/eventually_consistent.html) from Werner Vogels."%} read-optimized data store for the Facebook graph. 
 
-As an example of how _objects_ and _associations_ are used to model data, consider two common social network functions - friendships between users and check-ins. Users in the database are stored as _objects_, and the relationship between users are _associations_. For a check-in, the user and the location they check in to are _objects_, and an _association_ exists between them to represent that the given user has checked into a given location. 
+It stores two entities - _objects_ and _associations_ (the relationships between objects). Now we get to learn why the graph datastore is called TAO - the name is an abbreviation that stands for "The Associations and Objects".
+
+As an example of how _objects_ and _associations_ are used to model data, consider two common social network functions:
+
+- _Friendships between users_: users in the database are stored as _objects_, and the relationship between users are _associations_.
+- _Check-ins_: the user and the location they check in to are _objects_. An _association_ exists between them to represent that the given user has checked into a given location. 
 
 Objects and associations have different database representations: 
 
@@ -47,7 +60,7 @@ To provide access to this data, TAO provides three main APIs: the _Object API_, 
 
 Two of the three (the _Object API_ and _Association API_) provide create, read, update, and delete operations for individual objects.
 
-In contrast, the _Association Querying API_ provides an interface for performing common queries on the graph. The provided query methods allow application developers to fetch associations for a given object and type (potentially constraining by time range or the set of objects that the the association points), calculating the count of associations for an object, and providing pagination-like functionality. The paper provides example query patterns like fetching the "50 most recent comments on Alice’s checkin"  or “how many checkins at the GG Bridge?". Queries in this API return multiple associations, and call this type of result an _association list_. 
+In contrast, the _Association Querying API_ provides an interface for performing common queries on the graph. The query methods allow application developers to fetch associations for a given object and type (potentially constraining by time range or the set of objects that the the association points), calculating the count of associations for an object, and providing pagination-like functionality. The paper provides example query patterns like fetching the "50 most recent comments on Alice’s checkin"  or “how many checkins at the GG Bridge?". Queries in this API return multiple associations, and call this type of result an _association list_. 
 
 ## Architecture
 
@@ -57,7 +70,7 @@ The architecture of TAO contains two layers, the _storage layer_ and the _cachin
 
 The _storage layer_ (as the name suggests) persists graph data in MySQL{% sidenote 'mysql' "Facebook has invested a significant amount of resources in their MySQL deployments, as evidenced by their [MyRocks](https://engineering.fb.com/2016/08/31/core-data/myrocks-a-space-and-write-optimized-mysql-database/) storage engine and [other posts](https://engineering.fb.com/2021/07/22/data-infrastructure/mysql/) on their tech blog."%}. There are two key technical points to the storage layer: _shards_ and the _tables_ used to store the graph data itself.
 
-The graph data is divided into _shards_ (represented as a MySQL database), and shards are mapped to one of many database servers. Objects and associations for a shard are stored in separate tables. 
+The graph data is divided into _shards_ (represented as a MySQL database), and shards are mapped to one of many database servers. Objects and associations for each shard are stored in separate tables. 
 
 ### Cache Layer
 
