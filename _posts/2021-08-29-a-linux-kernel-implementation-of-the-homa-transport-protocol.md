@@ -4,7 +4,7 @@ title: "A Linux Kernel Implementation of the Homa Transport Protocol, Part II"
 categories:
 ---
 
-_Programming note: I will be taking a several week break from writing paper reviews for the summer. When we come back, I will be finishing off the papers from [Usenix ATC](https://www.usenix.org/conference/atc21) and [OSDI](https://www.usenix.org/conference/osdi21), then moving on to the great upcoming conferences (my non-exhaustive list is [here](https://www.micahlerner.com/2021/08/14/systems-conferences-2021.html)). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://tinyletter.com/micahlerner/), or you can subscribe to the new [Atom feed](https://www.micahlerner.com/feed.xml)._
+_Programming note: I will be taking a several week break from writing paper reviews for the summer. When we come back, I will be finishing off the papers from [Usenix ATC](https://www.usenix.org/conference/atc21) and [OSDI](https://www.usenix.org/conference/osdi21), then moving on to the great upcoming conferences (my non-exhaustive list is [here](https://www.micahlerner.com/2021/08/14/systems-conferences-2021.html)). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the new [Atom feed](https://www.micahlerner.com/feed.xml)._
 
 [A Linux Kernel Implementation of the Homa Transport Protocol](https://www.usenix.org/system/files/atc21-ousterhout.pdf)
 

@@ -4,7 +4,7 @@ title: "TAO: Facebook’s Distributed Data Store for the Social Graph"
 categories:
 ---
 
-_The papers over the next few weeks will be from (or related to) research from [VLDB 2021](https://vldb.org/2021/?info-research-papers) - on the horizon is one of my favorite systems conferences [SOSP](https://sosp2021.mpi-sws.org/). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://tinyletter.com/micahlerner/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._  
+_The papers over the next few weeks will be from (or related to) research from [VLDB 2021](https://vldb.org/2021/?info-research-papers) - on the horizon is one of my favorite systems conferences [SOSP](https://sosp2021.mpi-sws.org/). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._  
 
 [TAO: Facebook’s Distributed Data Store for the Social Graph](https://www.usenix.org/system/files/conference/atc13/atc13-bronson.pdf)
 

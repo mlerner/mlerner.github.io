@@ -4,7 +4,7 @@ title: "Scaling Large Production Clusters with Partitioned Synchronization"
 categories:
 ---
 
-_This is one of the last papers we will be reading from [Usenix ATC](https://www.usenix.org/conference/atc21) and [OSDI](https://www.usenix.org/conference/osdi21). There are several great conferences coming up over the next few months that I'm excited to read through together. Next week we will be moving on to VLDB (Very Large Data Bases), and SOSP (Symposium on Operating Systems Principles) is coming up later this month. As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://tinyletter.com/micahlerner/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._
+_This is one of the last papers we will be reading from [Usenix ATC](https://www.usenix.org/conference/atc21) and [OSDI](https://www.usenix.org/conference/osdi21). There are several great conferences coming up over the next few months that I'm excited to read through together. Next week we will be moving on to VLDB (Very Large Data Bases), and SOSP (Symposium on Operating Systems Principles) is coming up later this month. As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._
 
 {% discussion 'https://news.ycombinator.com/item?id=28440542' %}
 

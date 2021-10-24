@@ -4,7 +4,7 @@ title: "From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transie
 categories:
 ---
 
-_This week's paper review is the second in a series on "The Future of the Shell" (Part 1, a paper about possible ways to innovate in the shell is [here](/2021/07/14/unix-shell-programming-the-next-50-years.html)). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These weekly paper reviews can also [be delivered weekly to your inbox](https://tinyletter.com/micahlerner/)._
+_This week's paper review is the second in a series on "The Future of the Shell" (Part 1, a paper about possible ways to innovate in the shell is [here](/2021/07/14/unix-shell-programming-the-next-50-years.html)). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These weekly paper reviews can also [be delivered weekly to your inbox](https://newsletter.micahlerner.com/)._
 
 [From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transient Functional Containers](https://www.usenix.org/system/files/atc19-fouladi.pdf)
 
