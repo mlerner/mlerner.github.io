@@ -21,7 +21,7 @@ layout: default
     {% endif %}
     <h4>Published {{ page.date | date: '%B %d, %Y' }}</h4>
     <h5>
-        Found something wrong? <a href="https://github.com/mlerner/mlerner.github.io">Submit a pull request!</a>
+        Found something wrong? <a href="{{ site.github.repository_url }}/edit/HEAD/{{ page.relative_path }}">Submit a pull request!</a>
     </h5>
     <section>
         {{ content }}
@@ -50,6 +50,6 @@ layout: default
         </footer>
     </section>
     <section>
-        Found something wrong? <a href="https://github.com/mlerner/mlerner.github.io">Submit a pull request!</a>
+        Found something wrong? <a href="{{ site.github.repository_url }}/edit/HEAD/{{ page.relative_path }}">Submit a pull request!</a>
     </section>
 </article>
