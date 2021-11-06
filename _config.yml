@@ -3,6 +3,7 @@ title: "www.micahlerner.com"
 url: "http://www.micahlerner.com"
 plugins:
   - jekyll-feed
+  - "jekyll-github-metadata"
 feed: 
   collections:
     posts: 
