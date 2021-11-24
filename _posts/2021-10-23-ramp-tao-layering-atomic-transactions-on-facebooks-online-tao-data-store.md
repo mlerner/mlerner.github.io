@@ -4,7 +4,7 @@ title: "RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data S
 categories:
 ---
 
-_The papers over the next few weeks will be from [SOSP](https://sosp2021.mpi-sws.org/), which is taking place October 26-29th, 2021. As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://www.getrevue.co/profile/systems-weekly), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._  
+_The papers over the next few weeks will be from [SOSP](https://sosp2021.mpi-sws.org/), which is taking place October 26-29th, 2021. As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._  
 
 [RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store](/assets/papers/ramp-tao.pdf)
 
