@@ -90,7 +90,7 @@ When evaluating overhead, the paper considers the `apply` thread (as this upcall
 
 The second main category of results is related to the benefits of code-reuse. One example that the paper cites is the introduction of the _BatchingEngine_ discussed in the previous section. The deployment of the _BatchingEngine_ was relatively straightfoward and contributed to a 2X throughput improvement. Furthermore, the engine could be rolled out to other protocols.
 
-{% maincolumn 'assets/log-structured-delos/batchengine.png' '' %}
+{% maincolumn 'assets/log-structured-delos/batchingengine.png' '' %}
 
 ## Conclusion
 
