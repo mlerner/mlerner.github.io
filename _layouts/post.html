@@ -1,55 +1,141 @@
 ---
 layout: default
 ---
+
 <article>
-    <section>
-        <header>
-            <a href="/">
-                <h3>micahlerner.com</h3>
-            </a>
-        </header>
-    </section>
-    <h1>{{ page.title}}</h1>
-    {% if post.tags.size > 0 %}
-    <ul class="inline-bulleted">
-        {% for tag in post.tags %}
-        <li>
-            {{ tag }}
-        </li>
-        {% endfor %}
-    </ul>
-    {% endif %}
-    <h4>Published {{ page.date | date: '%B %d, %Y' }}</h4>
-    <h5>
-        Found something wrong? <a href="{{ site.github.repository_url }}/edit/master/{{ page.relative_path }}">Submit a pull request!</a>
-    </h5>
-    <section>
-        {{ content }}
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>{{ page.title}}</h1>
+  {% if post.tags.size > 0 %}
+  <ul class="inline-bulleted">
+    {% for tag in post.tags %}
+    <li>{{ tag }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <h4>Published {{ page.date | date: '%B %d, %Y' }}</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="{{ site.github.repository_url }}/edit/master/{{ page.relative_path }}"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    {{ content }}
 
-        <footer>
-            <form
-                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
-                method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate"
-                target="_blank" novalidate>
-                <div id="mc_embed_signup_scroll">
-                    <h4>Follow me on <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe below to get future paper reviews. Published
-                        weekly.</h4>
-                    <div>
-                        <input type="email" value="" name="EMAIL" class="email" id="tlemail"
-                            placeholder="email address" required>
-                        <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
-                        <div style="position: absolute; left: -5000px;" aria-hidden="true">
-                            <input type="text" name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1" tabindex="-1" value="">
-                        </div>
-                        <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe"
-                            class="button">
-
-                    </div>
-                </div>
-            </form>
-        </footer>
-    </section>
-    <section>
-        Found something wrong? <a href="{{ site.github.repository_url }}/edit/master/{{ page.relative_path }}">Submit a pull request!</a>
-    </section>
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="{{ site.github.repository_url }}/edit/master/{{ page.relative_path }}"
+      >Submit a pull request!</a
+    >
+  </section>
 </article>
+
+<div id="subscribe-container">
+  <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper" onclick="showPopup();">
+    <div class="gh-portal-triggerbtn-container with-label">
+      <svg
+        width="24"
+        height="18"
+        viewBox="0 0 24 18"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+      >
+        <path
+          d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+          stroke="#fff"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ></path>
+        <path
+          d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+          stroke="#fff"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ></path></svg
+      ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  function showPopup() {
+    !(function (c, h, i, m, p) {
+      (m = c.createElement(h)),
+        (p = c.getElementsByTagName(h)[0]),
+        (m.async = 1),
+        (m.src = i),
+        p.parentNode.insertBefore(m, p);
+    })(
+      document,
+      "script",
+      "https://chimpstatic.com/mcjs-connected/js/users/d1654f70a6addb0e9ce8afd83/7c09d93a5477895387fa7c22d.js"
+    );
+    //unsetting the cookie
+    document.cookie =
+      "MCPopupClosed=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie =
+      "MCPopupSubscribed=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  }
+
+  document.getElementById("gh-portal-triggerbtn-wrapper").onclick = function () {
+    showPopup();
+  };
+</script>
