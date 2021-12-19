@@ -23,7 +23,7 @@ In _Unix Shell Programming: The Next 50 Years_, the authors argue that while the
 The paper identifies four _good_ components of modern shells: 
 
 - _Universal composition_: The shell already prioritizes chaining small programs working in concert (which can be written in many different languages), according to the Unix philosophy.
-- _Stream processing_: The shell is well structured to perform computation that flows from one command to another through pipes (for example, using xargs). The paradigm of stream processing is an active area of research outside of the shell and shows up in modern modern distributed systems like [Apache Flink](https://flink.apache.org/) or [Spark Streaming](https://spark.apache.org/streaming/).
+- _Stream processing_: The shell is well structured to perform computation that flows from one command to another through pipes (for example, using xargs). The paradigm of stream processing is an active area of research outside of the shell and shows up in modern distributed systems like [Apache Flink](https://flink.apache.org/) or [Spark Streaming](https://spark.apache.org/streaming/).
 - _Unix-native_: "The features and abstractions of the shell are well suited to the Unix file system and file-based abstractions. Unix can be viewed as a naming service, mapping strings to longer strings, be it data files or programs"
 - _Interactive_: A REPL-like environment for interacting with your system translates into user efficiency.
 
