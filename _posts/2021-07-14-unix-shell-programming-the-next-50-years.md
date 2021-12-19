@@ -36,7 +36,7 @@ Next - four _bad_ features are detailed, with the note that, "It's hard to imagi
 Lastly, four _ugly_ components are detailed:
 
 - _Error proneness_: There aren't checks to prevent a user from making mistakes (which could have drastic conditions). [Unix/Linux Horror Stories](https://www-uxsup.csx.cam.ac.uk/misc/horror.txt) has some good ones (or bad, if you were the person making the mistake!).
-- _Performance doesn't scale_: the shell isn't set up to parallelize trivially parallelize problems across many cores or machines (which would be very helpful in a modern environment){% sidenote 'gg' 'If this is interesting to you, predominantly all of the papers in the series discuss with this problem.'%}.
+- _Performance doesn't scale_: the shell isn't set up to parallelize trivially parallelize problems across many cores or machines (which would be very helpful in a modern environment){% sidenote 'gg' 'If this is interesting to you, predominantly all of the papers in the series deal with this problem.'%}.
 - _Redundant recomputation_: If a developer makes a change to a shell script, they will have to rerun it in its entirety (unless they are a shell wizard and have gone out of their way to ensure that their script does not do so, while potentially making operations idempotent).
 - _No support for contemporary deployments_: Similar to the 2nd point - most shell scripts aren't designed to take advantage of multiple machines, nor of cloud deployments.
 
