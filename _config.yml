@@ -1,6 +1,7 @@
 author: 'Micah'
 title: "www.micahlerner.com"
 url: "http://www.micahlerner.com"
+baseurl: "/"
 repository: "mlerner/mlerner.github.io"
 plugins:
   - jekyll-feed
