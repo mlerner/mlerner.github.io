@@ -30,10 +30,10 @@ layout: default
   <section>
 
     {% assign thesize = page.hn | size %}
-  
 
     {% if thesize > 0 %}
-      {% discussion page.hn %}
+      {% assign hn_link = page.hn %}
+      {% discussion params=page.hn %}
     {% endif %}
 
     {{ content }}

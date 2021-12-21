@@ -7,12 +7,9 @@ categories:
 
 _This is one of the last papers we will be reading from [Usenix ATC](https://www.usenix.org/conference/atc21) and [OSDI](https://www.usenix.org/conference/osdi21). There are several great conferences coming up over the next few months that I'm excited to read through together. Next week we will be moving on to VLDB (Very Large Data Bases), and SOSP (Symposium on Operating Systems Principles) is coming up later this month. As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._
 
-{% discussion 'https://news.ycombinator.com/item?id=28440542' %}
-
 [Scaling Large Production Clusters with Partitioned Synchronization](https://www.usenix.org/system/files/atc21-feng-yihui.pdf)
 
 This week's paper review won a best paper award at Usenix ATC, and discusses Alibaba's approach to scaling their production environment. In particular, the paper focuses on the evolution of the scheduling architecture used in Alibaba datacenters in response to growth in workloads and resources{% sidenote 'scale' "An increase in resources or workloads impacted the load on the existing scheduler architecture. The former translates into more options for the scheduler to choose from when scheduling, and the latter means more computation that needs to be performed by the scheduler."%}. Beyond discussing Alibaba's specific challenges and solutions, the paper also touches on the landscape of existing scheduler architectures (like Mesos, YARN, and Omega). 
-
 
 ## Scheduler architectures
 

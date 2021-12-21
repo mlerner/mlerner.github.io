@@ -9,8 +9,6 @@ _Programming note: I will be taking a several week break from writing paper revi
 
 [A Linux Kernel Implementation of the Homa Transport Protocol](https://www.usenix.org/system/files/atc21-ousterhout.pdf)
 
-{% discussion 'https://news.ycombinator.com/item?id=28440542' %}
-
 This week's paper review is Part II in a series on the Homa Transport Protocol - part I is available [here](/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html). As a refresher, Homa is a transport protocol with the goal of replacing TCP in the data center. The first part of the series focuses on describing the goals of Homa, while this paper review discusses an [open source implementation](https://github.com/PlatformLab/HomaModule) of the protocol as a Linux Kernel module{% sidenote 'linuxkernelmodule' "There is an excellent Kernel Module programming [guide](https://sysprog21.github.io/lkmpg/) that has been revamped continuously since the 2.2 kernel. Another great description of writing your own Linux Kernel module [here](https://linux-kernel-labs.github.io/refs/heads/master/labs/kernel_modules.html)."%}.
 
 The author (John Ousterhout, one of the inventors of the [Raft](https://raft.github.io/) consensus algorithm) has three goals in mind with implementing Homa as a Linux Kernel Module:
