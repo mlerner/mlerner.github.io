@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transient Functional Containers</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transient Functional Containers</h1>
+  
+  <h4>Published July 24, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-07-24-from-laptop-to-lambda-outsourcing-everyday-jobs-to-thousands-of-transient-functional-containers.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><em>This week’s paper review is the second in a series on “The Future of the Shell” (Part 1, a paper about possible ways to innovate in the shell is <a href="/2021/07/14/unix-shell-programming-the-next-50-years.html">here</a>). As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These weekly paper reviews can also <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>.</em></p>
+
+<p><a href="https://www.usenix.org/system/files/atc19-fouladi.pdf">From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transient Functional Containers</a></p>
+
+<p>This week’s paper discusses <em>gg</em>, a system designed to  parallelize commands initiated from a developer desktop using cloud functions<label for="firecracker" class="margin-toggle sidenote-number"></label><input type="checkbox" id="firecracker" class="margin-toggle" /><span class="sidenote">Like those running on AWS Lambda in <a href="/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html">Firecracker VMs, as discussed in a previous paper review</a>. </span> - an alternative summary is that <em>gg</em> allows a developer to, for a limited time period, “rent a supercomputer in the cloud”.</p>
+
+<p>While parallelizing computation using cloud functions is not a new idea on its own<label for="simdiff" class="margin-toggle sidenote-number"></label><input type="checkbox" id="simdiff" class="margin-toggle" /><span class="sidenote">Related systems, like <a href="/2021/06/27/ray-a-distributed-framework-for-emerging-ai-applications.html">Ray</a>, are discussed later in this paper review. </span>, <em>gg</em> focuses specifically on leveraging affordable cloud compute functions to speed up applications not natively designed for the cloud, like <a href="https://www.gnu.org/software/make/">make</a>-based build systems (common in open source projects), unit tests, and video processing pipelines.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper’s contains two primary contributions: the design and implementation of <em>gg</em> (a general system for parallelizing command line operations using a computation graph executed with cloud functions) and the application of <em>gg</em> to several domains (including unit testing, software compilation, and object recognition).</p>
+
+<p>To accomplish the goals of <em>gg</em>, the authors needed to overcome three challenges: managing software dependencies for the applications running in the cloud, limiting round trips from the developer’s workstation to the cloud (which can be incurred if the developer’s workstation coordinates cloud executions), and making use of cloud functions themselves.</p>
+
+<p>To understand the paper’s solutions to these problems, it is helpful to have context on several areas of related work:</p>
+
+<ul>
+  <li><em>Process migration and outsourcing</em>: <em>gg</em> aims to outsource computation from the developer’s workstation to remote nodes. Existing systems like <a href="https://distcc.github.io/">distcc</a> and <a href="https://github.com/icecc/icecream">icecc</a> use remote resources to speed up builds, but often require long-lived compute resources, potentially making them more expensive to use. In contrast, <em>gg</em> uses cloud computing functions that can be paid for at the second or millisecond level.</li>
+  <li><em>Container orchestration systems</em>: <em>gg</em> runs computation in cloud functions (effectively containers in the cloud). Existing container systems, like Kubernetes or Docker Swarm, focus on the actual scheduling and execution of tasks, but don’t necessarily concern themselves with executing dynamic computation graphs - for example, if Task B’s inputs are the output of Task A, how can we make the execution of Task A fault tolerant and/or memoized.</li>
+  <li><em>Workflow systems</em>: <em>gg</em> transforms an application into small steps that can be executed in parallel. Existing systems following a similar model (like Spark) need to be be programmed for specific tasks, and are not designed for “everyday” applications that a user would spawn from the command line. While Spark can call system binaries, the binary is generally installed on all nodes, where each node is long-lived. In contast, <em>gg</em> strives to provide the minimal dependencies and data required by a specific step - the goal of limiting dependencies also translates into lower overhead for computation, as less data needs to be transferred before a step can execute. Lastly, systems like Spark are accessed through language bindings, whereas <em>gg</em> aims to be language agnostic.</li>
+  <li><em>Burst-parallel cloud functions</em>: <em>gg</em> aims to be a higher-level and more general system for running short-lived cloud functions than existing approaches - the paper cites <a href="http://pywren.io/">PyWren</a> and <a href="https://www.usenix.org/conference/nsdi17/technical-sessions/presentation/fouladi">ExCamera</a> as two systems that implement specific functions using cloud components (a MapReduce-like framework and video encoding, respectively). In contrast, <em>gg</em> aims to provide, “common services for dependency management, straggler mitigation, and scheduling.”</li>
+  <li><em>Build tools</em>: <em>gg</em> aims to speed up multiple types of applications through parallelization in the cloud. One of those applications, compiling software, is addressed by systems like <a href="https://bazel.build/">Bazel</a>, <a href="https://www.pantsbuild.org/">Pants</a>, and <a href="https://buck.build">Buck</a>. These newer tools are helpful for speeding up builds by parallelizing and incrementalizing operations, but developers will likely not be able to use advanced features of the aforementioned systems unless they rework their existing build.</li>
+</ul>
+
+<p>Now that we understand more about the goals of <em>gg</em>, let’s jump into the system’s design and implementation.</p>
+
+<h2 id="design-and-implementation-of-gg">Design and implementation of gg</h2>
+
+<p><em>gg</em> comprises three main components:</p>
+
+<ul>
+  <li>The <em>gg Intermediate Representation (gg IR)</em> used to represent the units of computation involved in an application - <em>gg IR</em> looks like a graph, where dependencies between steps are the edges and the units of computation/data are the nodes.</li>
+  <li><em>Frontends</em>, which take an application and generate the intermediate representation of the program.</li>
+  <li><em>Backends</em>, which execute the <em>gg IR</em>, store results, and coalesce them when producing output.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/gg/arch.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>gg Intermediate Representation (gg IR)</em> describes the steps involved in a given execution of an application<label for="dynamic" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dynamic" class="margin-toggle" /><span class="sidenote">Notably, this graph is dynamic and lazily evaluated, which is helpful for supporting applications that involve “loops, recursion, or other non-DAG dataflows. </span>. Each step is described as a <em>thunk</em>, and includes the command that the step invokes, environment variables, the arguments to that command, and all inputs. Thunks can also be used to represent primitive values that don’t need to be evaluated - for example, binary files like gcc need to be used in the execution of a thunk, but do not need to be executed. A <em>thunk</em> is identified using a content-addressing scheme<label for="content" class="margin-toggle sidenote-number"></label><input type="checkbox" id="content" class="margin-toggle" /><span class="sidenote">The paper describes a content-addressing scheme where, “the name of an object has four components: (1) whether the object is a primitive value (hash starting with V) or represents the result of forcing some other thunk (hash starting with T), (2) a SHA-256 hash, (3) the length in bytes, and (4) an optional tag that names an object or a thunk’s output.” </span> that allows one <em>thunk</em> to depend on another (by specifying the objects array as described in the figure below).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/gg/thunks.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Frontends</em> produce the <em>gg IR</em>, either through a language-specific SDK (where a developer describes an application’s execution in code)<label for="ray" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ray" class="margin-toggle" /><span class="sidenote">This seems like it would have a close connection to <a href="/2021/06/27/ray-a-distributed-framework-for-emerging-ai-applications.html">Ray, another previous paper review</a>. </span> or with a <em>model substitution primitive</em>. The model substitution primitive mode uses <code class="language-plaintext highlighter-rouge">gg infer</code> to generate all of the thunks (a.k.a. steps) that would be involved in the execution of the original command. This command executes based on advanced knowledge of how to model specific types of systems - as an example, imagine defining a way to process projects that use <em>make</em>. In this case, <code class="language-plaintext highlighter-rouge">gg infer</code> is capable of converting the aforementioned <code class="language-plaintext highlighter-rouge">make</code> command into a set of thunks that will compile independent C++ files in parallel, coalescing the results to produce the intended binary - see the figure below for a visual representation.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/gg/ggir.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Backends</em> execute the <em>gg IR</em> produced by the <em>Frontends</em> by “forcing” the execution of the thunk that corresponds to the output of the application’s execution. The computation graph is then traced backwards along the edges that lead to the final output. Backends can be implemented on different cloud providers, or even use the developer’s local machine. While the internals of the backends may differ, each backend must have three high-level components:</p>
+
+<ul>
+  <li><em>Storage engine</em>: used to perform CRUD operations for content-addressable outputs (for example, storing the result of a thunk’s execution).</li>
+  <li><em>Execution engine</em>: a function that actually performs the execution of a thunk, abstracting away actual execution. It must support, “a simple abstraction: a function that receives a thunk as the input and returns the hashes of its output objects (which can be either values or thunks)”. Examples of execution engines are “a local multicore machine, a cluster of remote VMs, AWS Lambda, Google Cloud Functions, and IBM Cloud Functions (OpenWhisk)”.</li>
+  <li><em>Coordinator</em>: The coordinator is a process that orchestrates the execution of a <em>gg IR</em> by communicating with one or more execution engines and the storage engine<label for="coordinator" class="margin-toggle sidenote-number"></label><input type="checkbox" id="coordinator" class="margin-toggle" /><span class="sidenote">It was unclear from the paper whether multiple storage engines can be associated with a single coordinator. </span>. It provides higher level services like making scheduling decisions, memoizing thunk execution (not rerunning a thunk unnecessarily), rerunning thunks if they fail, and straggler mitigation<label for="straggler" class="margin-toggle sidenote-number"></label><input type="checkbox" id="straggler" class="margin-toggle" /><span class="sidenote">Straggler mitigation in this context means ensuring that slow-running <em>thunks</em> do not impact overall execution time. One strategy to address this issue is uunning multiple copies of a thunk in parallel, then continuing after the first succeds - likely possible because content-addressable nature of thunks means that their execution is idempotent. </span>.</li>
+</ul>
+
+<h2 id="applying-and-evaluating-gg">Applying and evaluating gg</h2>
+
+<p>The <em>gg</em> system was applied to, and evaluated against, four<label for="five" class="margin-toggle sidenote-number"></label><input type="checkbox" id="five" class="margin-toggle" /><span class="sidenote">The paper also includes an implementation of recursive fibonacci to demonstrate that <em>gg</em> can handle dynamic execution graphs while also memoizing redundant executions. </span> use cases: software compilation, unit testing, video encoding, and object recognition.</p>
+
+<p>For software compilation, FFmpeg, GIMP, Inkscape, and Chromium were compiled either locally, using a distributed build tool (icecc), or with <em>gg</em>. For medium-to-large programs, (Inkscape and Chromium), <em>gg</em> performed better than the alternatives with an <em>AWS Lambda</em> execution engine, likely because it is better able to handle high degrees of parallelism - a <em>gg</em> based compilation is able to perform all steps remotely, whereas the two other systems perform bottlenecking-steps at the root node. The paper also includes an interesting graphic outlining the behavior of <em>gg</em> worker’s during compilation, which contains an interesting visual of straggler mitigation (see below).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/gg/stragglers.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>For unit testing, the LibVPX test suite was built in parallel with <em>gg</em> on AWS Lambda, and compared with a build box - the time differences between the two strategies was small, but that authors argue that the <em>gg</em> based solution was able to provide results earlier because of its parallelism.</p>
+
+<p>For video encoding, <em>gg</em> performed worse than an optimized implementation (based on ExCamera), although the <em>gg</em> based system introduces memoization and fault tolerance.</p>
+
+<p>For object recognition, <em>gg</em> was compared to <a href="https://scanner.run">Scanner</a><label for="scanner" class="margin-toggle sidenote-number"></label><input type="checkbox" id="scanner" class="margin-toggle" /><span class="sidenote">“Scanner is a distributed system for building efficient video processing applications that scale.” - it would be interesting to see this implemented in Ray! </span>, and observed significant speedups<label for="speedup" class="margin-toggle sidenote-number"></label><input type="checkbox" id="speedup" class="margin-toggle" /><span class="sidenote">The authors mention that the <em>gg</em> implementation was specifically tuned to the task. </span> that the authors attribute to <em>gg</em>’s scheduling algorithm and removing abstraction in Scanner’s design.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>While <em>gg</em> seems like an exciting system for scaling command line applications, it may not be the best fit for every project (as indicated by the experimental results) - in particular, <em>gg</em> seems well positioned to speed up traditional make-based builds without requiring a large-scale migration. The paper authors also note limitations of the system, like <em>gg</em>’s incompatibility with GPU programs - <a href="/2021/06/27/ray-a-distributed-framework-for-emerging-ai-applications.html">my previous paper review on Ray</a> seems relevant to adapting <em>gg</em> in the future.</p>
+
+<p>A quote that I particularly enjoyed from the paper’s conclusion was this:</p>
+
+<blockquote>
+  <p>As a computing substrate, we suspect cloud functions are in a similar position to Graphics Processing Units in the 2000s. At the time, GPUs were designed solely for 3D graphics, but the community gradually recognized that they had become programmable enough to execute some parallel algorithms unrelated to graphics. Over time, this “general-purpose GPU” (GPGPU) movement created systems-support technologies and became a major use of GPUs, especially for physical simulations and deep neural networks. Cloud functions may tell a similar story. Although intended for asynchronous microservices, we believe that with sufficient effort by this community the same infrastructure is capable of broad and exciting new applications. Just as GPGPU computing did a decade ago, nontraditional “serverless” computing may have far-reaching effects.</p>
+</blockquote>
+
+<p>Thanks for reading, and feel free to reach out with feedback on <a href="https://twitter.com/micahlerner">Twitter</a> - until next time!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-07-24-from-laptop-to-lambda-outsourcing-everyday-jobs-to-thousands-of-transient-functional-containers.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

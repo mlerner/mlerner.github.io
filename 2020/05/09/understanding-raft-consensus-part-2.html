@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Understanding Raft - Part 2 (Raft leaders, logs, and safety)</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Understanding Raft - Part 2 (Raft leaders, logs, and safety)</h1>
+  
+  <h4>Published May 09, 2020</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2020-05-09-understanding-raft-consensus-part-2.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <blockquote>
+  <p>This post is a continuation in the series I wrote about Raft, the first part of which is <a href="2020/05/08/understanding-raft-consensus.html">here</a>. This post focuses on what underlies leader election, log replication, and Raft safety. Enjoy!</p>
+</blockquote>
+
+<h2 id="leaders-and-leader-election">Leaders and leader election</h2>
+<p>The Raft protocol requires a single node (called the <strong>Leader</strong>) to direct other nodes on how they should change their respective states of the world. There can only be one leader at a time - Raft maintains a representation of time called a <code class="language-plaintext highlighter-rouge">term</code>. This term only changes in special situations, like when a node attempts to become a <code class="language-plaintext highlighter-rouge">Leader</code>.
+When a Raft cluster starts, there are no leaders and one needs to be chosen through a process called <strong>Leader Election</strong> before the cluster can start responding to requests.</p>
+
+<h3 id="how-does-the-leader-election-process-work">How does the leader election process work?</h3>
+<p>A node starts the leader election process by designating itself to be a <code class="language-plaintext highlighter-rouge">Candidate</code>, incrementing its term, voting for itself, and requesting the votes of other nodes in the Raft cluster using <code class="language-plaintext highlighter-rouge">RequestVote</code>.</p>
+
+<p>There are a few ways that a node can exit <code class="language-plaintext highlighter-rouge">Candidate</code> state:</p>
+<ul>
+  <li>If the <code class="language-plaintext highlighter-rouge">Candidate</code> node receives a majority of votes within some configurable time period of the election starting, it becomes the leader.</li>
+  <li>If the <code class="language-plaintext highlighter-rouge">Candidate</code> node doesn’t receive a majority of votes within some configurable time period of the election starting (and it hasn’t heard from another leader, as in the case below), the node restarts the election (including incrementing its term and and sending out <code class="language-plaintext highlighter-rouge">RequestVote</code> communications again).</li>
+  <li>If the <code class="language-plaintext highlighter-rouge">Candidate</code> (Node A) hears from a different peer (Node B) who claims to be <code class="language-plaintext highlighter-rouge">Leader</code> for a term greater than or equal to the term that Node A is on, Node A stops its election, sets its term to Node B’s, enters the <code class="language-plaintext highlighter-rouge">Follower</code> state, and begins listening for updates from the <code class="language-plaintext highlighter-rouge">Leader</code>.</li>
+</ul>
+
+<p>Once a node becomes a <code class="language-plaintext highlighter-rouge">Leader</code>, it begins sending communications in the form of <code class="language-plaintext highlighter-rouge">AppendEntries</code> (discussed more in the next section) messages to all other peers, and will continue trying to do so unless it hears about a different <code class="language-plaintext highlighter-rouge">Leader</code> with a higher term (you may be wondering how Raft ensures that a <code class="language-plaintext highlighter-rouge">Leader</code> with an out of date state of the world doesn’t somehow acquire a higher term, but that topic is covered in the <code class="language-plaintext highlighter-rouge">Safety</code> section).</p>
+
+<p>To allow Raft to recover from a <code class="language-plaintext highlighter-rouge">Leader</code> failing (maybe because of an ethernet unplugging scenario), an up to date <code class="language-plaintext highlighter-rouge">Follower</code> can kick off an election.</p>
+
+<p><label for="raft-states" class="margin-toggle">⊕</label><input type="checkbox" id="raft-states" class="margin-toggle" /><span class="marginnote"><img class="fullwidth" src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2FMivsh%2FNcIg3LfB_V.png?alt=media&amp;token=28bc65f4-5a48-43ab-99cb-3b504392a356" /><br />Raft States</span></p>
+
+<p>I found the visualization in the margin (from the original Raft paper) to be helpful for thinking about the ways that a node can transition between the three possible states of <code class="language-plaintext highlighter-rouge">Follower</code>, <code class="language-plaintext highlighter-rouge">Candidate</code>, and <code class="language-plaintext highlighter-rouge">Leader</code>.</p>
+
+<h2 id="raft-logs-and-replication">Raft logs and replication</h2>
+
+<h3 id="what-is-an-appendentries-request-and-what-information-does-it-contain">What is an AppendEntries request and what information does it contain?</h3>
+<p>As mentioned above, <code class="language-plaintext highlighter-rouge">Leader</code> nodes periodically send <code class="language-plaintext highlighter-rouge">AppendEntries</code> messages to <code class="language-plaintext highlighter-rouge">Follower</code> nodes to let the <code class="language-plaintext highlighter-rouge">Follower</code>s know that there is still an active <code class="language-plaintext highlighter-rouge">Leader</code>. 
+These <code class="language-plaintext highlighter-rouge">AppendEntries</code> calls also serve the purpose of helping to update out of date <code class="language-plaintext highlighter-rouge">Follower</code>s with correct data to store in their logs.
+The information that the leader supplies in the calls is as follows:</p>
+<ul>
+  <li><strong>The <code class="language-plaintext highlighter-rouge">Leader's</code> current term -</strong> as mentioned in the <strong>Leaders and leader election</strong> section, if a node is a <code class="language-plaintext highlighter-rouge">Candidate</code> or a <code class="language-plaintext highlighter-rouge">Leader</code>, hearing about a new or existing leader might require the node to take some action (like giving up on an election or stepping down as a <em>Leader</em>).</li>
+  <li>
+    <p><strong>Log entries</strong> (represented as an array) that the <strong>Leader</strong> wants to propagate to peers, along with data about the <code class="language-plaintext highlighter-rouge">Leader's</code> log that will help the <code class="language-plaintext highlighter-rouge">Follower</code> make a decision about what to do with the new entries. In particular, the <code class="language-plaintext highlighter-rouge">Leader</code> sends data about the log entry that immediately preceded the entries it is sending. Because the data pertains to the previous log entry, the names of the variables are <strong>previousLogIndex</strong> and <strong>previousLogTerm</strong>.  <label for="leader-log" class="margin-toggle">⊕</label><input type="checkbox" id="leader-log" class="margin-toggle" /><span class="marginnote"><img class="fullwidth" src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2FMivsh%2FJ67QQC2tnw.png?alt=media&amp;token=85f3bb55-1a92-4c85-bf89-804728cca996" /><br />Leader log</span> For an example of how these variables are assigned, consider a Leader’s log as shown in the margin. If the leader wanted to update the follower with entries that are in positions 9 through 10, it would include those in the <strong>log entries</strong> section of the <code class="language-plaintext highlighter-rouge">AppendEntries</code> call, setting <strong>previousLogIndex</strong> to 8 and <strong>previousLogTerm</strong> to 6.</p>
+  </li>
+  <li>The <code class="language-plaintext highlighter-rouge">Leader's</code> <strong>commitIndex</strong>: this is where the idea of <strong>committing</strong> from the earlier part of this guide comes into play.</li>
+</ul>
+
+<h3 id="what-happens-when-a-peer-receives-an-appendentries-request">What happens when a peer receives an AppendEntries request?</h3>
+<p>Once a peer receives an <code class="language-plaintext highlighter-rouge">AppendEntries</code> request from a leader, it evaluates whether it will need to update its state, then responds with its current term as well as whether it successfully processed the request:</p>
+<ul>
+  <li><strong>If the receiving node has a greater term than the sending node</strong>, the receiving node ignores the <code class="language-plaintext highlighter-rouge">AppendEntries</code> request and immediately communicates to the sending node that the request failed. This has the effect of causing the sending node to step down as a leader. A situation where this could arise is when a <code class="language-plaintext highlighter-rouge">Leader</code> is disconnected from the network, a new election succeeds (with a new term and Leader), then the old Leader is reconnected. Because Raft only allows one leader at a time, the old one should step down.</li>
+  <li><strong>If the receiving node has an equal term as the sending node, a few conditions need to be evaluated:</strong>
+Firstly, if the receiving node is not a <code class="language-plaintext highlighter-rouge">Follower</code>, it should immediately transition to being one. This behavior serves to notify candidates for the term that a <code class="language-plaintext highlighter-rouge">Leader</code> has been elected, as well as guarding against the existence of two <code class="language-plaintext highlighter-rouge">Leaders</code>. Hitting this condition does not cause the <code class="language-plaintext highlighter-rouge">AppendEntries</code> request to return.
+    <ul>
+      <li><strong>Once it has been checked that the receiving and sending nodes have the same term, we need to make sure that their logs match.</strong> This check is performed by looking at the <strong>previousLogIndex</strong> and <strong>previousLogTerm</strong> of the sending node and comparing to the receiving node’s log. 
+As part of performing this check, a few scenarios arise.
+        <ul>
+          <li><strong>In the match case</strong>, the <strong>previousLogIndex</strong> and <strong>previousLogTerm</strong> of the sending node match the entry in the receiving node’s log, meaning that everything is up to date! If this is true, the receiving node can add the received entries to its log. The receiving node also checks whether the <code class="language-plaintext highlighter-rouge">Leader</code> has a newer commit index (meaning that the receiving node is able to update its commit index and apply messages that will affect its state)</li>
+          <li>If the log for a <code class="language-plaintext highlighter-rouge">Follower</code> is not up to date, the Leader will keep decrementing the <strong>previousLogIndex</strong> for the <code class="language-plaintext highlighter-rouge">Follower</code> and keep retrying the request until the logs match (the match case above is true) or it has been determined that all entries in the <code class="language-plaintext highlighter-rouge">Follower</code> need to be replace</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="raft-safety">Raft Safety</h2>
+<p>At the core of Raft are guarantees about safety that make sure that data in the log isn’t corrupted or lost. For example, imagine that a <code class="language-plaintext highlighter-rouge">Leader</code> starts coordinating changes to the log, does so successfully, then goes offline. While the existing <code class="language-plaintext highlighter-rouge">Leader</code> is offline, a new <code class="language-plaintext highlighter-rouge">Leader</code> is elected and the system continues updating the log. If the old <code class="language-plaintext highlighter-rouge">Leader</code> were to come back online, how can we make sure that it isn’t able to rewind the system’s log?</p>
+
+<p>To account for this situation (and all of the edge cases that can occur in distributed systems), Raft aims to implement several ideas around Safety. A few of these we’ve already touched on (descriptions are from Figure 3 of the original Raft paper):</p>
+<ul>
+  <li><strong>Election Safety:</strong> “There can at most be one leader at a time.” Discussed in <strong>Leaders and leader election</strong>.</li>
+  <li><strong>Leader Append-Only:</strong> “a leader never overwrites or deletes entries in its log; it only appends new entries.” The leader never mutates it’s internal logs. Discussed in <strong>Raft logs and replication</strong>.</li>
+  <li><strong>Log Matching</strong>: “if two logs contain an entry with the same index and term, then the logs are identical in all entries up through the given index.” If the leader doesn’t have logs that match followers, the leader will rewind the follower’s log entries, then send over the correct data. Discussed in <strong>Raft logs and replication</strong>.</li>
+</ul>
+
+<p>The other important ideas around Raft Safety are:</p>
+<ul>
+  <li><strong>Leader Completeness</strong>: “if a log entry is committed in a given term, then that entry will be present in the logs of the leaders for all higher-numbered terms”. The gist of this principle is to ensure that a leader has all log entries that should be stored permanently (<strong>committed</strong>) by the system. To make the idea of Leader Completeness concrete, imagine a situation where a key-value store performs a put and then a delete - if the put operation was replicated, but the delete happened in a higher term and is not in the log of the leader, the state of the world will be incorrect, as the delete will not be processed. To ensure that leaders aren’t elected with stale logs, a node that receives a <code class="language-plaintext highlighter-rouge">RequestVote</code> must check that the sender has a log where the last entry is of a greater term or of the same term and of a higher index. If the receiver determines that neither of those conditions is true, then it rejects the request.</li>
+  <li><strong>State Machine Safety</strong>:  “if a server has applied a log entry at a given index to its state machine, no other server will ever apply a different log entry for the same index.” The gist of this principle is to ensure that a leader applies entries from its log in the correct order. To make the idea of State Machine Safety concrete, imagine a situation where a key-value store performs a put and then a delete (both of which are stored in individual log entries). If the put operation was applied, then the delete operation was applied, every other node must perform the same sequence of applications. A more detailed explanation of the proof is available in the Raft paper.</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+<p>If you’ve made it to the end, thanks for following along and until next time!</p>
+
+<h3 id="references">References</h3>
+<ul>
+  <li>Raft Paper - <a href="https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf">https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf</a></li>
+</ul>
+
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2020-05-09-understanding-raft-consensus-part-2.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

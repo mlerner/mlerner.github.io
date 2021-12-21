@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Drovorub and Fancy Bear</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Drovorub and Fancy Bear</h1>
+  
+  <h4>Published August 21, 2020</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_fragments/2020-08-21-drovorub-and-fancy-bear.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p>Last week the NSA and FBI <a href="https://media.defense.gov/2020/Aug/13/2002476465/-1/-1/0/CSA_DROVORUB_RUSSIAN_GRU_MALWARE_AUG_2020.PDF">released a report</a> on the “Drovorub” malware, and attributed the malware to the GRU (a branch of Russia’s intelligence services). More specifically, they believe that the software was produced by a hacking unit inside of the GRU known as <a href="https://en.wikipedia.org/wiki/Fancy_Bear">FancyBear</a>, APT28, or Strontium (depending on which industry group you’re talking to).</p>
+
+<p>A wide variety of attacks have been attributed to FancyBear over the years, including ones targeting the DNC in 2016 (to sway the election), WADA (to delegitimize the organization’s anti-doping case concerning Russian athletes), and the Ukrainian power grid (in support of Russia’s ongoing conflict). One of my favorite podcasts, Darknet Diaries, talked about the group and their operations in the episode about <a href="https://darknetdiaries.com/transcript/54/">NotPetya</a>. <a href="https://www.washingtonpost.com/outlook/the-ruthless-russian-hacking-unit-that-tried-to-crash-ukraine/2019/12/26/beaf477a-1470-11ea-a659-7d69641c6ff7_story.html">Sandworm: A New Era of Cyberwar and the Hunt for the Kremlin’s Most Dangerous Hackers</a> is also a great book about the GRU’s hacking activity, in particular about targeting the Ukraine electrical grid.
+The report is interesting because it details advanced infrastructure used to attack Linux systems. Once the malware burrows into a system, it communicates with a command and control server (a central hub owned by the attacker) via websockets. The NSA/FBI documented how the malware works end to end, including information about how messages between the server and infected machines are authenticated (a fairly involved process).</p>
+
+<p><img src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2FMivsh%2F8CumQ6yVLk.png?alt=media&amp;token=5c583bcc-facb-49fb-9f11-ba9c119c2e66" alt="" /></p>
+
+<p>Closing out the report is information about how organizations can detect the malware running on their systems to root out attacks that have already happened or to prevent future attacks from proceeding. I enjoyed this part of the report in particular because it provides concrete next steps to the defenders of IT networks around the world (commonly known in the industry as “Blue Team”)</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_fragments/2020-08-21-drovorub-and-fancy-bear.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

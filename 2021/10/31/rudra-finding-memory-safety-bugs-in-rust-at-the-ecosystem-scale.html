@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale</h1>
+  
+  <h4>Published October 31, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-10-31-rudra-finding-memory-safety-bugs-in-rust-at-the-ecosystem-scale.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><em>The papers over the next few weeks will be from <a href="https://sosp2021.mpi-sws.org/">SOSP</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="https://dl.acm.org/doi/pdf/10.1145/3477132.3483570">Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale</a></p>
+
+<p>This week’s paper is about <em>Rudra</em>, a system<label for="os" class="margin-toggle sidenote-number"></label><input type="checkbox" id="os" class="margin-toggle" /><span class="sidenote">The Rudra code itself is <a href="https://github.com/sslab-gatech/Rudra">open source on Github</a>. </span> for finding memory safety bugs in code written with the <a href="https://www.rust-lang.org/">Rust programming language</a>. Rust is used for many purposes, although it is particularly popular for lower level systems programming - the language’s approach to memory management allows the compiler to eliminate many common types of memory management issues, in turn improving security. As a result, Rust is used across many high-profile open source projects where security matters, including the Mozilla <a href="https://github.com/servo/servo/">Servo engine</a>, the open-source <a href="https://firecracker-microvm.github.io/">Firecracker MicroVM technology</a> used in AWS Lambda/Fargate<label for="firecracker" class="margin-toggle sidenote-number"></label><input type="checkbox" id="firecracker" class="margin-toggle" /><span class="sidenote">Firecracker is also used in many other open source projects - see my <a href="/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html">previous paper review</a> on Firecracker for more details. </span>, and the <a href="https://fuchsia.dev/fuchsia-src/get-started/learn">Fuschia operating system</a>.</p>
+
+<p>Unfortunately, it is not possible to implement every functionality with code that obeys the language’s rules around memory management. To address this gap, Rust includes an <code class="language-plaintext highlighter-rouge">unsafe</code> tag that allows code to suspend some of the rules, albeit within well defined blocks of code. While <code class="language-plaintext highlighter-rouge">unsafe</code> sections of Rust code are generally reviewed closely, the language construct can lead to subtle bugs that compromise the security Rust code.</p>
+
+<p>The goal of Rudra is automatically evaluating these <code class="language-plaintext highlighter-rouge">unsafe</code> sections of code to find security issues. Rudra has achieved remarkable success - at the time of the paper’s publication, the system had identified 76 CVEs and ~52% of the memory safety bugs in the official Rust security advisory database, <a href="https://rustsec.org/">RustSec</a>.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The Rudra paper makes three primary contributions: it describes scalable algorithms for finding memory safety bugs in <code class="language-plaintext highlighter-rouge">unsafe</code> Rust code, implements the algorithms in the open source <a href="https://github.com/sslab-gatech/Rudra">Rudra project</a>, and demonstrates using the project to find bugs in existing open source code.</p>
+
+<h2 id="safe-rust">Safe Rust</h2>
+
+<p>In order to understand the memory safety issues that Rudra detects, it is important to understand how Rust provides memory safety guarantees at compile time and the idea of <code class="language-plaintext highlighter-rouge">unsafe</code> Rust. For those familar with these topics, skipping to “Pitfalls of Safe Rust” might make sense.</p>
+
+<h3 id="language-features">Language features</h3>
+
+<p>To provide memory safety guarantees at compile time, Rust uses: <em>ownership</em>, <em>borrowing</em>, and <em>aliasising xor mutability</em><label for="community" class="margin-toggle sidenote-number"></label><input type="checkbox" id="community" class="margin-toggle" /><span class="sidenote">There are many great posts from the Rust community that explore these topics - feel free to DM me on <a href="https://twitter.com/micahlerner">Twitter</a> with more as I am far from a Rust expert! While writing this paper review, I read the amazing <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">Rust docs</a>, <a href="https://limpet.net/mbrubeck/2019/02/07/rust-a-unique-perspective.html">Rust: A unique perspective</a> and <a href="https://onesignal.com/blog/thread-safety-rust/">Thread safety and Learning in Rust</a>. </span>.</p>
+
+<p><em>Ownership</em>, according to the <a href="https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html#ownership-rules">Rust documentation</a> means that:</p>
+
+<blockquote>
+  <ul>
+    <li>Each value in Rust has a variable that’s called its owner.</li>
+    <li>There can only be one owner at a time.</li>
+    <li>When the owner goes out of scope, the value will be dropped.</li>
+  </ul>
+</blockquote>
+
+<p><em>Borrowing</em> allows one “to access data without taking ownership over it” - <a href="https://doc.rust-lang.org/beta/rust-by-example/scope/borrow.html#borrowing">Rust By Example</a> has a helpful section on the topic. Integration of borrowing semantics into the language help to address problems related to accessing variables after the reference is no longer valid<label for="uaf" class="margin-toggle sidenote-number"></label><input type="checkbox" id="uaf" class="margin-toggle" /><span class="sidenote">Which are exploited by <a href="https://cwe.mitre.org/data/definitions/416.html">Use After Free</a>. </span></p>
+
+<p><em>Aliasising xor mutability</em> means that the language prevents, “both shared and mutable references … at the same time. This means that concurrent reads and writes are fundamentally impossible in Rust, eliminating the possibility of conventional race conditions and memory safety bugs like accessing invalid references”<label for="iteratorinvalidation" class="margin-toggle sidenote-number"></label><input type="checkbox" id="iteratorinvalidation" class="margin-toggle" /><span class="sidenote">The paper cites <a href="https://stackoverflow.com/questions/16904454/what-is-iterator-invalidation">iterator invalidation</a> as one example of accessing invalid references prevented by this approach. </span>.</p>
+
+<h3 id="unsafe-rust">Unsafe Rust</h3>
+
+<p>To implement certain features (and bound undefined behavior), writers of Rust code can mark blocks with <code class="language-plaintext highlighter-rouge">unsafe</code>. From the <a href="https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html">Rust docs</a>, this allows that code block to perform a number of actions that wouldn’t be permitted otherwise, like “call unsafe functions (including C functions, compiler intrinsics, and the raw allocator)”. C doesn’t operate according to Rust’s constraints (specifically around undefined behavior), so using it inside of Rust code needs to be marked <code class="language-plaintext highlighter-rouge">unsafe</code>.</p>
+
+<p>An example use case of <code class="language-plaintext highlighter-rouge">unsafe</code> is performing memory-mapped IO. Memory-mapped IO relies on mapping a file to a region of memory using <a href="https://www.gnu.org/software/libc/manual/html_node/Memory_002dmapped-I_002fO.html"><code class="language-plaintext highlighter-rouge">mmap</code></a>. The <a href="https://github.com/danburkert/memmap-rs/blob/master/src/unix.rs#L48">implementation of memory-mapping IO</a> from one of the most popular Rust memory mapping libraries <a href="https://docs.rs/libc/0.2.1/src/libc/.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.1/src/unix/mod.rs.html#291-297">calls the C function mmap</a>, meaning that the function must be inside of an <code class="language-plaintext highlighter-rouge">unsafe</code> block.</p>
+
+<h2 id="pitfalls-of-unsafe-rust">Pitfalls of Unsafe Rust</h2>
+
+<p>Now that we roughly know why code is marked <code class="language-plaintext highlighter-rouge">unsafe</code>, this section moves on to the three main types of issues detected by Rudra in <code class="language-plaintext highlighter-rouge">unsafe</code> Rust code: <em>panic safety</em>, <em>higher order invariant safety</em>, and <em>propagating send/sync in generic types</em>.</p>
+
+<p><em>Panic safety</em> is a problem that crops up in <code class="language-plaintext highlighter-rouge">unsafe</code> blocks that initialize some state with the intention of further action. If these code blocks hit a panic (which “unwinds” the current call, destroying objects along the way), the further action isn’t taken and “the destructors of the variable will run without realizing that the variable is in an inconsistent state, resulting in memory safety issues similar to uninitialized uses or double frees in C/C++.”</p>
+
+<p><em>Higher order invariant safety</em> means that a “Rust function should execute safely for all safe inputs.” To ensure that a function operates only on arguments it can use safely (failing otherwise), Rust code can check the properties of the provided arguments. Checking arguments is made more difficult in some cases because a provided argument may be <a href="https://doc.rust-lang.org/book/ch10-01-syntax.html">generic</a>, and the specifics about the implementation of the argument may not be available. One example of a higher order invariant is:</p>
+
+<blockquote>
+  <p>“passing an uninitialized buffer to a caller-provided Read implementation. Read is commonly expected to read data from one source (e.g., a file) and write into the provided buffer. However, it is perfectly valid to read the buffer under Rust’s type system. This leads to undefined behavior if the buffer contains uninitialized memory.”</p>
+</blockquote>
+
+<p><em>Propagating send/sync in generic types</em> is related to two traits<label for="traits" class="margin-toggle sidenote-number"></label><input type="checkbox" id="traits" class="margin-toggle" /><span class="sidenote"><a href="https://doc.rust-lang.org/book/ch10-02-traits.html">Traits</a> in Rust often contain shared functionality that can be mixed into code. </span> (<code class="language-plaintext highlighter-rouge">Send</code> and <code class="language-plaintext highlighter-rouge">Sync</code>) used for thread safety<label for="sendsync" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sendsync" class="margin-toggle" /><span class="sidenote">More information and examples of how Send and Sync are used <a href="https://doc.rust-lang.org/book/ch16-04-extensible-concurrency-sync-and-send.html">from the Rust docs</a> and <a href="https://stackoverflow.com/questions/59428096/understanding-the-send-trait">StackOverflow</a>. </span>. The compiler can automatically determine how a Trait gets assigned Send/Sync - if all of a Trait’s properties are Send/Sync, it is safe to conclude that the Trait containing those properties implements Send/Sync itself. For other Traits (like locks), Send/Sync behavior can not be automatically passed on - one example is for a container class (like a list) that contains types that are not Send/Sync themselves. In these situations, the code must implement Send/Sync manually, leading to potential memory safety issues if the implementation uses unsafe code and is incorrect<label for="incorrect" class="margin-toggle sidenote-number"></label><input type="checkbox" id="incorrect" class="margin-toggle" /><span class="sidenote">The paper notes it is possible for an implementation to be incorrect initially, <em>or</em> for the implementation to become incorrect over time due to ongoing maintenance (made more likely by having the implementation spread out over a codebase). </span> in some way.</p>
+
+<h2 id="design-of-rudra">Design of Rudra</h2>
+
+<p>This section describes the system’s <em>design goals</em> (what the system needs to do in order to find memory safety issues in <code class="language-plaintext highlighter-rouge">unsafe</code> Rust code), as well as how Rudra is designed to achieve those goals.</p>
+
+<h3 id="design-goals">Design Goals</h3>
+
+<p>To achieve the goal of finding memory safety issues in <code class="language-plaintext highlighter-rouge">unsafe</code> Rust code, Rudra needs to:</p>
+
+<ul>
+  <li>Consume metadata about Rust typing, not available at lower levels of the compiler (more on what this means later).</li>
+  <li>Analyze the entirety of the Rust ecosystem, using limited resources.</li>
+  <li>Be able to make the tradeoff between using limited resources and the precision of results. More resources can be expended in order to verify results<label for="resources" class="margin-toggle sidenote-number"></label><input type="checkbox" id="resources" class="margin-toggle" /><span class="sidenote">One way to think about this tradeoff is that Rudra aims to find paths in the code that could potentially lead to memory safety issues. Using more resources allows further verification or simulation along those paths to determine whether a code path does in fact lead to a bug. </span>, leading to fewer false positives. On the other hand, Rudra aims to analyze the entirety of the Rust ecosystem on an ongoing basis, so the program should also be able to expend fewer resources and run faster, with the potential for more false positives.</li>
+</ul>
+
+<h3 id="rudra-components">Rudra components</h3>
+
+<p>To achieve its design goals, Rudra implements two algorithms on intermediate representations (IR)<label for="ir" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ir" class="margin-toggle" /><span class="sidenote">The Rust <a href="https://rustc-dev-guide.rust-lang.org/part-3-intro.html">docs</a> on how code is represented and compiled is really great! I highly recommend it for those interested in learning more about the internals. </span> produced by the Rust compiler: an <em>unsafe dataflow checker</em> and <em>send/sync variance checker</em>.</p>
+
+<p>The <em>unsafe dataflow checker</em> finds <em>panic safety bugs</em> (which can occur if a panic happens during an unsafe section and the code is in a temporarily inconsistent state) and <em>higher order invariant bugs</em> (which can happen if a function doesn’t, or can’t, verify passed arguments to ensure it is safe to operate on them). The algorithm checks for <em>lifetime bypasses</em> in <code class="language-plaintext highlighter-rouge">unsafe</code> Rust code that perform logic not otherwise permitted by the compiler<label for="lang" class="margin-toggle sidenote-number"></label><input type="checkbox" id="lang" class="margin-toggle" /><span class="sidenote">What is or is not allowed by the compiler is discussed in the ‘Language Features’ section above. </span> - this general category of functionality can contribute to <em>panic safety bugs</em> or <em>higher order invariant bugs</em>.</p>
+
+<blockquote>
+  <p>The algorithm models six classes of lifetime bypasses:</p>
+  <ul>
+    <li>uninitialized: creating uninitialized values</li>
+    <li>duplicate: duplicating the lifetime of objects (e.g., with mem::read())</li>
+    <li>write: overwriting the memory of a value</li>
+    <li>copy: memcpy()-like buffer copy</li>
+    <li>transmute: reinterpreting a type and its lifetime</li>
+    <li>ptr-to-ref : converting a pointer to a reference</li>
+  </ul>
+</blockquote>
+
+<p>The <em>send/sync variance checker</em> evaluates a set of rules to determine whether a data type meets Send/Sync constraints given the usage of the data type - for example, some data types might require only Send, only Sync, both, or neither. The heuristics for performing this evaluation are described in more detail in the paper (and are also implemented in the <a href="https://github.com/sslab-gatech/Rudra/blob/7949384a3514fbc1f970e5f309202b6c7a16aa48/src/analysis/send_sync_variance/strict.rs">open source project</a>). Once the variance checker determines whether Send/Sync are needed for a data type, it compares that to the actual implementation, raising an issue if there is a mismatch.</p>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>Rudra is implemented as a custom Rust compiler driver, meaning it hooks into the Rust compilation process:</p>
+
+<blockquote>
+  <p>It works as an unmodified Rust compiler when compiling dependencies and injects the analysis algorithms when compiling the target package.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/rudra/arch.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The two algorithms implemented in Rudra operate on different intermediate representations<label for="ir" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ir" class="margin-toggle" /><span class="sidenote">The Rust <a href="https://rustc-dev-guide.rust-lang.org/part-3-intro.html">docs</a> on how code is represented and compiled is really great! I highly recommend it for those interested in learning more about the internals. </span> (IR) of Rust code. The <em>unsafe dataflow checker</em> runs on the HIR, which has code structure, while the <em>send/sync variance checker</em> operates on the (MIR).</p>
+
+<h2 id="evaluation">Evaluation</h2>
+
+<p>At the time of publication, Rudra had found 264 memory safety bugs in open source Rust packages, including 76 CVEs. To make the point about how tricky (and novel) some of these problems were to detect before Rudra found them, the paper notes that several of the issues were in the Rust standard library (which is reviewed by Rust experts).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/rudra/eval.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>While the project had significant success finding bugs, it als has false positive rate of around 50%, although the precision is adjustable). On the other hand, most of the false positives could be quickly resolved by visual inspection according to the authors.</p>
+
+<p>The authors compare Rudra to other tools for finding bugs in Rust code. Rudra ran faster than commonly used fuzzers, while also finding more bugs. When applied to the same codebases as another Rust-focused tool, <a href="https://github.com/rust-lang/miri">Miri</a>, the issues found by the two tools partially overlap (although Miri found unique bugs, indicating the approach is complementary).</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Rudra focuses on finding memory management issues in Rust code (and does so quite successfully). Importantly, when Rudra <em>does</em> find issues, the paper notes it is relatively easier to assign ownership of fixing the root cause to the package with the <code class="language-plaintext highlighter-rouge">unsafe</code> block.</p>
+
+<p>Even though <code class="language-plaintext highlighter-rouge">unsafe</code> is required so Rust can support certain functionality, it is an opt-in language feature, limiting the surface area of memory management issues. This reflects a significant improvement over other languages where similarly unsafe code can be anywhere in a code base. While there is still work to be done on changing how the system detects and limits false positives, I am hopeful that it continues to evolve alongside the growing Rust ecosystem.</p>
+
+<p>As always, feel free to reach out with feedback on <a href="https://twitter.com/micahlerner">Twitter</a>!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-10-31-rudra-finding-memory-safety-bugs-in-rust-at-the-ecosystem-scale.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

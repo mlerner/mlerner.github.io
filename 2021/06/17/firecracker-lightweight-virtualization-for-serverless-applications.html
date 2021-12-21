@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Firecracker: Lightweight Virtualization for Serverless Applications</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Firecracker: Lightweight Virtualization for Serverless Applications</h1>
+  
+  <h4>Published June 17, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-06-17-firecracker-lightweight-virtualization-for-serverless-applications.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><a href="https://www.usenix.org/conference/nsdi20/presentation/agache">Firecracker: Lightweight Virtualization for Serverless Applications</a> Agache et al., NSDI ‘20</p>
+
+<p><em>This week’s paper review is a bit different than the past few weeks (which have been about distributed key-value stores). Inspired by all of the neat projects being built with the technology discussed in this paper, I decided to learn more. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the new <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p>Firecracker is a high-performance virtualization solution built to run Amazon’s serverless<label for="serverless" class="margin-toggle sidenote-number"></label><input type="checkbox" id="serverless" class="margin-toggle" /><span class="sidenote">Serverless meaning that the resources for running a workload are provided on-demand, rather than being paid for over a prolonged time-period. Martin Fowler has some great docs on the topic <a href="https://martinfowler.com/articles/serverless.html">here</a>. </span> applications securely and with minimal resources. It now does so at immense scale (at the time the paper was published, it supported “millions of production workloads, and trillions of requests per month”).</p>
+
+<p>Since the paper was published, there has a been a buzz of interesting projects built with Firecracker. <a href="https://fly.io">Fly.io</a> (a speed-focused platform for running Docker applications<label for="fly" class="margin-toggle sidenote-number"></label><input type="checkbox" id="fly" class="margin-toggle" /><span class="sidenote">Apologies if a Fly.io engineer reads this and has a different short summary of the company. I did my best. </span>) wrote about using the technology on their <a href="https://fly.io/blog/sandboxing-and-workload-isolation/">blog</a>, <a href="https://jvns.ca">Julia Evans</a> wrote about booting them up for a <a href="https://jvns.ca/blog/2021/01/23/firecracker--start-a-vm-in-less-than-a-second/">CTF she was building</a>, and <a href="https://github.com/weaveworks/ignite">Weave Ingite</a> lets you launch virtual machines from Docker<label for="vms" class="margin-toggle sidenote-number"></label><input type="checkbox" id="vms" class="margin-toggle" /><span class="sidenote">Virtual machines and containers are sometimes conflated to be one and the same, but the internals are different. The difference is discussed later in this paper review! :) </span> containers (and other <a href="https://opencontainers.org/">OCI</a><label for="oci" class="margin-toggle sidenote-number"></label><input type="checkbox" id="oci" class="margin-toggle" /><span class="sidenote">OCI stands for “Open Container Initiative” and works to define standards for containers and the software that runs them. A nice thing about OCI containers is that you can run them (with a container runtime) that complies with the standards, but has different internals. For example, one could choose <a href="https://podman.io/">Podman</a> instead of Docker. </span> images).</p>
+
+<p>Now that you are excited about Firecracker, let’s jump into the paper!</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>There are two main contributions from the paper: the Firecracker system itself (already discussed above), and the usage of Firecracker to power AWS Lambda (Amazon’s platform for running serverless workloads).</p>
+
+<p>Before we go further, it is important to understand the motivation behind building Firecracker in the first place.</p>
+
+<p>Originally, Lambda functions ran on a separate virtual machine (VM) for every customer (although functions from the same customer would run in the same VM). Allocating a separate VM for every customer was great for isolating customers from each other - you wouldn’t want Company A to access Company B’s code or functionality, nor for Company A’s greedy resource consumption to starve Company B’s Lambdas of resources.</p>
+
+<p>Unfortunately, existing VM solutions required significant resources, and resulted in non-optimal utilization. For example, a customer might have a VM allocated to them, but the VM is not frequently used. Even though the VM isn’t used to its full capacity, there is still memory and CPU being consumed to run the VM. The Lambda system in this form was less-efficient, meaning it required more resources to scale (likely making the system more expensive for customers).</p>
+
+<p>With the goal of increasing utilization (and lowering cost), the team established constraints of a possible future solution:</p>
+
+<ul>
+  <li><em>Overhead and density</em>: Run “thousands of functions on a single machine, with minimal waste”. In other words, solving one of the main problems of the existing architecture.</li>
+  <li><em>Isolation</em>: Ensure that applications are completely separate from one another (can’t read each other’s data, nor learn about them through side channels). The existing solution had this property, but at high cost.</li>
+  <li><em>Performance</em>: A new solution should have the same or better performance as before.</li>
+  <li><em>Compatibility</em>: Run any binary “without code changes or recompilation”. <label for="compat" class="margin-toggle sidenote-number"></label><input type="checkbox" id="compat" class="margin-toggle" /><span class="sidenote">This requirement was there, even though Lambda oringally supported a small set of languages. Making a generic solution was planning for the long-term! </span></li>
+  <li><em>Fast Switching</em>: “It must be possible to start new functions and clean up old functions quickly”.</li>
+  <li><em>Soft Allocation</em>: “It must be possible to over commit CPU, memory, and other resources”. This requirement impacts utilization (and in turn, the cost of the system to AWS/the customer). Overcommittment comes into play a few times during a Firecracker VM’s lifetime. For example, when it starts up, it theoretically is allocated resources, but may not be using them right away if it is performing set up work. Other times, the VM may need to burst above the configured soft-limit on resources, and would need to consume those of another VM. The paper note’s “We have tested memory and CPU oversubscription ratios of over 20x, and run in production with ratios as high as 10x, with no issues” - very neat!</li>
+</ul>
+
+<p>The constraints were applied to three different categories of solutions: <em>Linux containers</em>, <em>language-specific isolation</em>, and <em>alternative virtualization solutions</em> (they were already using virtualization, but wanted to consider a different option than their existing implementation).</p>
+
+<h3 id="linux-containers">Linux containers</h3>
+
+<p>There are several <em>Isolation</em> downsides to using Linux containers.</p>
+
+<p>First, Linux containers interact directly with a host OS using syscalls<label for="syscalls" class="margin-toggle sidenote-number"></label><input type="checkbox" id="syscalls" class="margin-toggle" /><span class="sidenote">Syscalls are a standard way for programs to interact with an operating system. They’re really neat. I highly reccommend <a href="http://beej.us/guide/bgnet/">Beej’s guide to Network Programming</a> for some fun syscall programming </span>. One can lock-down which syscalls a program can make (the paper mentions using <a href="https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html">Seccomp BPF</a>), and even which arguments the syscalls can use, as well as using other security features of container systems (the Fly.io article linked above discusses this topic in more depth).</p>
+
+<p>Even using other Linux isolation features, at the end of the day the container is still interacting with the OS. That means that if customer code in the container figures out a way to pwn the OS, or figures out a side channel to determine state of another container, <em>Isolation</em> might break down. Not great.</p>
+
+<h3 id="language-specific-isolation">Language-specific isolation</h3>
+
+<p>While there are ways to run language-specific VMs (like the JVM for Java/Scala/Clojure or V8 for Javascript), this approach doesn’t scale well to many different languages (nor does it allow for a system that can run arbitrary binaries - one of the original design goals).</p>
+
+<h3 id="alternative-virtualization-solutions">Alternative Virtualization Solutions</h3>
+
+<p>Revisiting virtualization led to a focus on what about the existing virtualization approach was holding Lambda back:</p>
+
+<ul>
+  <li><em>Isolation</em>: the code associated with the components of virtualization are lengthy (meaning more possible areas of exploitation), and <a href="https://www.computerworld.com/article/3182877/pwn2own-ends-with-two-virtual-machine-escapes.html">researchers have escaped from virtual machines before</a>.</li>
+  <li><em>Overhead and density</em>: the components of virtualization (which we will get into further down) require too many resources, leading to low utilization</li>
+  <li><em>Fast switching</em>: VMs take a while to boot and shut down, which doesn’t mesh well with Lambda functions that need a VM quickly and may only use it for a few seconds (or less).</li>
+</ul>
+
+<p>The team then applied the above requirements to the main components of the virtualization system: the hypervisor and the virtual machine monitor.</p>
+
+<p>First, the team considered which <em>type</em> of hypervisor to choose. There are two types of hypervisors, Type 1 and Type 2. The textbook definitions of hypervisors say that Type 1 hypervisors are integrated directly in the hardware, while Type 2 hypervisors run an operating system on top of the hardware (then run the hypervisor on top of that operating system).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/firecracker/Hypervisor.svg" /><figcaption class="maincolumn-figure">Type 1 vs Type 2 Hypervisors. Scsami, CC0, via Wikimedia Commons</figcaption></figure>
+
+<p>Linux has a robust hypervisor built into the kernel, called <a href="https://www.kernel.org/doc/ols/2007/ols2007v1-pages-225-230.pdf">Kernel Virtual Machine</a> (a.k.a. KVM) that is arguably a Type 1 hypervisor<label for="type1" class="margin-toggle sidenote-number"></label><input type="checkbox" id="type1" class="margin-toggle" /><span class="sidenote"><a href="https://serverfault.com/questions/855094/is-kvm-a-type-1-or-type-2-hypervisor">Different resources</a> make <a href="https://virtualizationreview.com/Blogs/Mental-Ward/2009/02/KVM-BareMetal-Hypervisor.aspx">different arguments</a> for whether KVM is a Type 1 or Type 2 hypervisor. </span>.</p>
+
+<p>Using a hypervisor like KVM allows for kernel components to be moved into userspace - if the kernel components are in user space and they get pwned, the host OS itself hasn’t been pwned. Linux provides an interface, <a href="https://wiki.libvirt.org/page/Virtio">virtio</a><label for="virtio" class="margin-toggle sidenote-number"></label><input type="checkbox" id="virtio" class="margin-toggle" /><span class="sidenote">Fun fact: the author of the paper on virtio, Rusty Russell, is now a key developer of a main <a href="https://github.com/ElementsProject/lightning">Bitcoin Lightning implementation</a>. </span>, that allows the user space kernel components to interact with the host OS. Rather than passing all interactions with a guest kernel directly to the host kernel, some functions, in particular device interactions, go from a guest kernel to a <em>virtual machine monitor</em> (a.k.a. VMM). One of the most popular VMMs is <a href="https://www.usenix.org/legacy/publications/library/proceedings/usenix05/tech/freenix/full_papers/bellard/bellard.pdf">QEMU</a>.</p>
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/firecracker/virt.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Unfortunately, QEMU has a significant amount of code (again, more code means more potential attack surface), as it supports a full range of functionality - even functionality that a Lambda would never use, like USB drivers. Rather than trying to pare down QEMU, the team forked <a href="https://opensource.google/projects/crosvm">crosvm</a><label for="crosvmfork" class="margin-toggle sidenote-number"></label><input type="checkbox" id="crosvmfork" class="margin-toggle" /><span class="sidenote">I enjoyed <a href="https://prilik.com/blog/post/crosvm-paravirt/">this</a> post on crosvm from a former Google intern. </span> (a VMM open-sourced by Google, and developed for ChromeOS), in the process significantly rewriting core functionality for Firecracker’s use case. The end result was a slimmer library with only code that would conceivably be used by a Lambda - resulting in 50k lines of Rust (versus &gt; 1.4 million lines of C in QEMU<label for="QEMU" class="margin-toggle sidenote-number"></label><input type="checkbox" id="QEMU" class="margin-toggle" /><span class="sidenote">Relatedly, there was an interesting <a href="http://blog.vmsplice.net/2020/08/why-qemu-should-move-from-c-to-rust.html">blog post</a> about QEMU security issues and thoughts on Rust from a QEMU maintainer. </span>). Because the goal of Firecracker is to be as small as possible, the paper calls the project a <em>MicroVM</em>, rather than “VM”.</p>
+
+<h2 id="how-do-firecracker-microvms-get-run-on-aws">How do Firecracker MicroVMs get run on AWS?</h2>
+
+<p>Now that we roughly understand how Firecracker works, let’s dive into how it is used in running Lambda. First, we will look at how the Lambda architecture works on a high level, followed by a look at how the running the Lambda itself works.</p>
+
+<h3 id="high-level-architecture-of-aws-lambda">High-level architecture of AWS Lambda</h3>
+
+<p>When a developer runs (or <em>Invokes</em>, in AWS terminology) a Lambda, the ensuing HTTP request hits an AWS Load Balancer <label for="aws" class="margin-toggle sidenote-number"></label><input type="checkbox" id="aws" class="margin-toggle" /><span class="sidenote">Lambdas can also start via other events - like ‘integrations with other AWS services including storage (S3), queue (SQS), streaming data (Kinesis) and database (DynamoDB) services.’ </span>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/firecracker/arch.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>There are a four main infrastructure components involved in running a Lambda once it has been invoked:</p>
+
+<ul>
+  <li><em>Workers</em>: The components that actually run a Lambda’s code. Each worker runs many MicroVMs in “slots”, and other services schedule code to be run in the MicroVMs when a customer <em>Invokes</em> a Lambda.</li>
+  <li><em>Frontend</em>: The entrance into the Lambda system. It receives <em>Invoke</em> requests, and communicates with the  <em>Worker Manager</em> to determine where to run the Lambda, then directly communicates with the <em>Workers</em>.</li>
+  <li><em>Worker Manager</em>: Ensures that the same Lambda is routed to the same set of <em>Workers</em> (this routing impacts performance for reasons that we will learn more about in the next section). It keeps tracks of where a Lambda has been scheduled previously. These previous runs correspond to “slots” for a function. If all of the slots for a function are in use, the <em>Worker Manager</em> works with the <em>Placement</em> service to find more slots in the <em>Workers</em> fleet.</li>
+  <li><em>Placement</em> service: Makes scheduling decisions when it needs to assign a Lambda invocation to a <em>Worker</em>. It makes these decision in order to “optimize the placement of slots for a single function across the worker fleet, ensuring that the utilization of resources including CPU, memory, network, and storage is even across the fleet and the potential for correlated resource allocation on each individual worker is minimized”.</li>
+</ul>
+
+<h3 id="lambda-worker-architecture">Lambda worker architecture</h3>
+
+<p>Each Lambda worker has thousands of individual <em>MicroVMs</em> that map to a “slot”.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/firecracker/lambdaworker.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Each MicroVM is associated with resource constraints (configured when a Lambda is setup) and communicates with several components that allow for scheduling, isolated execution, and teardown of customer code inside of a Lambda:</p>
+
+<ul>
+  <li><em>Firecracker VM</em>: All of the goodness we talked about earlier.</li>
+  <li><em>Shim process</em>: A process inside of the VM that communicates with an external side car called the <em>Micro Manager</em>.</li>
+  <li><em>Micro Manager</em>: a sidecar that communicates over TCP with a <em>Shim process</em> running inside the VM. It reports metadata that it receives back to the <em>Placement</em> service, and can be called by the <em>Frontend</em> in order to <em>Invoke</em> a specific function. On function completion, the <em>Micro Manager</em> also receives the response from the <em>Shim process</em> running inside the VM (passing it back to the client as needed).</li>
+</ul>
+
+<p>While slots can be filled on demand, the <em>Micro Manager</em> also starts up Firecracker VMs in advance - this helps with performance (as we will see in the next section).</p>
+
+<h2 id="performance">Performance</h2>
+
+<p>Firecracker was evaluated relative to similar VMM solutions on three dimensions: <em>boot times</em>, <em>memory overhead</em>, and <em>IO Performance</em>. In these tests, Firecracker was compared to QEMU and Intel Cloud Hypervisor<label for="crosvm" class="margin-toggle sidenote-number"></label><input type="checkbox" id="crosvm" class="margin-toggle" /><span class="sidenote">Interestingly, Firecracker wasn’t compared to crosvm. I am not sure if this is because it wasn’t possible, or whether the authors of the paper thought it wouldn’t be a fair comparison. </span>. Additionally, there are two configurations of Firecracker used in the tests: Firecracker and Firecracker-pre. Because Firecracker MicroVMs are configured via API calls, the team tested setups where the API calls had completed (Firecracker-pre, where the “pre” means “pre-configured”) or had not completed (regular Firecracker). The timer for both of these configurations ended when the <em>init</em> process in the VM started.</p>
+
+<h3 id="boot-times">Boot times</h3>
+
+<p>The boot time comparisons involved two configurations: booting 500 total MicroVMs serially, and booting 1000 total MicroVMs, 50 at a time (in parallel).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/firecracker/boot_time.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The bottom line from these tests is that Firecracker MicroVMs boot incredibly quickly - <em>Fast switching</em> ✅ !</p>
+
+<h3 id="memory-overhead">Memory overhead</h3>
+
+<p>Relative to the other options, Firecracker uses significantly less memory - <em>overhead and density</em> ✅!</p>
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/firecracker/mem.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="io-performance">IO Performance</h3>
+
+<p>Relative to the other options, Firecracker and the comparable solution of Intel’s Cloud Hypervisor didn’t perform well in all tests. The paper argues that the causes of relatively inferior performance in the IO tests are no flushing to disk and an implementation of block IOs that performs IO serially - the paper notes that “we expect to fix these limitations with time”. Digging into Github issues for Firecracker, I <a href="https://github.com/firecracker-microvm/firecracker/issues/1600">found one</a> that indicates they were prototyping use of <a href="https://unixism.net/loti/what_is_io_uring.html">io_uring</a> to support async IO (and increase IO performance).</p>
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/firecracker/io.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Firecracker was interesting to learn about because it is a high-performance, low overhead VMM written in Rust. The paper also is a great study in pragmatic technical decision making - rather than rewriting already robust software (KVM), the team focused on a specific component of an existing system to improve. Along the way, we learned about how different methods for <em>isolating</em> customer workloads from each other <label for="bpf" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bpf" class="margin-toggle" /><span class="sidenote">In particular, I thought seccomp-bpf was interesting and look forward to learning more about BPF/eBPF. First stop: <a href="https://jvns.ca/blog/2017/06/28/notes-on-bpf---ebpf/">Julia Evans’ guide</a> </span>.</p>
+
+<p>If you made it this far, you probably enjoyed the paper review - I post them on my <a href="https://twitter.com/micahlerner">Twitter</a> every week!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-06-17-firecracker-lightweight-virtualization-for-serverless-applications.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

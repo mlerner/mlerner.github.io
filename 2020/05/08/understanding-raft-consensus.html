@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Understanding Raft Consensus  - Part 1</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Understanding Raft Consensus  - Part 1</h1>
+  
+  <h4>Published May 08, 2020</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2020-05-08-understanding-raft-consensus.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p>Recently I was digging deeper into <a href="https://raft.github.io/">Raft</a>, an important algorithm in the field of distributed systems. Raft is a <strong>consensus algorithm</strong>, meaning that it is designed to facilitate a set of computers agreeing on a state of the world (more on exactly how the state of the world is represented later), even when communications between the computers in the set are interrupted (say for example, by someone accidentally unplugging a network cable that connects some of the nodes to the majority).</p>
+
+<p>The problem of reliably storing a state of the world across many computers, keeping the state in sync, and scaling this functionality is required in a number of modern systems - for example, Kubernetes stores all cluster data in <a href="https://kubernetes.io/docs/concepts/overview/components/#etcd">etcd</a>, a key-value store library that uses Raft under the hood.</p>
+
+<p>Given how important (and nuanced) the algorithm is, I wanted to attempt to boil it down to its simplest possible components first, then followup with a deeper dive.</p>
+
+<p>It’s worth noting that there are a wealth of resources about Raft. Some of my favorites are:</p>
+<ul>
+  <li>A <a href="https://www.youtube-nocookie.com/embed/YbZ3zDzDnrw">video explanation of Raft</a> created by the authors of the paper.</li>
+  <li>A <a href="http://thesecretlivesofdata.com/raft/">visualization</a> of how Raft works</li>
+  <li>An excellent walkthrough of a Raft implementation (with documentation) by Eli Bendersky, <a href="https://eli.thegreenplace.net/2020/implementing-raft-part-0-introduction/">available here</a>.</li>
+  <li><a href="https://pdos.csail.mit.edu/6.824/labs/lab-raft.html">Lab 2 from MIT’s 6.824 course</a>, which comes with a full test suite and guidance on how to implement the algorithm in manageable chunks.</li>
+</ul>
+
+<h2 id="whats-novel-about-raft">What’s novel about Raft?</h2>
+<p>As mentioned above, Raft is an algorithm designed to help computers synchronize state through a process called <strong>consensus</strong>, although it was not the first system designed to do so.</p>
+
+<p>A main difference between Raft and previous consensus algorithms was the desire to optimize the design with simplicity in mind - a trait that the authors thought was missing from existing research.</p>
+
+<p>In particular, Raft aimed to improve on <a href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/paxos-simple-Copy.pdf">Paxos</a>, a groundbreaking but (the authors of Raft argue) somewhat complicated set of ideas for achieving distributed consensus.</p>
+
+<p>To attempt to quantify the complexity of Paxos, the Raft authors conducted a survey at NSDI, one of the top conferences for distributed systems academics:</p>
+<blockquote>
+  <p>In an informal survey of attendees at NSDI 2012, we found few people who were comfortable with Paxos, even among seasoned researchers. We struggled with Paxos ourselves; we were not able to understand the complete protocol until after reading several simplified explanations and designing our own alternative protocol, a process that took almost a year.</p>
+</blockquote>
+
+<p>Other engineers also documented difficultes productionizing Paxos. Google implemented a system based off of Paxos called <a href="https://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf">Chubby</a> and <a href="http://www.read.seas.harvard.edu/~kohler/class/08w-dsi/chandra07paxos.pdf">documented the “algorithmic and engineering challenges … encountered in moving Paxos from theory to practice</a>. In their paper they note that, “Despite the existing literature on the subject [Paxos], building a production system turned out to be a non-trivial task for a variety of reasons”.</p>
+
+<p>From the above commentary, it might seem that Paxos is a terribly complicated and near-impossible set of ideas to implement, although this isn’t entirely true. Some have argued that Raft trades off understability for a performance hit, although it is unclear whether this is true given the latest <a href="https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/performance.md">etcd benchmarks</a>. For further reading on Paxos vs Raft, <a href="https://arxiv.org/pdf/2004.05074.pdf">this paper</a> is an interesting read.</p>
+
+<h2 id="at-a-high-level-how-does-raft-work">At a high level, how does Raft work?</h2>
+
+<p>Now that we have some context about the <em>why?</em> of Raft, there are a few high level points that are important to understand about Raft:</p>
+<ul>
+  <li><strong>The purpose of the Raft algorithm</strong> is to replicate a state of the world across a cluster of computers. Rather than sending single messages that contain the complete state of the world, Raft consensus involves a log of incremental changes, represented internally as an array of commands. A key value store can be used as a more concrete example of representing the state of world with in this way - the current state of the world in a KV store contains the keys and values for those keys, but each <code class="language-plaintext highlighter-rouge">put</code>, or <code class="language-plaintext highlighter-rouge">delete</code> is a single change that leads to that state. These individual changes can be stored in an append-only log format (the 2nd part of this series goes into more detail on how the log component of Raft works in the <strong>Raft logs and replication</strong> section).</li>
+  <li>Raft peers communicate using <strong>well-defined messages</strong>. There are several defined in the original paper, but the two essential ones are:
+    <ul>
+      <li><strong>RequestVote</strong>: a message used by Raft to elect a peer that coordinates updating the state of the world. More info in the <strong>Leaders and leader election</strong> section of Part 2.</li>
+      <li><strong>AppendEntries</strong>: a message used by Raft to allow peers to communicate about changes to the state of the world. More details of how the state is replicated in the <strong>Raft logs and replication</strong> section.</li>
+    </ul>
+  </li>
+  <li><strong>Members of a Raft cluster are called peers and can be in one of three states</strong>:
+    <ul>
+      <li><strong>Leader:</strong> the node that coordinates other nodes in the cluster to update their state. All changes to the state of the world flow through the <code class="language-plaintext highlighter-rouge">Leader</code>.</li>
+      <li><strong>Candidate</strong>: the node is vying to become a leader</li>
+      <li><strong>Follower</strong>: the node is receiving instructions about how to update its state from a leader</li>
+    </ul>
+  </li>
+  <li>A <strong>Leader</strong> manages updates to the state of the world by taking two types of actions: <strong>committing</strong> and <strong>applying</strong>. The leader <strong>commits</strong> to an index in its log (called a <strong>commitIndex</strong>) once a majority of the nodes in the network have acknowledged that they’ve also stored the entry successfully. When a node moves its <strong>commitIndex</strong> forward in the log (the <strong>commitIndex</strong> can only move forward, never backward!), it <strong>applies</strong> (processes) entries in the log up to where it is committed. The ideas of committing and applying ensure that a Leader doesn’t update its state of the world until it is guaranteed that the log that led to that state is impossible to change - more info on the “impossible to change” idea in the next article’s <strong>Safety</strong> section.</li>
+</ul>
+
+<p>With that context, we can start breaking Raft down into more concrete sections that try to answer questions about the protocol:</p>
+<ul>
+  <li><strong>Leaders and leader election</strong> covers how updates to a Raft
+cluster’s state are coordinated: Which computer is coordinating
+changes to the state of the world, how does this computer
+coordinate with other computers in the Raft cluster, and for how
+long does the computer coordinate?</li>
+  <li><strong>Raft logs and replication</strong> covers the mechanism of state being
+replicated: How does the state of the world get propagated to other
+computers in the cluster? How do other computers get new information about the state of the world if they were disconnected, but are now back online (someone unplugged the computer’s ethernet cable)?</li>
+  <li><strong>Safety</strong> covers how Raft guards against edge cases that could corrupt the state of the world: How do we make sure that a computer with an old state of the world does not accidentally overwrite another computer’s updated state of the world?</li>
+</ul>
+
+<p>Given that this article is already fairly lengthy, I saved the three topics outlined above for the second part of the series, <a href="/2020/05/09/understanding-raft-consensus-part-2.html">available here</a>.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2020-05-08-understanding-raft-consensus.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

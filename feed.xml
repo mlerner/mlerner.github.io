@@ -1,0 +1,1544 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<feed xmlns="http://www.w3.org/2005/Atom" >
+  <generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator>
+  <link href="http://www.micahlerner.com/pages/mlerner/feed.xml" rel="self" type="application/atom+xml" />
+  <link href="http://www.micahlerner.com/pages/mlerner/" rel="alternate" type="text/html" />
+  <updated>2021-12-21T05:00:35+00:00</updated>
+  <id>http://www.micahlerner.com/pages/mlerner/feed.xml</id>
+
+  
+  
+  
+
+  
+    <title type="html">www.micahlerner.com</title>
+  
+
+  
+
+  
+    <author>
+        <name>Micah</name>
+      
+      
+    </author>
+  
+
+  
+  
+  
+  
+  
+  
+    <entry>
+      
+
+      <title type="html">Kangaroo: Caching Billions of Tiny Objects on Flash</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/12/11/kangaroo-caching-billions-of-tiny-objects-on-flash.html" rel="alternate" type="text/html" title="Kangaroo: Caching Billions of Tiny Objects on Flash" />
+      <published>2021-12-11T00:00:00+00:00</published>
+      <updated>2021-12-11T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/12/11/kangaroo-caching-billions-of-tiny-objects-on-flash</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/12/11/kangaroo-caching-billions-of-tiny-objects-on-flash.html">&lt;p&gt;&lt;em&gt;The papers over the next few weeks will be from &lt;a href=&quot;https://sosp2021.mpi-sws.org/&quot;&gt;SOSP&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/pdf/10.1145/3477132.3483568&quot;&gt;Kangaroo: Caching Billions of Tiny Objects on Flash&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This week’s paper is &lt;em&gt;Kangaroo: Caching Billions of Tiny Objects on Flash&lt;/em&gt;, which won a best paper award at SOSP - the implementation also builds on the &lt;a href=&quot;https://www.cachelib.org&quot;&gt;CacheLib&lt;/a&gt; open source project. Kangaroo describes a two-level caching system that uses both flash and memory to cheaply and efficiently cache data at scale. Previous academic and industry research demonstrates significant cost savings (around a factor of 10!) from hybrid memory/flash caches, but doesn’t solve the unique issues faced by small object caches that store information like tweets, social graphs, or data from Internet of Things devices). Another unique property of Kangaroo is that it explicitly aims for different goals than those of persistent key-value stores (like Memcache, Redis, or RocksDB) - the system does not aim to be a persistent “source of truth” database, meaning that it has different constraints on how much data it stores and what is evicted from cache.&lt;/p&gt;
+
+&lt;p&gt;A key tradeoff faced by hybrid flash and memory caches is between cost and speed. This tradeoff manifests in whether caching systems store data in memory (DRAM) or on flash Solid State Drives. Storing cached data (and potentially the metadata about the cached data) in memory is expensive and fast. In contrast, flash storage is cheaper, but slower.&lt;/p&gt;
+
+&lt;p&gt;While some applications can tolerate increased latency from reading or writing to flash, the decision to use flash (instead of DRAM) is complicated by the limited number of writes that flash devices can tolerate before they wear out. This limit means that write-heavy workloads wear out flash storage faster, consuming more devices and reducing potential cost savings (as the additional flash devices aren’t free). To drive home the point about how important addressing this use case is, previous research to characterize cache clusters at Twitter noted that around 30% are write heavy!&lt;/p&gt;
+
+&lt;p&gt;Kangaroo seeks to address the aforementioned tradeoff by synthesizing previously distinct design ideas for cache systems, along with several techniques for increasing cache hit rate. When tested in a production-like environment relative to an existing caching system at Facebook, Kangaroo reduces flash writes by ~40%.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The paper makes three main contributions: characterization of the unique issues faced by small-object caches, a design and implementation of a cache that addresses these issues, and an evaluation of the system (one component of which involves production traces from Twitter and Facebook).&lt;/p&gt;
+
+&lt;h2 id=&quot;challenges&quot;&gt;Challenges&lt;/h2&gt;
+
+&lt;p&gt;Kangaroo aims to make optimal use of limited memory, while at the same time limiting writes to flash - the paper notes prior “flash-cache designs either use too much DRAM or write flash too much.”&lt;/p&gt;
+
+&lt;p&gt;Importantly, the paper differentiates how it is addressing a different, but related, problem from other key value systems like Redis, Memcache, or RocksDB. In particular, Kangaroo makes different assumptions - “key-value stores generally assume that deletion is rare and that stored values must be kept until told otherwise. In contrast, caches delete items frequently and at their own discretion (i.e., every time an item is evicted)”. In other words, the design for Kangaroo is not intended to be a database-like key-value store that stores data persistently.&lt;/p&gt;
+
+&lt;h3 id=&quot;differences-from-key-value-systems&quot;&gt;Differences from key-value systems&lt;/h3&gt;
+
+&lt;p&gt;The paper cites two problems that traditional key-value systems don’t handle well when the cache has frequent churn: &lt;em&gt;write amplification&lt;/em&gt; and &lt;em&gt;lower effective capacity&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Write amplification&lt;/em&gt; is the phenomenon “where the actual amount of information physically written to the storage media is a multiple of the logical amount intended to be written”.&lt;/p&gt;
+
+&lt;p&gt;The paper notes two types of write amplification:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Device-level write amplification (DLWA)&lt;/em&gt; is caused by differences between what applications instruct the storage device to write and what the device actually writes.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Application-level write amplification (ALWA)&lt;/em&gt; happens when an application intends to update a small amount of data in flash, but writes a larger amount of data to do so. This effect happens because flash drives are organized into blocks that must be updated as a whole. As an example, if a block of flash storage contains five items, and the application only wants to update one of them, the application must perform a read of all five items in the block, replace the old copy of an item with the updated version, then write back the updated set of all five items.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The other problem that key-value stores encounter under write-heavy workloads is &lt;em&gt;lower effective capacity&lt;/em&gt;. Specifically, this impacts key-value stores that store data in flash. RocksDB is one example - it keeps track of key-value data using a log that is periodically cleaned up through a process called compaction. If RocksDB receives many writes, a fixed size disk will use more of its space to track changes to keys, instead of using space to track a larger set of keys.&lt;/p&gt;
+
+&lt;h3 id=&quot;existing-designs&quot;&gt;Existing designs&lt;/h3&gt;
+
+&lt;p&gt;There are two cache designs that the system aims to build on: &lt;em&gt;log structured caches&lt;/em&gt; and &lt;em&gt;set-associative caches&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Log structured caches&lt;/em&gt; store cached entries in a log. Production usage of the approach includes CDNs and Facebook’s image caching service. To allow fast lookups into the cache (and prevent sequential scans of the cached data), many implementations create in memory indexes tracking the location of entries. These memory indexes poses a challenge when storing many small items, as:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The per-object overhead differs across existing systems between 8B and 100B. For a system with a median object size of 100B … this means that 80GB - 1TB of DRAM is needed to index objects on a 1TB flash drive.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;em&gt;Set associative caches&lt;/em&gt;, in contrast to &lt;em&gt;log structured caches&lt;/em&gt;, do not have analagous in-memory indexes. Instead, the key associated with an object is used during lookup to find a set of items on flash storage. Unfortunately, &lt;em&gt;set associative caches&lt;/em&gt; don’t perform well for writes, as changing the set associated with a key involves reading the whole set, updating the set, then writing the whole set back to flash (incurring &lt;em&gt;application level write amplification&lt;/em&gt;, as mentioned earlier).&lt;/p&gt;
+
+&lt;h3 id=&quot;design&quot;&gt;Design&lt;/h3&gt;
+
+&lt;p&gt;The Kangaroo system has three main components:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;A small &lt;em&gt;DRAM Cache&lt;/em&gt;, which stores a subset of recently written keys.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;KLog&lt;/em&gt; which has 1) a buffer of cached data on flash and 2) an in-memory index into the buffer for fast lookups, similar to log structured cache systems.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;KSet&lt;/em&gt; which stores a set of objects in pages on flash, as well as a Bloom filter used to track how set membership, similar to set-associative caches.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/kangaroo/sys.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;system-operations&quot;&gt;System Operations&lt;/h2&gt;
+
+&lt;p&gt;Kangaroo uses the three components to implement two high-level operations: &lt;em&gt;lookup&lt;/em&gt; and &lt;em&gt;insert&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/kangaroo/ops.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;lookups&quot;&gt;Lookups&lt;/h3&gt;
+
+&lt;p&gt;&lt;em&gt;Lookups&lt;/em&gt; get the value of a key if it is stored in the cache. This process occur in three main steps (corresponding to the three main components of the design).&lt;/p&gt;
+
+&lt;p&gt;First, check the &lt;em&gt;DRAM cache&lt;/em&gt;. On a cache hit, return the value and on a cache miss, continue on to check the KLog.&lt;/p&gt;
+
+&lt;p&gt;If the key is not in the &lt;em&gt;DRAM Cache&lt;/em&gt;, check the &lt;em&gt;KLog&lt;/em&gt; in-memory index for the key to see whether the key is in flash, reading the value from flash on cache hit or continuing to check KSet on cache miss.&lt;/p&gt;
+
+&lt;p&gt;On &lt;em&gt;KLog&lt;/em&gt; miss, hash the key used in the lookup to determine the associated &lt;em&gt;KSet&lt;/em&gt; for the key. Then, read the per-set in-memory Bloom filter for the associated &lt;em&gt;KSet&lt;/em&gt; to determine whether data for the key is likely to exist on flash - if the item is on flash, read the associated set, scan for the item until it is found, and return the data.&lt;/p&gt;
+
+&lt;h3 id=&quot;inserts&quot;&gt;Inserts&lt;/h3&gt;
+
+&lt;p&gt;&lt;em&gt;Inserts&lt;/em&gt; add a new value to the cache (again in three steps that correspond to the three components of the system).&lt;/p&gt;
+
+&lt;p&gt;First, write new items to the &lt;em&gt;DRAM cache&lt;/em&gt;. If the &lt;em&gt;DRAM Cache&lt;/em&gt; is at capacity, some items will be evicted and potentially pushed to the KLog. Kangaroo doesn’t add all items evicted from the &lt;em&gt;DRAM Cache&lt;/em&gt; to the &lt;em&gt;KLog&lt;/em&gt;, as making this shift can incur writes to flash (part of what the system wants to prevent). The algorithm for deciding what is shifted is covered in the next section.&lt;/p&gt;
+
+&lt;p&gt;If Kangaroo chooses to admit the items evicted from the &lt;em&gt;DRAM Cache&lt;/em&gt; to the &lt;em&gt;KLog&lt;/em&gt;, the system updates the &lt;em&gt;KLog&lt;/em&gt; in-memory index and writes the entry to flash&lt;/p&gt;
+
+&lt;p&gt;Writing an item to &lt;em&gt;KLog&lt;/em&gt; has the potential to cause evictions from the &lt;em&gt;KLog&lt;/em&gt; itself. Items evicted from the &lt;em&gt;KLog&lt;/em&gt; are potentially inserted into an associated KSet, although this action depends on an algorithm similar to the one earlier (which decides whether to admit items evicted from the &lt;em&gt;DRAM Cache&lt;/em&gt; to the &lt;em&gt;KLog&lt;/em&gt;). If items evicted from the &lt;em&gt;KLog&lt;/em&gt; are chosen to be inserted into a associated &lt;em&gt;KSet&lt;/em&gt;, &lt;em&gt;all&lt;/em&gt; items both currently in the &lt;em&gt;KLog&lt;/em&gt; and associated with the to-be-written &lt;em&gt;KSet&lt;/em&gt; are shifted to the &lt;em&gt;KSet&lt;/em&gt; - “doing this amortizes flash writes in KSet, significantly reducing Kangaroo’s [application-level write amplification]”.&lt;/p&gt;
+
+&lt;h2 id=&quot;implementation&quot;&gt;Implementation&lt;/h2&gt;
+
+&lt;p&gt;The implementation of Kangaroo couples &lt;em&gt;a DRAM Cache&lt;/em&gt;, &lt;em&gt;KLog&lt;/em&gt;, and &lt;em&gt;KSet&lt;/em&gt; with three key ideas: &lt;em&gt;admission policies&lt;/em&gt;, &lt;em&gt;partitioning of the KLog&lt;/em&gt;, and &lt;em&gt;usage-based eviction&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;As mentioned earlier, items from the &lt;em&gt;DRAM Cache&lt;/em&gt; and &lt;em&gt;KLog&lt;/em&gt; are not guaranteed to be inserted into the next component in the system. The decision whether to propagate an item is decided by a tunable &lt;em&gt;admission policy&lt;/em&gt; that targets a certain level of writes to flash. The &lt;em&gt;admission policy&lt;/em&gt; for DRAM Cache to KLog transitions is probabilistic (some percent of objects are rejected), while the policy controlling the KLog to KSet transition is based on the number of items currently in the &lt;em&gt;KLog&lt;/em&gt; mapping to the candidate &lt;em&gt;KSet&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Next, &lt;em&gt;partitioning the KLog&lt;/em&gt; reduces “reduces the per-object metadata from 190 b to 48 b per object, a 3.96× savings vs. the naïve design.” This savings comes from changes to the pointers used in traversing the index. One example is an &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;offset&lt;/code&gt; field that maps an object to the page of flash it is stored in:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The flash offset must be large enough to identify which page in the flash log contains the object, which requires log2(𝐿𝑜𝑔𝑆𝑖𝑧𝑒/4 KB) bits. By splitting the log into 64 partitions, KLog reduces 𝐿𝑜𝑔𝑆𝑖𝑧𝑒 by 64× and saves 6 b in the pointer.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/kangaroo/partitions.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, &lt;em&gt;usage-based eviction&lt;/em&gt; ensures infrequently-used items are evicted from the cache and is normally based on usage metadata - given fixed resources, these types of policies can increase cache hit ratio by ensuring that frequently accessed items stay in cache longer. To implement the idea while using minimal memory, Kangaroo adapts a technique from processor caches called &lt;em&gt;Re-Reference Interval Prediction (RRIP)&lt;/em&gt;, (calling its adaptation &lt;em&gt;RRIParoo&lt;/em&gt;):&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;RRIP is essentially a multi-bit clock algorithm: RRIP associates a small number of bits with each object (3 bits in Kangaroo), which represent reuse predictions from near reuse (000) to far reuse (111). Objects are evicted only once they reach far. If there are no far objects when something must be evicted, all objects’ predictions are incremented until at least one is at far.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;em&gt;RRIParoo&lt;/em&gt; tracks how long ago an item was read as well as whether it was read. For items in KLog, information about how long ago an item was read is stored using three bits in the in-memory index.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/kangaroo/rrip.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;In contrast, usage data for items in KSet is stored in flash (as KSet doesn’t have an in-memory index). Each KSet also has a bitset with one bit for every item in the KSet that tracks tracks whether an item was accessed - this set of single-bit usage data can be used to “reset” the timer for an item.&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluation&quot;&gt;Evaluation&lt;/h2&gt;
+
+&lt;p&gt;To evaluate Kangaroo, the paper compares the system’s cache miss ratio rate against other cache systems and deploys it with a dark launch to production.&lt;/p&gt;
+
+&lt;p&gt;Kangaroo is compared to a CacheLib deployment designed for small objects, and to a log-structured cache with a DRAM index. All three systems run on the same resources, but Kangaroo achieves the lowest cache miss ratio - this, “is because Kangaroo makes effective use of both limited DRAM and flash writes, whereas prior designs are hampered by one or the other.”&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/kangaroo/miss.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Kangaroo was dark launched to production inside of Facebook and compared with an existing small object cache - Kangaroo reduces flash writes and reduces cache misses. Notably, the Kangaroo configuration that allows all writes performs the best of the set, demonstrating the potential for operators to make the tradeoff between flash writes and cache miss ratio (more flash writes would be costlier, but seem to reduce the cache miss ratio).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/kangaroo/prod.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;The Kangaroo paper demonstrates a unique synthesis of several threads of research, and the tradeoffs caching systems at scale make between cost and speed were interesting to read. As storage continues to improve (both in cost and performance), I’m sure we will see more research into caching systems at scale!&lt;/p&gt;
+
+&lt;p&gt;As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback. Until next time.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">The papers over the next few weeks will be from SOSP. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">Faster and Cheaper Serverless Computing on Harvested Resources</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/11/30/faster-and-cheaper-serverless-computing-on-harvested-resources.html" rel="alternate" type="text/html" title="Faster and Cheaper Serverless Computing on Harvested Resources" />
+      <published>2021-11-30T00:00:00+00:00</published>
+      <updated>2021-11-30T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/11/30/faster-and-cheaper-serverless-computing-on-harvested-resources</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/11/30/faster-and-cheaper-serverless-computing-on-harvested-resources.html">&lt;p&gt;&lt;em&gt;The papers over the next few weeks will be from &lt;a href=&quot;https://sosp2021.mpi-sws.org/&quot;&gt;SOSP&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/10.1145/3477132.3483580&quot;&gt;Faster and Cheaper Serverless Computing on Harvested Resources&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This week’s paper review is “Faster and Cheaper Serverless Computing on Harvested Resources” and builds on the research group’s previous work into &lt;em&gt;Harvest Virtual Machines&lt;/em&gt; (aka &lt;em&gt;Harvest VMs&lt;/em&gt;). 
+The paper shows that this new way of structuring VMs is well suited for serverless workloads, significantly lowering cost and allowing 3x to 10x more resources for the same budget.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Harvest VMs&lt;/em&gt; are similar to relatively cheap “spot” resources available from many cloud providers, with one key difference - Harvest VMs can grow and shrink dynamically (down to a set minimum and up to a maximum) according to the available resources in the host system, while spot resources can not.&lt;/p&gt;
+
+&lt;p&gt;While Harvest VMs pose great potential, using them poses its own challenges. For example, Harvest VMs are evicted from a machine if the Harvest VM’s minimum resources are needed by higher priority applications. Furthermore, dynamic resizing of Harvest VMs means that applications scheduled to run with the original resources may be constrained after a resize.&lt;/p&gt;
+
+&lt;p&gt;This paper in particular focuses on whether the Harvest VM paradigm can be used to efficiently and cheaply execute serverless workloads - an important contribution as the serverless paradigm is growing in popularity and more players (including Cloudflare) are entering the space.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The paper makes four contributions: characterization of Harvest VMs and serverless workloads on Microsoft Azure using production traces, the design of a system for running serverless workloads on Harvest VMs, a concrete implementation of the design, and an evaluation of the system.&lt;/p&gt;
+
+&lt;h2 id=&quot;characterization&quot;&gt;Characterization&lt;/h2&gt;
+
+&lt;p&gt;The first part of the paper evaluates whether Harvest VMs and serverless workloads are compatible. Harvest VMs dynamically resize according to the available resources on the host machine. If resizing happens too frequently or the Harvest VM is evicted (because the minimum resources needed to maintain the VM are no longer available), that could impact the viability of using the technique for serverless workloads.&lt;/p&gt;
+
+&lt;h3 id=&quot;characterizing-harvest-vms&quot;&gt;Characterizing Harvest VMs&lt;/h3&gt;
+
+&lt;p&gt;First, the paper looks at two properties of the Harvest VMs:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Eviction rate&lt;/em&gt;: evictions happen when the scheduling of higher priority VMs (like normal VMs) require that the Harvest VM shrink below its minimum resources. If evictions occur often enough, it wouldn’t be possible for serverless functions to complete, meaning that the workload might be better suited for more expensive reserved resources where pre-emption is not possible.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Resource variability&lt;/em&gt;: Harvest VMs grow and shrink according to the available resources on the host. If this variation happens too frequently, the Harvest VM may become resource constrained and unable to process work assigned to it in a timely manner - for example, if 32 cores worth of work is assigned, but the Harvest VM is shortly thereafter downsized to 16 cores, the machine may not be able to execute the assigned computation.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To understand eviction rate, the paper evaluates Harvest VM lifetime:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The average lifetime [of Harvest VMs] is 61.5 days, with more than 90% of Harvest VMs living longer than 1 day. More than 60% survive longer than 1 month.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;To understand resource variability, the paper determines the timing and magnitude of resizing events in Harvest VMs - in other words, how frequently and how large the resources swings are (specifically in CPU).&lt;/p&gt;
+
+&lt;p&gt;In the CDF of intervals between Harvest VM CPU changes:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The expected interval is 17.8 hours, with around 70% of them being longer than 10 minutes, and around 35% longer than 1 hour. 62.2% of the studied Harvest VMs experienced at least one CPU shrinkage and 54.1% experienced at least one CPU expansion. 35.1% VMs never experienced any CPU changes.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;When graphing the sizes of CPU change, the paper notes that:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The distribution tends to be symmetric with most of CPU changes falling within 20 CPUs. The average and maximum CPU change size are 12 and 30 for both shrinkage and expansion&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;In summary, the Harvest VMs are actually relatively long-lived, and while resource variability does exist, there are not constant resizing events to Harvest VMs.&lt;/p&gt;
+
+&lt;h3 id=&quot;characterizing-serverless-workloads&quot;&gt;Characterizing Serverless Workloads&lt;/h3&gt;
+
+&lt;p&gt;To evaluate whether serverless workloads are compatible with Harvest VMs, the authors reference the findings from the previous section’s characterization of eviction rates and resource variability. In particular, the paper focuses on the time required of serverless workloads. In each case, the paper focuses on a 30-second cut off, as Harvest VMs receive equivalent advance notice that they are about to be resized (and if a serverless finishes within that grace period, there are few repercussions).&lt;/p&gt;
+
+&lt;p&gt;First, the paper slices by application (of which there are many) in the production trace from Azure:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;20.6% of the applications have at least one invocation (maximum) longer than 30 seconds. We refer to these applications as “long” applications. 16.7% and 12.3% of applications have 99.9𝑡ℎ and 99𝑡ℎ percentile durations longer than 30 seconds, respectively&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Another important point evaluated by the graphs is a distribution of the duration of all serverless invocations, which indicates that there are few invocations that take over 30 seconds (around 4.1%), but these “long” invocations, “take over 82.0% of the total execution time of all invocations”. Furthermore, applications containing long invocations tend to be long themselves.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure6.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;In summary, “Resource variation on Harvest VMs is much more common than evictions but compared to the short duration of most invocations, the number of CPUs of Harvest VMs can be considered relatively stable”.&lt;/p&gt;
+
+&lt;p&gt;Importantly, the paper notes the importance of a load balancer capable of accomodating resource changes to Harvest VMs - without the knowledge of a Harvest VM’s current resources, a scheduler might overload the given VM with too much work (for example, by assuming the VM has 32 cores when it really has 16).&lt;/p&gt;
+
+&lt;h2 id=&quot;design&quot;&gt;Design&lt;/h2&gt;
+
+&lt;p&gt;Based on characterization of Harvest VMs and serverless workloads, the authors note that any system for running serverless workloads on Harvest VMs must account for both “short” (faster than 30 second) and “long” applications, while handling evictions and resource variation. Furthermore, both short and long running serverless applications face the “cold start” problem of fetching dependencies before a serverless function can execute.&lt;/p&gt;
+
+&lt;h3 id=&quot;handling-evictions&quot;&gt;Handling evictions&lt;/h3&gt;
+
+&lt;p&gt;To solve this set of problems, the paper proposes a load balancer that assigns serverless invocations to VMs using three strategies:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;No failures&lt;/em&gt;: assign invocations from long running applications to more costly reserved resources and those from short running applications to Harvest VMs.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Bounded failures&lt;/em&gt;: assign invocations from both short and long running applications to Harvest VMs, targeting that no more than a given percentage of long-running applications are pre-empted.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Live and let die&lt;/em&gt;: run all serverless applications on Harvest VMs, accepting that some number of them will fail due to eviction.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Each strategy trades off using Harvest VMs (and ultimately cost savings) for reliability. For example, the &lt;em&gt;No failures&lt;/em&gt; strategy ensures high reliability, but at high cost (as reserved resources are more expensive than harvested ones).&lt;/p&gt;
+
+&lt;p&gt;Ultimately, the authors select &lt;em&gt;Live and Let Die&lt;/em&gt; as it allows a serverless workload to be run entirely on Harvest VMs while achieving high reliability (99.99% invocation success rate). While it may be surprising that the decision to allow pre-emption operates with a low failure rate, the paper notes:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Intuitively, failures caused by VM evictions are rare because they require two low-probability events to happen simultaneously: a Harvest VM gets evicted while it is running a long invocation.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;handling-resource-variability&quot;&gt;Handling Resource Variability&lt;/h3&gt;
+
+&lt;p&gt;Resource variability causes unique problems for applications running on Harvest VMs. Serverless workloads in particular run into the “cold start” problem - when a serverless function runs on a machine for the first time, it needs to download associated dependencies and perform setup, which takes valuable time.&lt;/p&gt;
+
+&lt;p&gt;To minimize the impact of cold-starts on execution and to ensure serverless workloads are resilient to changing underlying resources, the paper proposes a load balancer that allocates work among Harvest VMs in the cluster.&lt;/p&gt;
+
+&lt;p&gt;The authors evaluate two load balancing algorithms to allocate work:  &lt;em&gt;Join-the-Shortest-Queue (JSQ)&lt;/em&gt; and &lt;em&gt;Min-Worker-Set (MSQ)&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Join-the-shortest-queue (JSQ)&lt;/em&gt; assign work to the least loaded Harvest VM in the cluster using an approximation of each machine’s current load.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Min-Worker-Set (MSQ)&lt;/em&gt; first tries to assign work to a Harvest VM where the given serverless function has run previously (to limit the impact of cold starts). If no worker has the resources to process the work, the algorithm expands the set of Harvest VMs that the serverless function can run on. The iterative growing process (keeping the total number of workers small) limits the number of Harvest VMs used by a function, as running work across many Harvest VMs increases the chances that one of them is evicted.&lt;/p&gt;
+
+&lt;h2 id=&quot;implementation&quot;&gt;Implementation&lt;/h2&gt;
+
+&lt;p&gt;To run serverless workloads on Harvest VMs, the paper outlines infrastructure that takes eviction and resource variability into account. The implementation is based on &lt;a href=&quot;https://openwhisk.apache.org/&quot;&gt;Apache OpenWhisk&lt;/a&gt; (which is compatible with a number of deployment strategies, including Kubernetes).&lt;/p&gt;
+
+&lt;p&gt;There are four main components of the implementation: &lt;em&gt;Controllers&lt;/em&gt;, &lt;em&gt;Invokers&lt;/em&gt;, &lt;em&gt;Harvest Monitors&lt;/em&gt;, and a &lt;em&gt;Resource Monitor&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/arch.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;em&gt;Controllers&lt;/em&gt; are provided by OpenWhisk, and make scheduling decisions that assign serverless invocations to Harvest VMs - these scheduling decisions are written to a log that consumers can read from. The paper modifies the provided &lt;em&gt;Controllers&lt;/em&gt; to implement the &lt;em&gt;Min-Worker-Set (MSQ)&lt;/em&gt; algorithm. Additionally, &lt;em&gt;Controllers&lt;/em&gt; receive feedback about function invocations, allowing the component to base their scheduling decisions off of perceived load on a &lt;em&gt;Harvest VM&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Invokers&lt;/em&gt; handle the execution of the workload and consume the log of scheduling decisions written by the &lt;em&gt;Controllers&lt;/em&gt; to receive information about the functions they should run - the Harvest VM implementation customizes the OpenWhisk &lt;em&gt;Invoker&lt;/em&gt; to account for resource variability.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Harvest Monitors&lt;/em&gt; (a novel feature not provided by OpenWhisk) run on every Harvest VM and gather (then report to the &lt;em&gt;Controllers&lt;/em&gt;) metadata about the associated VM - this metadata includes CPU allocations, CPU usage, and whether the Harvest VM is about to be evicted.&lt;/p&gt;
+
+&lt;p&gt;Lastly, the &lt;em&gt;Resource Monitor&lt;/em&gt; tracks “the resource variation in the system. It periodically queries for the total available resources (e.g. CPUs) and spins up new VMs to maintain a minimum pool of available resources, if they fall below a pre-configured threshold”.&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluation&quot;&gt;Evaluation&lt;/h2&gt;
+
+&lt;p&gt;To evaluate the implementation, the paper considers whether the use of Harvest VMs results in faster and cheaper serverless computing.&lt;/p&gt;
+
+&lt;p&gt;First, the paper runs workloads on Harvest VMs, load-balancing using the &lt;em&gt;Join-the-shortest-queue (JSQ)&lt;/em&gt;,  &lt;em&gt;Min-Worker-Set (MSQ)&lt;/em&gt; or “vanilla” OpenWhisk scheduling algorithm (which is unaware of the unique properties of Harvest VMs). The paper demonstrates that &lt;em&gt;MSQ&lt;/em&gt; achieves high throughput and minimizes the cold start problem.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure12.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure13.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Next, the paper runs serverless workloads in clusters with three different resource churn patterns - &lt;em&gt;active&lt;/em&gt; clusters representing the worst case Harvest VM resource variability, &lt;em&gt;normal&lt;/em&gt; clusters with typical Harvest VM resource variability, and &lt;em&gt;dedicated&lt;/em&gt; clusters using only regular VMs (and not Harvest VMs). Predictably, dedicated clusters are capable of executing the most requests per second. For active and normal clusters, the results show the continued impact of the load-balancing algorithm.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/figure15.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;To address whether using harvested resources to execute serverless workloads is in fact cheaper, the paper presents a cost model that shows, for the same budget, the resources available under different eviction and Harvest VM percentages. The amount of additional resources affordable to a fixed budget varies from 3x to 10x.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/faster-cheaper-serverless/table3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;This paper builds on several pieces of previous work that rely on making the tradeoff between cost and accepted failures - this idea also shows up in Site Reliability Engineering practice as &lt;a href=&quot;https://sre.google/sre-book/service-level-objectives/&quot;&gt;Service Level Objectives&lt;/a&gt;. I also enjoyed how the authors relied on production traces and results to guide the design and verify the implementation.&lt;/p&gt;
+
+&lt;p&gt;As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback! Until next time.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">The papers over the next few weeks will be from SOSP. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">Choosing papers to read and write about</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/11/28/selecting-papers-to-read.html" rel="alternate" type="text/html" title="Choosing papers to read and write about" />
+      <published>2021-11-28T00:00:00+00:00</published>
+      <updated>2021-11-28T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/11/28/selecting-papers-to-read</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/11/28/selecting-papers-to-read.html">&lt;p&gt;There are many academic CS conferences every year, with more papers than I could ever hope to read and write about - &lt;a href=&quot;https://blog.acolyer.org/&quot;&gt;The Morning Paper&lt;/a&gt; was published every day, and I don’t know how Adrian did it! The volume of research, coupled with learning topics that I often knew little about beforehand, means that I have to select a smaller subset of papers to dig into.&lt;/p&gt;
+
+&lt;p&gt;As someone asked on Twitter, I figured I might as well share what my algorithm is!&lt;/p&gt;
+
+&lt;p&gt;First, I make a list of all of the conferences I wanted to read papers from. I did &lt;a href=&quot;/2021/08/14/systems-conferences-2021.html&quot;&gt;this in 2021 as a reference for myself&lt;/a&gt;, and I’m working on a list for 2022. I start this list by seeing which conferences from last year will repeat, checking the main organizer’s site (like &lt;a href=&quot;https://www.usenix.org/conferences&quot;&gt;USENIX&lt;/a&gt;), or looking at the &lt;a href=&quot;http://webdocs.cs.ualberta.ca/~zaiane/htmldocs/ConfRanking.html&quot;&gt;list of the “top” CS conferences&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Next, I skim the list of “Accepted Papers” from a conference when it is published, bookmarking papers based on (in no particular order): my familiarity with the research topic, my interest, group / company that published the research, familiarity with authors, or general buzz. As mentioned above, I often don’t know much about a research area before reading the paper - expanding what I know is a big factor in choosing which papers to read.&lt;/p&gt;
+
+&lt;p&gt;After making a list of papers I’m interested in, I download the research into &lt;a href=&quot;https://www.zotero.org/&quot;&gt;Zotero&lt;/a&gt;, where I store and mark up papers. Conferences publish the list of accepted papers in advance, but don’t always include links to the papers themselves - many authors publish preprints on their personal or research group sites if the conference doesn’t make the paper available. When I take notes and outline articles, I use &lt;a href=&quot;https://roamresearch.com/&quot;&gt;Roam&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Last, I take the preliminary list of interesting papers I would want to read for a conference and filter down to what I can actually manage (based on how much time I have with other committments). Sometimes there are papers I want to read, but they get nudged farther down my list because another conference comes along.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">There are many academic CS conferences every year, with more papers than I could ever hope to read and write about - The Morning Paper was published every day, and I don’t know how Adrian did it! The volume of research, coupled with learning topics that I often knew little about beforehand, means that I have to select a smaller subset of papers to dig into.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">Log-structured Protocols in Delos</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/11/23/log-structured-protocols-in-delos.html" rel="alternate" type="text/html" title="Log-structured Protocols in Delos" />
+      <published>2021-11-23T00:00:00+00:00</published>
+      <updated>2021-11-23T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/11/23/log-structured-protocols-in-delos</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/11/23/log-structured-protocols-in-delos.html">&lt;p&gt;&lt;em&gt;The papers over the next few weeks will be from &lt;a href=&quot;https://sosp2021.mpi-sws.org/&quot;&gt;SOSP&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/10.1145/3477132.3483544&quot;&gt;Log-structured Protocols in Delos&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This week’s paper review, “Log-structured Protocols in Delos” discusses a critical component of Delos, Facebook’s system for storing control plane data, like scheduler metadata and configuration - according to the authors, Delos is replacing Zookeeper inside of Facebook.&lt;/p&gt;
+
+&lt;p&gt;Storage systems for control plane data are placed under different constraints than systems that store application data - for example, control plane systems must be highly available and strive for zero-dependencies. At the same time, it is not sufficient to provide a single API (like a simple key-value store) for control plane databases, meaning that several systems need to be implemented according to these requirements. Delos aims to limit duplicate solutions to the problems that control plane databases face by providing a common platform for control plane databases.&lt;/p&gt;
+
+&lt;p&gt;A key feature of Delos is a replicated log - many systems use log replication to maintain multiple copies of a dataset or to increase fault tolerance. Consumers of a replicated log execute logic on the data in log entries to produce a “state of the world”. Each node that has consumed the log up to the same point will have the same “state of the world” (assuming that the log consumption code is deterministic!). The name for this technique is &lt;em&gt;state machine replication&lt;/em&gt; (aka SMR).&lt;/p&gt;
+
+&lt;p&gt;The authors note that many systems taking advantage of &lt;em&gt;state machine replication&lt;/em&gt; unnecessarily re-implement similar functionality (like batching writes to the log). To enable code reuse, Delos implements common functionality in reusable building blocks that run under higher-level, application-specific logic. The authors call this stack-like approach &lt;em&gt;log-structured protocols&lt;/em&gt;, and discuss how the technique simplifies the development and deployment of SMR systems through code-reuse, upgradability, and implementation flexibility.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?’&lt;/h2&gt;
+
+&lt;p&gt;The paper makes three main contributions: the design for &lt;em&gt;log-structured protocols&lt;/em&gt;, implementations of nine &lt;em&gt;log-structured protocols&lt;/em&gt; and two production databases using the abstraction, and the evaluation of the implementations scaled to a production environment.&lt;/p&gt;
+
+&lt;h2 id=&quot;log-structured-protocol-design&quot;&gt;Log Structured Protocol Design&lt;/h2&gt;
+
+&lt;p&gt;Each log-structured protocol has four primary components:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Application logic&lt;/em&gt;: unique functionality that often represents the interface between the replicated state machine and an external system. On example is application logic that converts log entries into SQL statements that write to a database table.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Engines&lt;/em&gt;: implement common functionality like batching writes to the log or backing up log entries to external storage. More information on the various &lt;em&gt;engines&lt;/em&gt; in a later section.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Local store&lt;/em&gt;: contains the state of the world. Engines and application logic read/write to the local store, which is implemented using RocksDB.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Shared log&lt;/em&gt;: the lowest level of the stack. A common &lt;em&gt;base engine&lt;/em&gt; handles writes and reads to the &lt;em&gt;shared log&lt;/em&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/log-structured-delos/stack.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;em&gt;Engines&lt;/em&gt; are a key building block of each log-structured protocol - they allow developers to compose existing functionality and to focus on implementing a small set of custom logic.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/log-structured-delos/proposals.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Each engine interacts with the layers above or below through an API that relies on &lt;em&gt;proposals&lt;/em&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;propose&lt;/code&gt;, used to send messages down the stack, towards the shared log.&lt;/li&gt;
+  &lt;li&gt;
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;apply&lt;/code&gt;, used by lower level engines to transfer messages up the stack.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;While responding to calls, the engines can also read or write to the LocalStore, which maintains the current state of the system. Additional calls setup the layering in a log-structured protocol (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;registerUpcall&lt;/code&gt;), coordinate trimming the log (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;setTrimPrefix&lt;/code&gt;), request all entries from a lower level engine (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sync&lt;/code&gt;), and allow an engine to respond to events (using a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;postApply&lt;/code&gt; callback).&lt;/p&gt;
+
+&lt;h2 id=&quot;two-databases-and-nine-engines&quot;&gt;Two Databases and Nine Engines&lt;/h2&gt;
+
+&lt;p&gt;In addition to outlining the structure of &lt;em&gt;log-structured protocols&lt;/em&gt;, the paper describes the implementation of a set of databases and engines using the approach.&lt;/p&gt;
+
+&lt;h3 id=&quot;databases&quot;&gt;Databases&lt;/h3&gt;
+
+&lt;p&gt;The paper discusses the implementation of two databases using the Delos infrastructure: &lt;em&gt;DelosTable&lt;/em&gt; and &lt;em&gt;Zelos&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://engineering.fb.com/2019/06/06/data-center-engineering/delos/&quot;&gt;Existing research from FB&lt;/a&gt; describes how &lt;em&gt;DelosTable&lt;/em&gt;, “offers a rich API, with support for transactions, secondary indexes, and range queries. It provides strong guarantees on consistency, durability, and availability.” &lt;em&gt;DelosTable&lt;/em&gt; is used in Facebook’s, “Tupperware Resource Broker, which maintains a ledger of all machines in our data centers and their allocation status”.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Zelos&lt;/em&gt; provides a Zookeeper-like interface that supports CRUD operations on a hiearchical structure of nodes (among other, more advanced functions).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/log-structured-delos/zknamespace.jpg&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;Example Zookeeper namespace (&lt;a href=&quot;https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html&quot;&gt;source&lt;/a&gt;)&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;When covering Zelos, the paper discusses how internal customer needs stemming from the Zookeeper-port shaped the Delos design:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Our initial design for Delos involved a reusable platform layer exposing an SMR API, allowing any arbitrary application black box to be replicated above it. The platform itself is also a replicated state machine, containing functionality generic to applications…Unfortunately, structuring the platform as a monolithic state machine limited its reusability. When the ZooKeeper team at Facebook began building Zelos on the Delos platform, they needed to modify the platform layer to obtain additional properties such as session ordering guarantees, batching / group commit, and nonvoting modes.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Because these unique features of Zookeeper were too difficult to implement in a monolithic architecture, the Delos design pivoted to a stack-like, engine-based approach.&lt;/p&gt;
+
+&lt;h3 id=&quot;engines&quot;&gt;Engines&lt;/h3&gt;
+
+&lt;p&gt;The paper describes nine different engines that comprise common functionality. I focus on three that highlight Delos’ strengths: the &lt;em&gt;ObserverEngine&lt;/em&gt;, &lt;em&gt;SessionOrderEngine&lt;/em&gt;, and &lt;em&gt;BatchingEngine&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/log-structured-delos/nine-engines.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The &lt;em&gt;ObserverEngine&lt;/em&gt; is placed between different layers of a Delos stacks, and provides reusable monitoring functionality by tracking the time spent in a given engine.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/log-structured-delos/stacks.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The &lt;em&gt;SessionOrderEngine&lt;/em&gt; implements the idea of Zookeeper sessions:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;ZooKeeper provides a session-ordering guarantee: within a session, if a client first issues a write and then a concurrent read (without waiting for the write to complete), the read must reflect the write. This property is stronger than linearizability, which allows concurrent writes and reads to be ordered arbitrarily; and encompasses exactly-once semantics&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Delos implements these semantics in the &lt;em&gt;SessionOrderEngine&lt;/em&gt; by assigning sequence numbers (essentially autoincrementing IDs) to outgoing writes. When other nodes read from the log, they check that the writes are ordered based on sequence number, reordering them into the correct sequence as necessary.&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;BatchingEngine&lt;/em&gt; groups entries into a single transaction write to the &lt;em&gt;LocalStore&lt;/em&gt;. This approach enables higher performance and provides a common implementation that both DelosTable and Zelos use (related to Delos’ design goal of code re-use).&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluation&quot;&gt;Evaluation&lt;/h2&gt;
+
+&lt;p&gt;The paper evaluates Delos log-structured protocols on two dimensions: the overhead (if any) inherent to the design, and the performance/productivity gains that the design allows.&lt;/p&gt;
+
+&lt;p&gt;When evaluating overhead, the paper considers the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;apply&lt;/code&gt; thread (as this upcall relates to the different transitions between each engine). The paper notes that of the CPU consumed in the fleet, apply only makes up 10% of the utilization.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/log-structured-delos/apply.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The second main category of results is related to the benefits of code-reuse. One example that the paper cites is the introduction of the &lt;em&gt;BatchingEngine&lt;/em&gt; discussed in the previous section. The deployment of the &lt;em&gt;BatchingEngine&lt;/em&gt; was relatively straightfoward and contributed to a 2X throughput improvement. Furthermore, the engine could be rolled out to other protocols.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/log-structured-delos/batchingengine.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;I greatly enjoyed this paper! The paper’s authors have been researching related topics for some time, and seeing their expertise applied to a new production setting was quite interesting. Additionally, the newest Delos papers share production-focused experiences, and a design guided by collaboration with internal customers - it is always fun to read about rubber-meets-the-road approaches!&lt;/p&gt;
+
+&lt;p&gt;As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback! Until next time.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">The papers over the next few weeks will be from SOSP. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/11/09/the-demikernel-datapath-os-architecture-for-microsecond-scale-datacenter-systems.html" rel="alternate" type="text/html" title="The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems" />
+      <published>2021-11-09T00:00:00+00:00</published>
+      <updated>2021-11-09T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/11/09/the-demikernel-datapath-os-architecture-for-microsecond-scale-datacenter-systems</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/11/09/the-demikernel-datapath-os-architecture-for-microsecond-scale-datacenter-systems.html">&lt;p&gt;&lt;em&gt;The papers over the next few weeks will be from &lt;a href=&quot;https://sosp2021.mpi-sws.org/&quot;&gt;SOSP&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p class=&quot;discussion&quot;&gt;Discussion on &lt;a href=&quot;https://news.ycombinator.com/item?id=29237007&quot;&gt; Hacker News&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/10.1145/3477132.3483569&quot;&gt;The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This week’s paper is &lt;em&gt;The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems&lt;/em&gt;.  Demikernel is an operating systems architecture designed for an age in which IO devices and network speeds are improving faster than CPUs are. The code is &lt;a href=&quot;https://github.com/demikernel/demikernel&quot;&gt;open source&lt;/a&gt; and predominantly implemented in Rust.&lt;/p&gt;
+
+&lt;p&gt;One approach to addressing the growing disconnect between IO and CPU speeds is a technique called &lt;em&gt;kernel-bypass&lt;/em&gt;. Kernel-bypass allows more direct access to devices by moving functionality typically inside of an OS kernel to user space or offloading features to the device itself. Executing operating system functionality inside user space provides several latency-related advantages, like reducing costly userspace to kernel space transitions and allowing applications to limit memory copies during IO (known as “zero copy IO” - more details later in this paper review).&lt;/p&gt;
+
+&lt;p&gt;While kernel bypass systems are becoming ubiquitous and can enable dramatic speedups for applications (in particular, those in cloud environments), there are challenges to adoption - engineering resources must be used to port applications to this new architecture and new device APIs or versions can incur ongoing maintenance costs.&lt;/p&gt;
+
+&lt;p&gt;Demikernel aims to solve the tension between the utility of kernel-bypass and the engineering challenges that limit the technique’s adoption - one key to its approach is providing abstractions that applications migrating to kernel-bypass can use.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The Demikernel paper makes three contributions: a new operating system API for developing kernel-bypass applications, the design for an operating system architecture that uses the new API, and several implementations of operating systems that implement the design using the API proposed by the paper.&lt;/p&gt;
+
+&lt;h2 id=&quot;demikernel-approach&quot;&gt;Demikernel approach&lt;/h2&gt;
+
+&lt;p&gt;There are three main goals of Demikernel:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Make it easier for engineers to adopt kernel-bypass technology&lt;/li&gt;
+  &lt;li&gt;Allow applications that use Demikernel to run across many different devices and in cloud environments&lt;/li&gt;
+  &lt;li&gt;Enable systems to achieve the ultra-low (nanosecond) IO latency required in the “Age of the killer microseconds”&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;First, Demikernel aims to simplify usage of kernel-bypass technology by building reusable components that can be swapped in (or out) depending on the needs of an application. Before Demikernel, kernel-bypass applications would often re-implement traditional operating system features inside of user space, one example being the network stack. Two new abstractions in Demikernel, &lt;em&gt;PDPIX&lt;/em&gt; and &lt;em&gt;libOS&lt;/em&gt;, are targeted at encapsulating these common user space features in easy to use APIs, limiting the amount of time that developers spend reimplementing existing logic.&lt;/p&gt;
+
+&lt;p&gt;Next, Demikernel aims to allow kernel-bypass applications to run across many different devices and environments (including cloud providers). The system focuses on IO, but Demikernel still runs alongside a host kernel performing other OS functions outside of the datapath.&lt;/p&gt;
+
+&lt;p&gt;Lastly, achieving ultra-low IO latency in the “Age of the Killer Microseconds” requires more advanced techniques that pose their own complexities. One example of these advanced technique is zero-copy IO, which ensures that information on the data path is not copied (as unnecessary copies incur latency). Implementing zero-copy IO is complicated by different devices implementing different abstractions around the memory used in zero-copy IO.&lt;/p&gt;
+
+&lt;p&gt;To achieve these design goals, Demikernel implements two concepts: a &lt;em&gt;portable datapath interface (PDPIX)&lt;/em&gt; and a set of &lt;em&gt;library operating systems (libOSes)&lt;/em&gt; built with this API.&lt;/p&gt;
+
+&lt;h2 id=&quot;portable-datapath-api-pdpix&quot;&gt;Portable Datapath API (PDPIX)&lt;/h2&gt;
+
+&lt;p&gt;The &lt;em&gt;portable datapath interface (PDPIX)&lt;/em&gt; aims to provide a similar set of functionality to POSIX system calls, but reworks the POSIX systems calls to satisfy the needs of low-latency IO.&lt;/p&gt;
+
+&lt;p&gt;In contrast to the POSIX API:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;PDPIX replaces the file descriptor abstraction used in POSIX with IO queues - applications &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;create&lt;/code&gt; queues, then &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;push&lt;/code&gt; data to or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pop&lt;/code&gt; data from the queue, finally calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;close&lt;/code&gt; to destroy the queue.&lt;/li&gt;
+  &lt;li&gt;PDPIX implements semantics that allow zero-copy IO (as zero-copy is crucial for low-latency IO). In one example, API calls that push data to a given queue provide access to arrays in a shared heap. The data in the shared heap can be read by the device in the kernel-bypass system immediately, without requiring an unnecessary copy into kernel space.&lt;/li&gt;
+  &lt;li&gt;PDPIX explicitly is designed around asynchronous IO operations. API calls, like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;push&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pop&lt;/code&gt;, return a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;qtoken&lt;/code&gt;. Applications can call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wait&lt;/code&gt;  (or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wait_all&lt;/code&gt; for a set of qtokens) to block further execution until an operation has completed.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/demikernel/syscalls.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;library-operating-system-libos&quot;&gt;Library Operating System (libOS)&lt;/h2&gt;
+
+&lt;p&gt;Demikernel implements the idea of library operating systems (each implementation is called a &lt;em&gt;libOS&lt;/em&gt;) to abstract an application’s use of a kernel-bypass device - there are multiple types of devices used by kernel-bypass sytems, and using a different type of device involves potentially moving different parts of the operating system stack into user space. Each &lt;em&gt;libOS&lt;/em&gt; takes advantage of the &lt;em&gt;PDPIX&lt;/em&gt; API discussed in the previous section.&lt;/p&gt;
+
+&lt;p&gt;The paper discusses &lt;em&gt;libOS&lt;/em&gt; implementatations for several different types of IO devices, but this paper review focuses on two:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Remote Direct Memory Access (RDMA)&lt;/em&gt;, which allows computers to directly access the memory of other computers (for example, in a datacenter), without interfering with the processing on the other computer. RDMA is commonly used in data center networks -&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Data Plane Development Kit (DPDK)&lt;/em&gt;: the goal of DPDK devices is high-performance processing TCP packets in user space, rather than in kernel space (the &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/virtual-network/setup-dpdk&quot;&gt;Microsoft Azure docs&lt;/a&gt; provide additional context).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;While RDMA and DPDK are both targeted at networking applications, devices that support the two approaches don’t implement the same capabilities on the device itself - for example, RDMA devices support features like congestion control and reliable delivery of messages, while DPDK devices may not.&lt;/p&gt;
+
+&lt;p&gt;Because RDMA and DPDK devices don’t natively support the same functionality on the device, kernel-bypass applications that aim to use these devices are limited to what logic they can run on the device versus in user space. To make this more concrete - if an application wanted to use DPDK instead of RDMA, it would need to implement &lt;em&gt;more&lt;/em&gt; functionality in code, placing a greater burden on the application developer.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/demikernel/libos.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;There are three main components to the libOS implementations: &lt;em&gt;IO processing&lt;/em&gt;, &lt;em&gt;memory management&lt;/em&gt;, and a &lt;em&gt;coroutine scheduler&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;libOS&lt;/em&gt; implemenations are in Rust and uses &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; code to call C/C++ libraries for the various devices&lt;/p&gt;
+
+&lt;p&gt;Each &lt;em&gt;libOS&lt;/em&gt; processes IOs with an “error free fast path” that makes various assumptions based on the goal of optimizing for conditions in a datacenter (where kernel-bypass applications are normally deployed). The &lt;em&gt;libOS&lt;/em&gt; has a main thread that handles this “fast path” by polling for IOs to operate on.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/demikernel/dpdk.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;To manage memory (and facilitate zero-copy IO), the &lt;em&gt;libOS&lt;/em&gt; uses a “uses a device-specific, modified Hoard for memory management.” &lt;a href=&quot;https://github.com/emeryberger/Hoard&quot;&gt;Hoard&lt;/a&gt; is a memory allocator that is much faster than &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;malloc&lt;/code&gt;. The original Hoard paper is &lt;a href=&quot;https://www.cs.utexas.edu/users/mckinley/papers/asplos-2000.pdf&quot;&gt;here&lt;/a&gt; and discusses the reasons for Hoard’s performance (although the official documentation that the project has changed significantly since the original implementation). Each memory allocator must be device-specific because devices have different strategies for managing the memory available on the device itself - as an example, RDMA devices use “memory registration” that “takes a memory buffer and prepare it to be used for local and/or remote access.”, while DPDK uses a “mempool library” that allocates fixed-sized objects. To ensure that user-after-free vulnerabilities do not occur, each libOS implements reference counting.&lt;/p&gt;
+
+&lt;p&gt;Each &lt;em&gt;libOS&lt;/em&gt; uses “Rust’s async/await language features to implement asynchronous I/O processing within coroutines”.&lt;/p&gt;
+
+&lt;p&gt;Coroutines are run with a &lt;em&gt;coroutine scheduler&lt;/em&gt; that runs three coroutine types:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;(1) a fast-path I/O processing coroutine for each I/O stack that polls for I/O and performs fast-path I/O processing, (2) several background coroutines for other I/O stack work (e.g., managing TCP send windows), and (3) one application coroutine per blocked qtoken, which runs an application worker to process a single request.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The details of the scheduler implementation are fascinating and I highly recommend referencing the paper for more info, as the paper discusses how it achieves the performance needed to meet the nanosecond-level design goal of Demikernel - one interesting trick is &lt;a href=&quot;https://github.com/demikernel/catnip/blob/59195aa4db5dd145683acda86bc929fc5741afd0/src/collections/async_slab.rs#L15&quot;&gt;using&lt;/a&gt; &lt;a href=&quot;https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/&quot;&gt;Lemire’s algorithm&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;library-operating-system-libos-implementations&quot;&gt;Library Operating System (libOS) implementations&lt;/h3&gt;
+
+&lt;p&gt;The paper describes several library operating system implementations that implement interfaces used for testing (providing the PDPIX API, but using the POSIX API under the hood), RDMA, DPDK, or the Storage Performance Developer Kit (SPDK). Each &lt;em&gt;libOS&lt;/em&gt; is paired with a host operating system (Windows or Linux), and uses the host operating system’s kernel-bypass interfaces. The paper does an amazing job of giving the implementation details of each libOS, for more detail please see the paper!&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluation&quot;&gt;Evaluation&lt;/h2&gt;
+
+&lt;p&gt;The paper evaluates Demikernel on how well it achieves the three design goals described in an earlier section of this paper review.&lt;/p&gt;
+
+&lt;p&gt;To evaluate the ease of use and complexity for applications that adopt Demikernel, the paper compares lines of code for a number of different applications that use the POSIX or Demikernel APIs. The authors also note the time it takes to port existing applications to Demikernel, noting that developers commented on Demikernel being the easiest interface to use.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/demikernel/loc.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper evaluates whether Demikernel achieves nanosecond scale IO processing for storage and networking applications across a number of platforms.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/demikernel/echo-linux.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/demikernel/echo-win.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;The most recent paper on Demikernel is the culmination of a large body of work from the authors focused on high-performacnce IO. I’m very excited to follow how Demikernel (or similar systems built on top of the ideas) are adopted across industry - in particular, I am looking forward to hearing more about the developer experience of porting applications to the paradigm that the paper outlines.&lt;/p&gt;
+
+&lt;p&gt;Thanks for reading - as always, feel free to reach out with feedback on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt;!&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">The papers over the next few weeks will be from SOSP. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/10/31/rudra-finding-memory-safety-bugs-in-rust-at-the-ecosystem-scale.html" rel="alternate" type="text/html" title="Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale" />
+      <published>2021-10-31T00:00:00+00:00</published>
+      <updated>2021-10-31T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/10/31/rudra-finding-memory-safety-bugs-in-rust-at-the-ecosystem-scale</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/10/31/rudra-finding-memory-safety-bugs-in-rust-at-the-ecosystem-scale.html">&lt;p&gt;&lt;em&gt;The papers over the next few weeks will be from &lt;a href=&quot;https://sosp2021.mpi-sws.org/&quot;&gt;SOSP&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/pdf/10.1145/3477132.3483570&quot;&gt;Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This week’s paper is about &lt;em&gt;Rudra&lt;/em&gt;, a system for finding memory safety bugs in code written with the &lt;a href=&quot;https://www.rust-lang.org/&quot;&gt;Rust programming language&lt;/a&gt;. Rust is used for many purposes, although it is particularly popular for lower level systems programming - the language’s approach to memory management allows the compiler to eliminate many common types of memory management issues, in turn improving security. As a result, Rust is used across many high-profile open source projects where security matters, including the Mozilla &lt;a href=&quot;https://github.com/servo/servo/&quot;&gt;Servo engine&lt;/a&gt;, the open-source &lt;a href=&quot;https://firecracker-microvm.github.io/&quot;&gt;Firecracker MicroVM technology&lt;/a&gt; used in AWS Lambda/Fargate, and the &lt;a href=&quot;https://fuchsia.dev/fuchsia-src/get-started/learn&quot;&gt;Fuschia operating system&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Unfortunately, it is not possible to implement every functionality with code that obeys the language’s rules around memory management. To address this gap, Rust includes an &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; tag that allows code to suspend some of the rules, albeit within well defined blocks of code. While &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; sections of Rust code are generally reviewed closely, the language construct can lead to subtle bugs that compromise the security Rust code.&lt;/p&gt;
+
+&lt;p&gt;The goal of Rudra is automatically evaluating these &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; sections of code to find security issues. Rudra has achieved remarkable success - at the time of the paper’s publication, the system had identified 76 CVEs and ~52% of the memory safety bugs in the official Rust security advisory database, &lt;a href=&quot;https://rustsec.org/&quot;&gt;RustSec&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The Rudra paper makes three primary contributions: it describes scalable algorithms for finding memory safety bugs in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; Rust code, implements the algorithms in the open source &lt;a href=&quot;https://github.com/sslab-gatech/Rudra&quot;&gt;Rudra project&lt;/a&gt;, and demonstrates using the project to find bugs in existing open source code.&lt;/p&gt;
+
+&lt;h2 id=&quot;safe-rust&quot;&gt;Safe Rust&lt;/h2&gt;
+
+&lt;p&gt;In order to understand the memory safety issues that Rudra detects, it is important to understand how Rust provides memory safety guarantees at compile time and the idea of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; Rust. For those familar with these topics, skipping to “Pitfalls of Safe Rust” might make sense.&lt;/p&gt;
+
+&lt;h3 id=&quot;language-features&quot;&gt;Language features&lt;/h3&gt;
+
+&lt;p&gt;To provide memory safety guarantees at compile time, Rust uses: &lt;em&gt;ownership&lt;/em&gt;, &lt;em&gt;borrowing&lt;/em&gt;, and &lt;em&gt;aliasising xor mutability&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Ownership&lt;/em&gt;, according to the &lt;a href=&quot;https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html#ownership-rules&quot;&gt;Rust documentation&lt;/a&gt; means that:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ul&gt;
+    &lt;li&gt;Each value in Rust has a variable that’s called its owner.&lt;/li&gt;
+    &lt;li&gt;There can only be one owner at a time.&lt;/li&gt;
+    &lt;li&gt;When the owner goes out of scope, the value will be dropped.&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;em&gt;Borrowing&lt;/em&gt; allows one “to access data without taking ownership over it” - &lt;a href=&quot;https://doc.rust-lang.org/beta/rust-by-example/scope/borrow.html#borrowing&quot;&gt;Rust By Example&lt;/a&gt; has a helpful section on the topic. Integration of borrowing semantics into the language help to address problems related to accessing variables after the reference is no longer valid&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Aliasising xor mutability&lt;/em&gt; means that the language prevents, “both shared and mutable references … at the same time. This means that concurrent reads and writes are fundamentally impossible in Rust, eliminating the possibility of conventional race conditions and memory safety bugs like accessing invalid references”.&lt;/p&gt;
+
+&lt;h3 id=&quot;unsafe-rust&quot;&gt;Unsafe Rust&lt;/h3&gt;
+
+&lt;p&gt;To implement certain features (and bound undefined behavior), writers of Rust code can mark blocks with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt;. From the &lt;a href=&quot;https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html&quot;&gt;Rust docs&lt;/a&gt;, this allows that code block to perform a number of actions that wouldn’t be permitted otherwise, like “call unsafe functions (including C functions, compiler intrinsics, and the raw allocator)”. C doesn’t operate according to Rust’s constraints (specifically around undefined behavior), so using it inside of Rust code needs to be marked &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;An example use case of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; is performing memory-mapped IO. Memory-mapped IO relies on mapping a file to a region of memory using &lt;a href=&quot;https://www.gnu.org/software/libc/manual/html_node/Memory_002dmapped-I_002fO.html&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mmap&lt;/code&gt;&lt;/a&gt;. The &lt;a href=&quot;https://github.com/danburkert/memmap-rs/blob/master/src/unix.rs#L48&quot;&gt;implementation of memory-mapping IO&lt;/a&gt; from one of the most popular Rust memory mapping libraries &lt;a href=&quot;https://docs.rs/libc/0.2.1/src/libc/.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.1/src/unix/mod.rs.html#291-297&quot;&gt;calls the C function mmap&lt;/a&gt;, meaning that the function must be inside of an &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; block.&lt;/p&gt;
+
+&lt;h2 id=&quot;pitfalls-of-unsafe-rust&quot;&gt;Pitfalls of Unsafe Rust&lt;/h2&gt;
+
+&lt;p&gt;Now that we roughly know why code is marked &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt;, this section moves on to the three main types of issues detected by Rudra in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; Rust code: &lt;em&gt;panic safety&lt;/em&gt;, &lt;em&gt;higher order invariant safety&lt;/em&gt;, and &lt;em&gt;propagating send/sync in generic types&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Panic safety&lt;/em&gt; is a problem that crops up in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; blocks that initialize some state with the intention of further action. If these code blocks hit a panic (which “unwinds” the current call, destroying objects along the way), the further action isn’t taken and “the destructors of the variable will run without realizing that the variable is in an inconsistent state, resulting in memory safety issues similar to uninitialized uses or double frees in C/C++.”&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Higher order invariant safety&lt;/em&gt; means that a “Rust function should execute safely for all safe inputs.” To ensure that a function operates only on arguments it can use safely (failing otherwise), Rust code can check the properties of the provided arguments. Checking arguments is made more difficult in some cases because a provided argument may be &lt;a href=&quot;https://doc.rust-lang.org/book/ch10-01-syntax.html&quot;&gt;generic&lt;/a&gt;, and the specifics about the implementation of the argument may not be available. One example of a higher order invariant is:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;“passing an uninitialized buffer to a caller-provided Read implementation. Read is commonly expected to read data from one source (e.g., a file) and write into the provided buffer. However, it is perfectly valid to read the buffer under Rust’s type system. This leads to undefined behavior if the buffer contains uninitialized memory.”&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;em&gt;Propagating send/sync in generic types&lt;/em&gt; is related to two traits (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Send&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Sync&lt;/code&gt;) used for thread safety. The compiler can automatically determine how a Trait gets assigned Send/Sync - if all of a Trait’s properties are Send/Sync, it is safe to conclude that the Trait containing those properties implements Send/Sync itself. For other Traits (like locks), Send/Sync behavior can not be automatically passed on - one example is for a container class (like a list) that contains types that are not Send/Sync themselves. In these situations, the code must implement Send/Sync manually, leading to potential memory safety issues if the implementation uses unsafe code and is incorrect in some way.&lt;/p&gt;
+
+&lt;h2 id=&quot;design-of-rudra&quot;&gt;Design of Rudra&lt;/h2&gt;
+
+&lt;p&gt;This section describes the system’s &lt;em&gt;design goals&lt;/em&gt; (what the system needs to do in order to find memory safety issues in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; Rust code), as well as how Rudra is designed to achieve those goals.&lt;/p&gt;
+
+&lt;h3 id=&quot;design-goals&quot;&gt;Design Goals&lt;/h3&gt;
+
+&lt;p&gt;To achieve the goal of finding memory safety issues in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; Rust code, Rudra needs to:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Consume metadata about Rust typing, not available at lower levels of the compiler (more on what this means later).&lt;/li&gt;
+  &lt;li&gt;Analyze the entirety of the Rust ecosystem, using limited resources.&lt;/li&gt;
+  &lt;li&gt;Be able to make the tradeoff between using limited resources and the precision of results. More resources can be expended in order to verify results, leading to fewer false positives. On the other hand, Rudra aims to analyze the entirety of the Rust ecosystem on an ongoing basis, so the program should also be able to expend fewer resources and run faster, with the potential for more false positives.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;rudra-components&quot;&gt;Rudra components&lt;/h3&gt;
+
+&lt;p&gt;To achieve its design goals, Rudra implements two algorithms on intermediate representations (IR) produced by the Rust compiler: an &lt;em&gt;unsafe dataflow checker&lt;/em&gt; and &lt;em&gt;send/sync variance checker&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;unsafe dataflow checker&lt;/em&gt; finds &lt;em&gt;panic safety bugs&lt;/em&gt; (which can occur if a panic happens during an unsafe section and the code is in a temporarily inconsistent state) and &lt;em&gt;higher order invariant bugs&lt;/em&gt; (which can happen if a function doesn’t, or can’t, verify passed arguments to ensure it is safe to operate on them). The algorithm checks for &lt;em&gt;lifetime bypasses&lt;/em&gt; in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; Rust code that perform logic not otherwise permitted by the compiler - this general category of functionality can contribute to &lt;em&gt;panic safety bugs&lt;/em&gt; or &lt;em&gt;higher order invariant bugs&lt;/em&gt;.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The algorithm models six classes of lifetime bypasses:&lt;/p&gt;
+  &lt;ul&gt;
+    &lt;li&gt;uninitialized: creating uninitialized values&lt;/li&gt;
+    &lt;li&gt;duplicate: duplicating the lifetime of objects (e.g., with mem::read())&lt;/li&gt;
+    &lt;li&gt;write: overwriting the memory of a value&lt;/li&gt;
+    &lt;li&gt;copy: memcpy()-like buffer copy&lt;/li&gt;
+    &lt;li&gt;transmute: reinterpreting a type and its lifetime&lt;/li&gt;
+    &lt;li&gt;ptr-to-ref : converting a pointer to a reference&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The &lt;em&gt;send/sync variance checker&lt;/em&gt; evaluates a set of rules to determine whether a data type meets Send/Sync constraints given the usage of the data type - for example, some data types might require only Send, only Sync, both, or neither. The heuristics for performing this evaluation are described in more detail in the paper (and are also implemented in the &lt;a href=&quot;https://github.com/sslab-gatech/Rudra/blob/7949384a3514fbc1f970e5f309202b6c7a16aa48/src/analysis/send_sync_variance/strict.rs&quot;&gt;open source project&lt;/a&gt;). Once the variance checker determines whether Send/Sync are needed for a data type, it compares that to the actual implementation, raising an issue if there is a mismatch.&lt;/p&gt;
+
+&lt;h2 id=&quot;implementation&quot;&gt;Implementation&lt;/h2&gt;
+
+&lt;p&gt;Rudra is implemented as a custom Rust compiler driver, meaning it hooks into the Rust compilation process:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;It works as an unmodified Rust compiler when compiling dependencies and injects the analysis algorithms when compiling the target package.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/rudra/arch.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The two algorithms implemented in Rudra operate on different intermediate representations (IR) of Rust code. The &lt;em&gt;unsafe dataflow checker&lt;/em&gt; runs on the HIR, which has code structure, while the &lt;em&gt;send/sync variance checker&lt;/em&gt; operates on the (MIR).&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluation&quot;&gt;Evaluation&lt;/h2&gt;
+
+&lt;p&gt;At the time of publication, Rudra had found 264 memory safety bugs in open source Rust packages, including 76 CVEs. To make the point about how tricky (and novel) some of these problems were to detect before Rudra found them, the paper notes that several of the issues were in the Rust standard library (which is reviewed by Rust experts).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/rudra/eval.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;While the project had significant success finding bugs, it als has false positive rate of around 50%, although the precision is adjustable). On the other hand, most of the false positives could be quickly resolved by visual inspection according to the authors.&lt;/p&gt;
+
+&lt;p&gt;The authors compare Rudra to other tools for finding bugs in Rust code. Rudra ran faster than commonly used fuzzers, while also finding more bugs. When applied to the same codebases as another Rust-focused tool, &lt;a href=&quot;https://github.com/rust-lang/miri&quot;&gt;Miri&lt;/a&gt;, the issues found by the two tools partially overlap (although Miri found unique bugs, indicating the approach is complementary).&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;Rudra focuses on finding memory management issues in Rust code (and does so quite successfully). Importantly, when Rudra &lt;em&gt;does&lt;/em&gt; find issues, the paper notes it is relatively easier to assign ownership of fixing the root cause to the package with the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; block.&lt;/p&gt;
+
+&lt;p&gt;Even though &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unsafe&lt;/code&gt; is required so Rust can support certain functionality, it is an opt-in language feature, limiting the surface area of memory management issues. This reflects a significant improvement over other languages where similarly unsafe code can be anywhere in a code base. While there is still work to be done on changing how the system detects and limits false positives, I am hopeful that it continues to evolve alongside the growing Rust ecosystem.&lt;/p&gt;
+
+&lt;p&gt;As always, feel free to reach out with feedback on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt;!&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">The papers over the next few weeks will be from SOSP. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/10/23/ramp-tao-layering-atomic-transactions-on-facebooks-online-tao-data-store.html" rel="alternate" type="text/html" title="RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store" />
+      <published>2021-10-23T00:00:00+00:00</published>
+      <updated>2021-10-23T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/10/23/ramp-tao-layering-atomic-transactions-on-facebooks-online-tao-data-store</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/10/23/ramp-tao-layering-atomic-transactions-on-facebooks-online-tao-data-store.html">&lt;p&gt;&lt;em&gt;The papers over the next few weeks will be from &lt;a href=&quot;https://sosp2021.mpi-sws.org/&quot;&gt;SOSP&lt;/a&gt;, which is taking place October 26-29th, 2021. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/assets/papers/ramp-tao.pdf&quot;&gt;RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This is the second in a two part series on TAO, Facebook’s eventually-consistent graph datastore. The &lt;a href=&quot;/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html&quot;&gt;first part&lt;/a&gt; provides background on the system. This part (the second in the series) focuses on TAO-related research published at this year’s VLDB - &lt;a href=&quot;https://www.vldb.org/pvldb/vol14/p3014-cheng.pdf&quot;&gt;RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;The paper on RAMP-TAO describes the design and implementation of transactional semantics on top of the existing large scale distributed system, which “serves over ten billion reads and tens of millions of writes per second on a changing data set of many petabytes”. This work is motivated by the difficulties that a lack of transactions poses for both internal application developers and external users.&lt;/p&gt;
+
+&lt;p&gt;Adding transactional semantics to the existing system was made more difficult by other external engineering requirements - applications should be able gradually migrate to the new functionality and any new approach should have limited impact on the performance of existing applications. In building their solution, the authors adapt an existing protocol, called &lt;em&gt;RAMP&lt;/em&gt;, to TAO’s unique needs.&lt;/p&gt;
+
+&lt;h2 id=&quot;tao-background&quot;&gt;TAO Background&lt;/h2&gt;
+
+&lt;p&gt;This section provides a brief background on TAO - feel free to skip to the next section if you have either read &lt;a href=&quot;/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html&quot;&gt;last week’s paper review&lt;/a&gt;, or the original TAO paper is fresh in your mind. TAO is an eventually consistent datastore that represents Facebook’s graph data using two database models - associations (edges) and objects (nodes).&lt;/p&gt;
+
+&lt;p&gt;To respond to the read-heavy demands placed on the system, the infrastructure is divided into two layers - the storage layer (MySQL databases which store the backing data) and the cache layer (which stores query results). The data in the storage layer is divided into many &lt;em&gt;shards&lt;/em&gt;, and there are many copies of any given shard. Shards are kept in sync with leader/follower replication.&lt;/p&gt;
+
+&lt;p&gt;Reads are first sent to the cache layer, which aims to serve as many queries as possible via cache hits. On a cache miss, the cache is updated with data from the storage layer. Writes are forwarded to the leader for a shard, and eventually replicated to followers - as seen in &lt;a href=&quot;https://research.fb.com/publications/wormhole-reliable-pub-sub-to-support-geo-replicated-internet-services/&quot;&gt;other papers&lt;/a&gt;, Facebook invests significant engineering effort into the technology that handles this replication with low latency and high availability.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The RAMP-TAO paper makes four main contributions. It explains the need for transactional semantics in TAO, quantifies the problem’s impact, provides an implementation that fits the unique engineering constraints (which are covered in future sections), and demonstrates the feasability of the implementation with benchmarks.&lt;/p&gt;
+
+&lt;h2 id=&quot;motivation&quot;&gt;Motivation&lt;/h2&gt;
+
+&lt;p&gt;The paper begins by discussing why transactional semantics matter in TAO, then provides examples of how application developers have worked around their omission from the original design.&lt;/p&gt;
+
+&lt;h3 id=&quot;example-problems&quot;&gt;Example problems&lt;/h3&gt;
+
+&lt;p&gt;The lack of transactional semantics in TAO allows two types of problems to crop up: &lt;em&gt;partially successful writes&lt;/em&gt; and &lt;em&gt;fractured reads&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;If writes are not batched together in transactions, it is possible for some of them to succeed and others to fail (&lt;em&gt;partially successful writes&lt;/em&gt;), resulting in an incorrect state of the system (as evidenced by the figure below).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/ramp-tao/partially-successful-writes.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;A &lt;em&gt;fractured read&lt;/em&gt; is “a read result that captures partial transactional updates”, causing an inconsistent state to be returned to an application. &lt;em&gt;Fractured reads&lt;/em&gt; happen because of a combination of TAO’s eventual consistency and lack of transactional semantics - writes to different shards are replicated independently. Eventually all of the writes will be reflected in a copy of the dataset receiving these updates. In the meantime, it is possible for only some of the writes to be reflected in the dataset.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/ramp-tao/fractured-read.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;To address these two problems, the authors aruge that TAO must fulfill two guarantees:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Failure atomicity&lt;/em&gt; addresses &lt;em&gt;partially successful writes&lt;/em&gt; by ensuring “either all or none of the items in a write transaction are persisted.”&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Atomic visibility&lt;/em&gt; addresses &lt;em&gt;fractured reads&lt;/em&gt; by ensuring “a property that guarantees that either all or none of any transaction’s updates are visible to other transactions.”&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;existing-failure-atomicity-solutions-in-tao&quot;&gt;Existing failure atomicity solutions in TAO&lt;/h3&gt;
+
+&lt;p&gt;The paper notes three existing approaches used to address &lt;em&gt;failure atomicity&lt;/em&gt; for applications built on TAO:  &lt;em&gt;single-shard MultiWrites&lt;/em&gt;, &lt;em&gt;cross-shard transactions&lt;/em&gt;, and &lt;em&gt;background repair&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Single-shard MultiWrites&lt;/em&gt; allows an application to perform many writes to the same shard (each shard of the data in TAO is stored as an individual database), meaning that this approach is able to use “MySQL transactions and their ACID properties” to ensure that all writes succeed or none of them do. There are several downsides including (but not limited to) hotspotting and the requirement that applications structure their schema/code to leverage the approach.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Cross-shard transactions&lt;/em&gt; allow writes to be executed across multiple shards using a two-phase commit protocol (a.k.a 2PC) to roll back or restart transactions as needed. While this approach ensures that writes are &lt;em&gt;failure atomic&lt;/em&gt; (all writes succeed or none of them do), it does not provide &lt;em&gt;atomic visibility&lt;/em&gt; (“all of a transactions updates are visible or none of them are”), as the writes from a stalled transaction will be partially visible.&lt;/p&gt;
+
+&lt;p&gt;The last approach is &lt;em&gt;background repair&lt;/em&gt;. Certain entities in the database, like edges for which there will always be a complement (called bidirectional associations), can be automatically checked to ensure that both edges exist. Unfortunately, this technique is limited to a subset of all of the entities stored in TAO, as this property is not universal.&lt;/p&gt;
+
+&lt;h2 id=&quot;measuring-failure&quot;&gt;Measuring failure&lt;/h2&gt;
+
+&lt;p&gt;To determine the engineering requirements facing an implementation of transactional semantics in TAO, the paper evaluates how frequently and for how long &lt;em&gt;fractured reads&lt;/em&gt; persist. The paper doesn’t dig as much into quantifying write-failures - while &lt;em&gt;failure atomicity&lt;/em&gt; is a property that the system should have, &lt;em&gt;cross-shard transactions&lt;/em&gt; roughly fill the requirement. Even so, &lt;em&gt;cross-shard transactions&lt;/em&gt; are still susceptible to &lt;em&gt;atomic visibility&lt;/em&gt; violations where some (but not all) of the writes from an in-progress transaction are visible to applications using TAO.&lt;/p&gt;
+
+&lt;p&gt;The results from the measurement study indicate that 1 in 1,500 transactions violate &lt;em&gt;atomic visibility&lt;/em&gt;, noting that:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;45% of these fractured reads last for only a short period of time (i.e., naïvely retrying within a few seconds resolves these anomalies). After a closer look, these short-lasting anomalies occur when read and write transactions begin within 500 ms of each other. For these atomic visibility violations, their corresponding write transactions were all successful.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;For the rest of the violations (those that are not fixed within 500ms):&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;these atomic visibility violations could not be fixed within a short retry window and last up to 13 seconds. For this set of anomalies, their overlapping write transactions needed to undergo the 2PC failure recovery process, during which read anomalies persisted.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The paper’s authors argue that atomic visibility violations pose difficulties for engineers building applications with TAO, as “any decrease in write availability (e.g., from service deployment, data center maintenance, to outages) increases the probability that write transactions will stall, leading in turn to more read anomalies”.&lt;/p&gt;
+
+&lt;h2 id=&quot;design&quot;&gt;Design&lt;/h2&gt;
+
+&lt;p&gt;Following the measurement study, the paper pivots to discussing the design of a read API that provides &lt;em&gt;atomic visibility&lt;/em&gt; for TAO - there are three components to the design:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Choosing an isolation model&lt;/li&gt;
+  &lt;li&gt;Constraints posed by the existing TAO infrastructure.&lt;/li&gt;
+  &lt;li&gt;The protocol that clients will use to eliminate &lt;em&gt;atomic visibility violations&lt;/em&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;isolation-model&quot;&gt;Isolation model&lt;/h3&gt;
+
+&lt;p&gt;The paper considers whether a Snapshot Isolation, Read Atomic isolation, or Read Uncommitted isolation model best solve the requirement of eliminating &lt;em&gt;atomic visibility&lt;/em&gt; violations (while maintaining the performance of the existing read-heavy workloads served by TAO). The authors choose Read Atomic isolation as it does not introduce unncessary features at the cost of performance as Snapshot Isolation does, nor does it allow fractured reads as Read Committed does.&lt;/p&gt;
+
+&lt;h3 id=&quot;design-constraints&quot;&gt;Design constraints&lt;/h3&gt;
+
+&lt;p&gt;To implement Read Atomic isolation, the authors turn to the RAMP protocol (short for &lt;em&gt;Read Atomic Multiple Partition&lt;/em&gt;) - several key ideas in RAMP fit well within the paradigm that TAO uses (where there are multiple partitions of the data) and can achieve &lt;em&gt;Read Atomic&lt;/em&gt; isolation.&lt;/p&gt;
+
+&lt;p&gt;The RAMP read protocol works in two phases:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;In the first round, RAMP sends out read requests for all data items and detects nonatomic reads. In the second round, the algorithm explicitly repairs these reads by fetching any missing versions. RAMP writers use a modified two-phase commit protocol that requires metadata to be attached to each update, similar to the mechanism used by cross-shard write transactions on TAO.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Unfortunately, the original RAMP implementation can not be directly implemented in TAO, as the original paper operates with different assumptions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;RAMP assumes that all transactions in the system are using the protocol, but it is infeasible to have all TAO clients support the new functionality on day one. In the meantime, unupgraded clients shouldn’t incur the protocol’s overhead.&lt;/li&gt;
+  &lt;li&gt;RAMP maintains metadata for each item, but doesn’t consider replicating that data to increase availability, like TAO will need to.&lt;/li&gt;
+  &lt;li&gt;RAMP assumes multiple versions of data is available, although this is not true - TAO maintains a single version for each row.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;While the solutions to the first two challenges are non-trivial, they are relatively more straightforward - the first is addressed by gradually rolling out the functionality to applications, while the problem of metadata size is solved by applying specific structuring to MySQL tables. The next section of this paper review focuses on how TAO addresses the third challenge of “multiversioning”.&lt;/p&gt;
+
+&lt;h2 id=&quot;implementation&quot;&gt;Implementation&lt;/h2&gt;
+
+&lt;p&gt;RAMP-TAO adapts the existing RAMP protocol to fit the specifics of Facebook’s use case. This section describes a critical piece of Facebook infrastructure (called the &lt;em&gt;RefillLibrary&lt;/em&gt;) used in TAO’s implementation, as well as how RAMP-TAO works.&lt;/p&gt;
+
+&lt;h3 id=&quot;the-refilllibrary&quot;&gt;The RefillLibrary&lt;/h3&gt;
+
+&lt;p&gt;First, RAMP-TAO uses an existing piece of Facebook infrastructure called the &lt;em&gt;RefillLibrary&lt;/em&gt; to add support for “limited multiversioning” - “the RefillLibrary is a metadata buffer recording recent writes within TAO, and it stores approximately 3 minutes of writes from all regions”. By including additional metadata about whether items in the buffer were impacted by write transactions, RAMP-TAO can ensure that the system doesn’t violate &lt;em&gt;atomic visibility&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/ramp-tao/refill.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;When a read happens, TAO first checks whether the items being read are in the &lt;em&gt;RefillLibrary&lt;/em&gt;. If any items are in the &lt;em&gt;RefillLibrary&lt;/em&gt; and are marked as being written in a transaction, TAO returns metadata about the write to the caller. The caller in turn uses this metadata to perform logic that ensure &lt;em&gt;atomic visibility&lt;/em&gt; (described in the next section). If there is not a corresponding element in the &lt;em&gt;RefillLibrary&lt;/em&gt; for an item, “there are two possibilities: either it has been evicted (aged out) or it was updated too recently and has not been replicated to the local cache.”&lt;/p&gt;
+
+&lt;p&gt;To determine which situation applies, TAO compares the timestamp of the oldest item in the &lt;em&gt;RefillLibrary&lt;/em&gt; to the timestamps of the items being read.&lt;/p&gt;
+
+&lt;p&gt;If the timestamps for all read items are older than the oldest timestamp in the &lt;em&gt;RefillLibrary&lt;/em&gt;, it is safe to assume replication is complete - writes are evicted after 3 minutes, and based on the measurement study there are few replication issues that last that long. On the other hand, RAMP-TAO needs to perform additional work if timestamps from read items are greater than the oldest timestamp in the &lt;em&gt;RefillLibrary&lt;/em&gt; (in other words, still within the 3 minute range), and there are no entries in the &lt;em&gt;RefillLibrary&lt;/em&gt; for those items. This situation occurs if a write has not been replicated to the given location. To resolve this case, TAO performs a database request, and returns the most recent version stored in the database to the client (who may use the data to ensure &lt;em&gt;atomic visibility&lt;/em&gt;, as discussed in the next section).&lt;/p&gt;
+
+&lt;h3 id=&quot;the-ramp-tao-protocol&quot;&gt;The RAMP-TAO Protocol&lt;/h3&gt;
+
+&lt;p&gt;A primary goal of the RAMP-TAO protocol is ensuring &lt;em&gt;atomic visibility&lt;/em&gt; (“a property that guarantees that either all or none of any transaction’s updates are visible to other transactions”). At the same time, RAMP-TAO aims to offer comparable performance for existing applications that migrate to the new technology. Existing applications that don’t make use of transactional semantics parallelize requests to TAO and use whatever the database returns, even if the result reflects state from an in-progress transaction. In contrast, RAMP-TAO resolves situations where data from in-progress transactions is returned to applications.&lt;/p&gt;
+
+&lt;p&gt;There are two primary paths that read requests in RAMP-TAO take: the &lt;em&gt;fast path&lt;/em&gt; and the &lt;em&gt;slow path&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;fast path&lt;/em&gt; happens in one round - the clients issue parallel read requests, and the returned data doesn’t reflect the partial result of an in-progress transaction.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/ramp-tao/fast.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;In contrast, RAMP-TAO follows the &lt;em&gt;slow path&lt;/em&gt; when data is returned to the client that reflects an in-progress write transaction. In this situation, TAO reissues read requests to resolve the &lt;em&gt;atomic visibility violation&lt;/em&gt;. One way that violations are resolved on the slow path is by reissuing a request to fetch an older version of data - TAO applications are tolerant to serving stale, but correct, data.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/ramp-tao/slow.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;performance&quot;&gt;Performance&lt;/h2&gt;
+
+&lt;p&gt;To evaluate the prototype system’s performance, the authors evaluate the performance of the protocol:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Our prototype serves over 99.93% of read transactions in one round of communication. Even when a subsequent round is necessary, the performance impact is small and bounded to under 114ms in the 99𝑡ℎ percentile (Figure 12). Our tail latency is within the range of TAO’s P99 read latency of 105ms for a similar workload. We note that these are the worst-case results for RAMP-TAO because the prototype currently requires multiple round trips to the database for transaction metadata. Once the changes to the RefillLibrary are in place, the large majority of the read transactions can be directly served with data in this buffer and will take no longer than a typical TAO read.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;While RAMP-TAO is still in development (and will require further changes to both applications and Facebook infrastructure), it is exciting to see the adaptation of existing systems to different constraints - unlike systems built from scratch, RAMP-TAO also needed to balance unique technical considerations like permitting gradual adoption. I enjoyed the RAMP-TAO paper as it not only solves a difficult technical problem, but also clearly outlines the thinking and tradeoffs behind the design.&lt;/p&gt;
+
+&lt;p&gt;As always, feel free to reach out with feedback on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt;!&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">The papers over the next few weeks will be from SOSP, which is taking place October 26-29th, 2021. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">TAO: Facebook’s Distributed Data Store for the Social Graph</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html" rel="alternate" type="text/html" title="TAO: Facebook’s Distributed Data Store for the Social Graph" />
+      <published>2021-10-13T00:00:00+00:00</published>
+      <updated>2021-10-13T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html">&lt;p&gt;&lt;em&gt;The papers over the next few weeks will be from (or related to) research from &lt;a href=&quot;https://vldb.org/2021/?info-research-papers&quot;&gt;VLDB 2021&lt;/a&gt; - on the horizon is one of my favorite systems conferences &lt;a href=&quot;https://sosp2021.mpi-sws.org/&quot;&gt;SOSP&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.usenix.org/system/files/conference/atc13/atc13-bronson.pdf&quot;&gt;TAO: Facebook’s Distributed Data Store for the Social Graph&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This is the first in a two part series on TAO, Facebook’s read-optimized, eventually-consistent graph database. Unlike other graph databases, TAO focuses exclusively on serving and caching a constrained set of application requests at scale (in contrast to systems focused on data analysis). Furthermore, the system builds on expertise scaling MySQL and memcache as discussed in a &lt;a href=&quot;https://www.micahlerner.com/2021/05/31/scaling-memcache-at-facebook.html&quot;&gt;previous paper review&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;The first paper in the series focuses on the original TAO paper, describing the motivation for building the system, it’s architecture, and engineering lessons learned along the way. The second part focuses on TAO-related research published at this year’s VLDB - &lt;a href=&quot;https://www.vldb.org/pvldb/vol14/p3014-cheng.pdf&quot;&gt;RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store&lt;/a&gt;. This new paper describes the design and implementation of transactions on top of the existing large scale distributed system - a task made more difficult by the requirement that applications should gradually migrate to the new functionality and that the work to support transactions should have limited impact on the performance of existing applications.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The original TAO paper makes three contributions - characterizing and motivating a graph database implementation suited for Facebook’s read-heavy traffic, providing a data model and developer API for the aforementioned database, and describing the architecture that allowed the database to scale.&lt;/p&gt;
+
+&lt;h2 id=&quot;motivation&quot;&gt;Motivation&lt;/h2&gt;
+
+&lt;p&gt;The paper begins with a section describing the motivation for TAO’s initial development. When Facebook was originally developed, MySQL was used as the datastore for the graph. As the site scaled, a memcache layer was added in front of the MySQL databases, to lighten the load.&lt;/p&gt;
+
+&lt;p&gt;While inserting memcache into the stack worked for some period of time, the paper cites three main problems with the implementation: &lt;em&gt;inefficient edge lists&lt;/em&gt;, &lt;em&gt;distributed control logic&lt;/em&gt;, and &lt;em&gt;expensive read-after-write consistency&lt;/em&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;inefficient-edge-lists&quot;&gt;Inefficient edge lists&lt;/h3&gt;
+
+&lt;p&gt;Application developers within Facebook used &lt;em&gt;edge-lists&lt;/em&gt; to represent aggregations of the information in the graph - for example, a list of the friendships a user has (each friendship is an edge in the graph, and the users are the nodes). Unfortunately, maintaining these lists in memcache was inefficient - memcache is a simple key value store without support for lists, meaning that common list-related functionality  is inefficient. If a list needs to be updated (say for example, a friendship is deleted), the logic to update the list would be complicated - in particular, the part of the logic related to coordinating the update of the list across several copies of the same data in multiple data centers.&lt;/p&gt;
+
+&lt;h3 id=&quot;distributed-control-logic&quot;&gt;Distributed Control Logic&lt;/h3&gt;
+
+&lt;p&gt;Control logic (in the context of Facebook’s graph store architecture) means the ability to manipulate how the system is accessed. Before TAO was implemented, the graph data store had &lt;em&gt;distributed control logic&lt;/em&gt; - clients communciated directly with the memcache nodes, and there is not a single point of control to gate client access to the system. This property makes it difficult to guard against misbehaving clients and &lt;a href=&quot;https://instagram-engineering.com/thundering-herds-promises-82191c8af57d&quot;&gt;thundering herds&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;expensive-read-after-write-consistency&quot;&gt;Expensive read-after-write consistency&lt;/h3&gt;
+
+&lt;p&gt;&lt;em&gt;Read-after-write consistency&lt;/em&gt; means that if a client writes data, then performs a read of the data, the client should see the result of the write that it performed. If a system doesn’t have this property, users might be confused - “why did the like button they just pressed not register when they reloaded the page?”.&lt;/p&gt;
+
+&lt;p&gt;Ensuring read-after-write consistency was expensive and difficult for Facebook’s memcache-based system, which used MySQL databases with master/slave replication to propagate database writes between datacenters. While Facebook developed internal technology to stream changes between databases, existing systems that used the MySQL and memcache combo relied on complicated cache-invalidation logic that incurred networking overhead. The goal of this new system is to avoid this overhead (with an approach described later in the paper).&lt;/p&gt;
+
+&lt;h2 id=&quot;data-model-and-api&quot;&gt;Data model and API&lt;/h2&gt;
+
+&lt;p&gt;TAO is an eventually consistent read-optimized data store for the Facebook graph.&lt;/p&gt;
+
+&lt;p&gt;It stores two entities - &lt;em&gt;objects&lt;/em&gt; and &lt;em&gt;associations&lt;/em&gt; (the relationships between objects). Now we get to learn why the graph datastore is called TAO - the name is an abbreviation that stands for “The Associations and Objects”.&lt;/p&gt;
+
+&lt;p&gt;As an example of how &lt;em&gt;objects&lt;/em&gt; and &lt;em&gt;associations&lt;/em&gt; are used to model data, consider two common social network functions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Friendships between users&lt;/em&gt;: users in the database are stored as &lt;em&gt;objects&lt;/em&gt;, and the relationship between users are &lt;em&gt;associations&lt;/em&gt;.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Check-ins&lt;/em&gt;: the user and the location they check in to are &lt;em&gt;objects&lt;/em&gt;. An &lt;em&gt;association&lt;/em&gt; exists between them to represent that the given user has checked into a given location.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Objects and associations have different database representations:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Each &lt;em&gt;object&lt;/em&gt; in the database has an id and type.&lt;/li&gt;
+  &lt;li&gt;Each &lt;em&gt;association&lt;/em&gt; contains the ids of the objects connected by the given edge, as well as the type of the association (check-in, friendship, etc). Additionally, each association has a timestamp that is used for querying (described later in the paper review).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Key-value metadata can be associated with both objects and associations, although the possible keys, and value type are constrained by the type of the object or association.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/tao-pt1/objects.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;To provide access to this data, TAO provides three main APIs: the &lt;em&gt;Object API&lt;/em&gt;, the &lt;em&gt;Association API&lt;/em&gt;, and the &lt;em&gt;Association Querying API&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Two of the three (the &lt;em&gt;Object API&lt;/em&gt; and &lt;em&gt;Association API&lt;/em&gt;) provide create, read, update, and delete operations for individual objects.&lt;/p&gt;
+
+&lt;p&gt;In contrast, the &lt;em&gt;Association Querying API&lt;/em&gt; provides an interface for performing common queries on the graph. The query methods allow application developers to fetch associations for a given object and type (potentially constraining by time range or the set of objects that the the association points), calculating the count of associations for an object, and providing pagination-like functionality. The paper provides example query patterns like fetching the “50 most recent comments on Alice’s checkin”  or “how many checkins at the GG Bridge?”. Queries in this API return multiple associations, and call this type of result an &lt;em&gt;association list&lt;/em&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;architecture&quot;&gt;Architecture&lt;/h2&gt;
+
+&lt;p&gt;The architecture of TAO contains two layers, the &lt;em&gt;storage layer&lt;/em&gt; and the &lt;em&gt;caching layer&lt;/em&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;storage-layer&quot;&gt;Storage Layer&lt;/h3&gt;
+
+&lt;p&gt;The &lt;em&gt;storage layer&lt;/em&gt; (as the name suggests) persists graph data in MySQL. There are two key technical points to the storage layer: &lt;em&gt;shards&lt;/em&gt; and the &lt;em&gt;tables&lt;/em&gt; used to store the graph data itself.&lt;/p&gt;
+
+&lt;p&gt;The graph data is divided into &lt;em&gt;shards&lt;/em&gt; (represented as a MySQL database), and shards are mapped to one of many database servers. Objects and associations for each shard are stored in separate tables.&lt;/p&gt;
+
+&lt;h3 id=&quot;cache-layer&quot;&gt;Cache Layer&lt;/h3&gt;
+
+&lt;p&gt;The cache layer is optimized for read requests and stores query results in memory. There are three key ideas in the cache layer: &lt;em&gt;cache servers&lt;/em&gt;, &lt;em&gt;cache tiers&lt;/em&gt;, and &lt;em&gt;leader/follower tiers&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Clients communicate read and write requests to &lt;em&gt;cache servers&lt;/em&gt;. Each &lt;em&gt;cache server&lt;/em&gt; services requests for a set of shards in the &lt;em&gt;storage layer&lt;/em&gt;, and caches objects, associatons, and the size of association lists (via the query patterns mentioned in the API section above).&lt;/p&gt;
+
+&lt;p&gt;A &lt;em&gt;cache tier&lt;/em&gt; is a collection of &lt;em&gt;cache servers&lt;/em&gt; that can respond to requests for all shards - the number of cache servers in each tier is configurable, as is the mapping from request to cache server.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Cache tiers&lt;/em&gt; can be set up as &lt;em&gt;leaders&lt;/em&gt; or &lt;em&gt;followers&lt;/em&gt;. Whether a cache tier is a &lt;em&gt;leader&lt;/em&gt; or a &lt;em&gt;follower&lt;/em&gt; impacts its behavior:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Follower tiers&lt;/em&gt; can serve read requests without communicating with the leader (although they forward read misses and write requests to the corresponding cache servers in the leader tier).&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Leader tiers&lt;/em&gt; communicate with the storage layer (by reading and writing to/from the database), as well as with &lt;em&gt;follower&lt;/em&gt; cache tiers. In the background, the &lt;em&gt;leader tier&lt;/em&gt; sends cache update messages to &lt;em&gt;follower tiers&lt;/em&gt; (resulting in the eventual consistency mentioned earlier on in this paper review).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;scaling&quot;&gt;Scaling&lt;/h2&gt;
+
+&lt;p&gt;To operate at large scale, TAO needed to extend beyond a single region. The system accomplishes this goal by using a master/slave configuration for each shard of the database.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/tao-pt1/ms.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;In the master/slave configuration, each shard has a single &lt;em&gt;leader&lt;/em&gt; cache tier and many &lt;em&gt;follower&lt;/em&gt; cache tiers. The data in the storage layer for each shard is replicated from the master region to slave regions asynchronously.&lt;/p&gt;
+
+&lt;p&gt;A primary difference between the single region configuration described above and the multi-region configuration is the behavior of the &lt;em&gt;leader tier&lt;/em&gt; when it receives writes. In a single-region configuration, the leader tier always forwards writes to the &lt;em&gt;storage layer&lt;/em&gt;. In contrast, the leader tier in a multi-region TAO configuration writes to the &lt;em&gt;storage layer&lt;/em&gt; only if the &lt;em&gt;leader tier&lt;/em&gt; is in the &lt;em&gt;master region&lt;/em&gt;. If the &lt;em&gt;leader tier&lt;/em&gt; is not in the &lt;em&gt;master region&lt;/em&gt; (meaning it is in a slave region!), then the &lt;em&gt;leader tier&lt;/em&gt; needs to forward the write to the &lt;em&gt;master region&lt;/em&gt;. Once the &lt;em&gt;master region&lt;/em&gt; acknowledges the write, the slave region updates its local cache with the result of the write.&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;TAO is a graph database operating at immense scale. The system was built on the emerging needs of Facebook, and had limited support for transactions. The next paper in the series discusses how transactions were added to the system, while maintaining performance for existing applications and providing an opt-in upgrade path for new applications.&lt;/p&gt;
+
+&lt;p&gt;As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with any feedback or paper suggestions. Until next time&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">The papers over the next few weeks will be from (or related to) research from VLDB 2021 - on the horizon is one of my favorite systems conferences SOSP. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">Scaling Large Production Clusters with Partitioned Synchronization</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/10/10/scaling-large-production-clusters-with-partitioned-synchronization.html" rel="alternate" type="text/html" title="Scaling Large Production Clusters with Partitioned Synchronization" />
+      <published>2021-10-10T00:00:00+00:00</published>
+      <updated>2021-10-10T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/10/10/scaling-large-production-clusters-with-partitioned-synchronization</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/10/10/scaling-large-production-clusters-with-partitioned-synchronization.html">&lt;p&gt;&lt;em&gt;This is one of the last papers we will be reading from &lt;a href=&quot;https://www.usenix.org/conference/atc21&quot;&gt;Usenix ATC&lt;/a&gt; and &lt;a href=&quot;https://www.usenix.org/conference/osdi21&quot;&gt;OSDI&lt;/a&gt;. There are several great conferences coming up over the next few months that I’m excited to read through together. Next week we will be moving on to VLDB (Very Large Data Bases), and SOSP (Symposium on Operating Systems Principles) is coming up later this month. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p class=&quot;discussion&quot;&gt;Discussion on &lt;a href=&quot;https://news.ycombinator.com/item?id=28440542&quot;&gt; Hacker News&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.usenix.org/system/files/atc21-feng-yihui.pdf&quot;&gt;Scaling Large Production Clusters with Partitioned Synchronization&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This week’s paper review won a best paper award at Usenix ATC, and discusses Alibaba’s approach to scaling their production environment. In particular, the paper focuses on the evolution of the scheduling architecture used in Alibaba datacenters in response to growth in workloads and resources. Beyond discussing Alibaba’s specific challenges and solutions, the paper also touches on the landscape of existing scheduler architectures (like Mesos, YARN, and Omega).&lt;/p&gt;
+
+&lt;h2 id=&quot;scheduler-architectures&quot;&gt;Scheduler architectures&lt;/h2&gt;
+
+&lt;p&gt;The paper first aims to decide whether any existing scheduling architectures meet the neeeds of Alibaba’s production environment - any solution to the scaling problem’s encountered by Alibaba’s system needed to not only scale, but also simultaneously provide backward compatibility for existing users of the cluster (who have invested significant engineering effort to ensure their workloads are compatible with existing infrastructure).&lt;/p&gt;
+
+&lt;p&gt;To evaluate future scheduler implementations, the authors considered several requirements:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Low scheduling delay&lt;/em&gt;: the selected scheduler should be capable of making decisions quickly.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;High scheduling quality&lt;/em&gt;: if a task specifies preferences for resources, like running on “machines where its data are stored” or “machines with larger memory or faster CPUs”, those preferences should be fulfilled as much as possible.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Fairness&lt;/em&gt;: tasks should be allocated resources according to their needs (without being allowed to hog them)&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Resource utilization&lt;/em&gt;: the scheduler should aim to use as much of the cluster’s resources as possible.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;These requirements are then applied to four existing scheduler architectures:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Monolithic&lt;/em&gt;: an architecture with a single instance that lacks parallelism, common in HPC settings or lower-scale cloud environments.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Statically partitioned&lt;/em&gt;: generally used for fixed-size clusters that run dedicated jobs or workloads (like Hadoop).&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Two-level&lt;/em&gt;: a scheduling strategy where a central cordinator assigns resources to sub-schedulers. This is implemented by &lt;a href=&quot;https://people.eecs.berkeley.edu/~alig/papers/mesos.pdf&quot;&gt;Mesos&lt;/a&gt;, which uses “frameworks” to schedule tasks on resources offered by the central scheduler. &lt;a href=&quot;http://mesos.apache.org/documentation/latest/frameworks/&quot;&gt;Examples of frameworks&lt;/a&gt; are batch schedulers, big data processing systems (like Spark), and service schedulers. A Mesos-like implementation is labeled “pessimistic concurrency control” because it aims to ensure that there will few (or no) conflicts between schedulers.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Shared-state&lt;/em&gt;: one or more schedulers read shared cluster metadata about resources, then use that metadata to make scheduling decisions.  To schedule tasks, the independent schedulers try to modify the shared state. Because multiple schedulers are reading from and attempting to write to the same state, modifications may conflict. In the event of a conflict, one scheduler succeeds and others fail (then re-evaluate their scheduling decisions). &lt;a href=&quot;https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41684.pdf&quot;&gt;Omega&lt;/a&gt; is a shared-state scheduler cited by the authors. An Omega-like implementation utilizes “optimistic concurrency control” because the design assumes that there will be few conflicts between schedulers (and only performs additional work to resolve conflicts when they actually happen).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/parsync/schedulerarch.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;Scheduler architecture diagram sourced from the &lt;a href=&quot;https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41684.pdf&quot;&gt;Omega paper&lt;/a&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The authors decide, after applying their requirements to existing scheduler architectures, to extend the design of &lt;em&gt;Omega&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;After making this decision, the paper notes that a potential issue with an &lt;em&gt;Omega&lt;/em&gt;-based architecture at scale is &lt;em&gt;contention&lt;/em&gt;. &lt;em&gt;Contention&lt;/em&gt; occurs when multiple schedulers attempt to schedule tasks with the same resources - in this situation, one of the scheduling decisions succeeds, and all others could be rejected (meaning that the schedulers who issued the now-failed requests need to re-calculate scheduling decisions.&lt;/p&gt;
+
+&lt;p&gt;The authors spend the majority of the paper evaluating how contention can be reduced, as it could pose a limit to the scalability of the future scheduler. In the process, the paper performs multiple simulations to evaluate the impact of adjusting critical scheduling-related variables.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The paper makes three contributions. After outlining existing scheduler architectures, it evaluates (using simulation techniques) how the selected approach would handle possible contention if adopted in Alibaba’s production environment. Using these results, the paper suggests an extension to the shared-state scheduling architecture. Lastly, the paper characterizes the performance of this solution, and provides a framework for simulating its performance under a variety of loads.&lt;/p&gt;
+
+&lt;h2 id=&quot;modeling-scheduling-conflicts&quot;&gt;Modeling scheduling conflicts&lt;/h2&gt;
+
+&lt;p&gt;As mentioned above, more tasks competing for the same set of resources means &lt;em&gt;contention&lt;/em&gt; - jobs will try to schedule tasks to the same slots (“slots” in this context correspond to resources). Given the optimistic concurrency control approach taken in an &lt;em&gt;Omega&lt;/em&gt;-influenced shared-state scheduler, the paper argues that there will be latency introduced by scheduling conflicts.&lt;/p&gt;
+
+&lt;p&gt;To evaluate potential factors that impact in a cluster under high load, the paper considers the effect of additional schedulers. Adding extra schedulers (while keeping load constant) spreads the load over more instances. Lower per-scheduler loads corresponds to lower delay in the event of contention, although there are diminishing returns to flooding the cluster with schedulers.&lt;/p&gt;
+
+&lt;p&gt;For each number of schedulers, the simulation varies:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Task Submission Rate&lt;/em&gt;: the number of decisions the cluster needs to make per unit time.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Synchronization Gap&lt;/em&gt;: how long a scheduler has in between refreshing its state of the cluster.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Variance of slot scores&lt;/em&gt;: the number of “high-quality” slots available in the system. This is a proxy for the fact that certain resource types in the cluster are generally more preferred in the cluster, leading to hotspots.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;The number of partitions of the master state&lt;/em&gt;: how many subdivisions of the master state there are (each part of the cluster’s resources would be assigned to a partition).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To evaluate the performance of different configurations, the experiment records the number of extra slots required to maintain a given scheduling delay. The count of additional slots is a proxy for actual performance. For example, if the task submission rate increases, one would expect that the number of extra slots required to maintain low scheduling delay would also increase. On the other hand, changing experimental variables (like the number of partitions of the master state) may not require more slots or schedulers.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/parsync/sim.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The experimental results indicate that flexibility in the system lies in the quality of the scheduling (&lt;em&gt;Variance of slot scores&lt;/em&gt;) and in the staleness of the local states (&lt;em&gt;Synchronization Gap&lt;/em&gt;).&lt;/p&gt;
+
+&lt;p&gt;In other words, scheduling can scale by:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Relaxing constraints on scheduling decisions&lt;/em&gt;, possibly scheduling tasks to resources that are slower or don’t exactly fit the job’s needs).&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Communicating more with nodes&lt;/em&gt; in order to get updated state about their resources: A scheduler that updates its state more frequently would have a more up-to-date view of the cluster (meaning that it would make fewer scheduling decisions that collide with recent operations by the other schedulers in the cluster). State syncing from cluster nodes to a centralized store is costly and grows with the number of nodes.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;partitioned-synchronization&quot;&gt;Partitioned Synchronization&lt;/h2&gt;
+
+&lt;p&gt;Up to date scheduler state leads to lower contention, but syncing the required state from nodes to achieve this goal is costly (both in networking traffic and space). To address this cost, the authors suggest an approach called &lt;em&gt;partitioned synchronization&lt;/em&gt; (a.k.a &lt;em&gt;ParSync&lt;/em&gt;) with the goal, “to reduce the staleness of the local states and to find a good balance between resource quality (i.e., slot score) and scheduling efficiency”. &lt;em&gt;ParSync&lt;/em&gt; works by syncing partitions of a cluster’s state to one of the many schedulers in a cluster. Then, the scheduling algorithm weights the recency (or &lt;em&gt;staleness&lt;/em&gt;) of a partition’s state in scheduling decisions.&lt;/p&gt;
+
+&lt;p&gt;The authors argue that short-lived low latency tasks, as well as long-running batch jobs benefit from &lt;em&gt;ParSync&lt;/em&gt;. For example, if a task is short lived, it should be quickly scheduled - a non-ideal scheduler would take more time making decisions than the task takes to actually run. In this situation, &lt;em&gt;ParSync&lt;/em&gt;-based scheduling can assign the task to a recently updated partition, with high likelihood that the scheduling decision will succeed - other schedulers will not update the partition’s state at the same time, instead preferring their own recently updated partitions. On the other side of the spectrum, a long running job might prefer certain resources, trading off more time spent making a scheduling decision for running with preferred resources.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;ParSync&lt;/em&gt; is coupled with three scheduling strategies:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Quality-first&lt;/em&gt;: optimize for use of preferred resources.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Latency-first&lt;/em&gt;: optimize for faster scheduling decisions (even if they are non-optimal).&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Adaptive&lt;/em&gt;: use the Quality-first or Latency-first strategy depending on whether scheduling delay is high or not. If there is low scheduling delay, the scheduler will prefer quality-first. If there is high scheduling delay, the scheduler prefers latency-first.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The next section discusses the performance of the three different strategies.&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluation&quot;&gt;Evaluation&lt;/h2&gt;
+
+&lt;p&gt;The paper results indicate that both quality-first and latency-first scheduling strategies don’t adapt to conditions they are not optimized for. Quality-first scheduling experiences latency at high load (when the scheduler should make decisions quickly), while latency-first scheduling generally makes worse scheduling decisions under low load (when the scheduler could take more time and choose ideal resources). In contrast, the adaptive strategy is able to switch between the aforementioned strategies, while achieving high resource utilization.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/parsync/eval.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;This paper discusses a number of interesting scheduler architectures, as well as touching on the body of work covering scheduler internals (which I would love to read in the future). While the content of this paper leans heavily on simulation, there is a discussion of performance evaluation using internal Alibaba tools - I’m hopeful that we will be able to learn more about the real world performance of the team’s scheduler in future research (as we often see with industry papers).&lt;/p&gt;
+
+&lt;p&gt;As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with any feedback or paper suggestions. Until next time!&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">This is one of the last papers we will be reading from Usenix ATC and OSDI. There are several great conferences coming up over the next few months that I’m excited to read through together. Next week we will be moving on to VLDB (Very Large Data Bases), and SOSP (Symposium on Operating Systems Principles) is coming up later this month. As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
+      
+
+      <title type="html">A Linux Kernel Implementation of the Homa Transport Protocol, Part II</title>
+      <link href="http://www.micahlerner.com/pages/mlerner/2021/08/29/a-linux-kernel-implementation-of-the-homa-transport-protocol.html" rel="alternate" type="text/html" title="A Linux Kernel Implementation of the Homa Transport Protocol, Part II" />
+      <published>2021-08-29T00:00:00+00:00</published>
+      <updated>2021-08-29T00:00:00+00:00</updated>
+      <id>http://www.micahlerner.com/pages/mlerner/2021/08/29/a-linux-kernel-implementation-of-the-homa-transport-protocol</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/pages/mlerner/2021/08/29/a-linux-kernel-implementation-of-the-homa-transport-protocol.html">&lt;p&gt;&lt;em&gt;Programming note: I will be taking a several week break from writing paper reviews for the summer. When we come back, I will be finishing off the papers from &lt;a href=&quot;https://www.usenix.org/conference/atc21&quot;&gt;Usenix ATC&lt;/a&gt; and &lt;a href=&quot;https://www.usenix.org/conference/osdi21&quot;&gt;OSDI&lt;/a&gt;, then moving on to the great upcoming conferences (my non-exhaustive list is &lt;a href=&quot;https://www.micahlerner.com/2021/08/14/systems-conferences-2021.html&quot;&gt;here&lt;/a&gt;). As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions about papers to read! These paper reviews can &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;be delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the new &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.usenix.org/system/files/atc21-ousterhout.pdf&quot;&gt;A Linux Kernel Implementation of the Homa Transport Protocol&lt;/a&gt;&lt;/p&gt;
+
+&lt;p class=&quot;discussion&quot;&gt;Discussion on &lt;a href=&quot;https://news.ycombinator.com/item?id=28440542&quot;&gt; Hacker News&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This week’s paper review is Part II in a series on the Homa Transport Protocol - part I is available &lt;a href=&quot;/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html&quot;&gt;here&lt;/a&gt;. As a refresher, Homa is a transport protocol with the goal of replacing TCP in the data center. The first part of the series focuses on describing the goals of Homa, while this paper review discusses an &lt;a href=&quot;https://github.com/PlatformLab/HomaModule&quot;&gt;open source implementation&lt;/a&gt; of the protocol as a Linux Kernel module.&lt;/p&gt;
+
+&lt;p&gt;The author (John Ousterhout, one of the inventors of the &lt;a href=&quot;https://raft.github.io/&quot;&gt;Raft&lt;/a&gt; consensus algorithm) has three goals in mind with implementing Homa as a Linux Kernel Module:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Understand how Homa performs in a more production-like environment, represented by the Linux kernel.&lt;/li&gt;
+  &lt;li&gt;Perform apples to apples comparisons of Homa to implementations of competing protocols (TCP and DCTCP).&lt;/li&gt;
+  &lt;li&gt;Build an implementation of Homa that could be used and extended by real users&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;In accomplishing the three goals above, the paper makes two contributions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Showing that Homa beats TCP and DCTCP, replicating the results of the paper presented in &lt;a href=&quot;/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html&quot;&gt;Part I&lt;/a&gt;.&lt;/li&gt;
+  &lt;li&gt;An analysis of Homa’s limits. This study indicates potential future directions for research tackling the tension between faster network speeds and using more cores to handle increased bandwidth.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;homa-api&quot;&gt;Homa API&lt;/h2&gt;
+
+&lt;p&gt;Homa aims to deliver a connectionless transport protocol for RPCs in the data center. The protocol’s approach contrasts with TCP on two dimensions.&lt;/p&gt;
+
+&lt;p&gt;Homa is:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;RPC-oriented, rather than stream-oriented&lt;/em&gt;: TCP’s stream-based approach (which relies on FIFO delivery of messages) can experience high tail latency. The cause of this latency is head of line blocking, where delay in a message at the front (or “head”) of a stream delays the rest of the stream. Homa limits head of line blocking because the protocol does not enforce FIFO ordering of messages.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Connectionless, rather than connection-oriented&lt;/em&gt;: TCP’s connection-oriented approach is not well suited for datacenters because “applications can have hundreds or thousands of them, resulting in high space and time overheads”.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To make the protocol available to developers, the implementation defines an API focused on sending and receiving RPC messages. The primary methods in the API are &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;homa_send&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;homa_recv&lt;/code&gt;, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;homa_reply&lt;/code&gt;. These calls operate on sockets that can be reused for many different RPC requests (notably different from TCP). The methods return or accept a 64 bit identifier for a corresponding RPC. Furthermore, an RPC-based approach facilitates abstracting away logic responsible for Homa’s reliability, like the internals of retries.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/homa2/api.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;challenges-in-implementing&quot;&gt;Challenges in implementing&lt;/h2&gt;
+
+&lt;p&gt;The paper outlines three main challenges to implementing Homa as a Linux Kernel module:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Moving packets through the protocol stack is costly.&lt;/li&gt;
+  &lt;li&gt;Multiple cores are needed to process incoming packets, yet Linux load balancing of this work is non-optimal.&lt;/li&gt;
+  &lt;li&gt;Packets need to be assigned priorities and transmitted in real-time. Accomplishing this task with a single core is difficult, using multiple cores to solve the problem even more so.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Sending packets is costly, as doing so involves copies and interaction with other Linux features. One approach to this overhead is userspace networking. Another approach mentioned in the paper is batching packets together to amoritize cost - unfortunately, this approach does not work well for Homa because batching packets can introduce latency (a main concern of the protocol).&lt;/p&gt;
+
+&lt;p&gt;Multiple cores are needed to process packets because networks are improving faster than CPUs are. A challenge to using multiple cores is Linux scheduling, which creates “software congestion” when “too much work is assigned to one core”.&lt;/p&gt;
+
+&lt;p&gt;Lastly, Homa strives to assign priorities to packets, while minimizing the size of the network interface card’s (NIC) transmit queue - more items in this queue means a potentially longer wait time, and more tail latency.&lt;/p&gt;
+
+&lt;h2 id=&quot;implementation&quot;&gt;Implementation&lt;/h2&gt;
+
+&lt;p&gt;As discussed above, there are three primary challenges to implementing Homa as a Linux Kernel module. These challenges impact the sending and receiving path for packets - the visualization below describes these two paths and the components involved in implementing them. Fair warning that the implementation is heavy on Linux internals, and I try to link to documentation for further deep dives where possible!&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/homa2/arch.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;moving-packets&quot;&gt;Moving packets&lt;/h3&gt;
+
+&lt;p&gt;The first challenge in implementing Homa is the cost of moving packets through the networking stack. To solve this problem, the implementation uses batching on the send and receive paths, rather than pushing packets through the stack one by one.&lt;/p&gt;
+
+&lt;p&gt;On the sending path, Homa/Linux uses TCP Segmentation Offload (TSO). A TSO-based strategy offloads work to the NIC - the kernel passes large packets to the NIC, which then performs the work of breaking down the packet into smaller segments.&lt;/p&gt;
+
+&lt;p&gt;The implementation of batching on the receive path is somewhat more complicated. When the NIC receives packets, it issues an interrupt. In response to the interrupt, the networking driver schedules a &lt;em&gt;NAPI&lt;/em&gt; action that polls the NIC for packets until it reaches a configured limit. Once the driver reaches this limit, it communicates batches to the &lt;em&gt;SoftIRQ&lt;/em&gt; layer of the Linux kernel. &lt;em&gt;SoftIRQ&lt;/em&gt; “is meant to handle processing that is almost — but not quite — as important as the handling of hardware interrupts”. Homa builds up messages from the incoming batches, and signals waiting application threads once a message is complete - these applications are then able to make use of the response to the Homa calls mentioned in the API section above.&lt;/p&gt;
+
+&lt;h3 id=&quot;load-balancing&quot;&gt;Load balancing&lt;/h3&gt;
+
+&lt;p&gt;Homa is intended for high speed networks under load. In this environment, a single core is not capable of processing incoming packets - to use multiple cores, Homa must load balance work.&lt;/p&gt;
+
+&lt;p&gt;Load balancing is implemented in the kernel with two load balancers:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Receive Side Scaling (RSS), which performs load balancing inside the NIC to distribute processing across CPUs. The Linux Networking documentation provides &lt;a href=&quot;https://www.kernel.org/doc/Documentation/networking/scaling.txt&quot;&gt;helpful documentation&lt;/a&gt; on RSS.&lt;/li&gt;
+  &lt;li&gt;NAPI (mentioned previously), which performs load balancing at the SoftIRQ layer (once batches of packets are created, those batches need to communicated to waiting application threads)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The paper also mentions that the balancing implementation hurts performance at low load, as “at low load it is best to concentrate all processing on a single core”.  While ideally Homa could implement an adaptive load balancing scheme, the paper mentions that “there does not appear to be a way to do this in Linux.” This remark ties into a theme throughout the paper - that the Linux kernel’s focus on TCP (in particular, design impacted by this focus) introduces overhead.&lt;/p&gt;
+
+&lt;h3 id=&quot;real-time-processing&quot;&gt;Real-time processing&lt;/h3&gt;
+
+&lt;p&gt;Homa aims to assign packet priorities and limit the amount of time packets spend in the NIC’s transmit queue - more time in the transmit queue means more delay/potential tail latency. Because the NICs used do not make the size of their transmit queues available, Homa needs to estimate their size. The implementation does so using an estimate of the size of the packets and the link speed. This estimate is updated by a &lt;em&gt;pacer&lt;/em&gt; thread (visible in the architecture diagram above). Unfortunately, there are complications to running the &lt;em&gt;pacer&lt;/em&gt; thread: the pacer can not keep up at high bandwidth, and the operating system scheduler potentially interferes by descheduling the thread’s execution. The paper outlines three workarounds that assist the pacer thread, ensuring it doesn’t fall behind:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Small packets don’t interact with the pacer (meaning less work)&lt;/li&gt;
+  &lt;li&gt;Other cores pitch in if the main pacer thread falls behind&lt;/li&gt;
+  &lt;li&gt;Other parts of the Homa implementation will queue packets if the thread falls behind&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;evaluation&quot;&gt;Evaluation&lt;/h2&gt;
+
+&lt;p&gt;A primary goal of the paper was to evaluate Homa in a production-like environment, reproducing the results of the original Homa paper (covered in &lt;a href=&quot;/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html&quot;&gt;Part I&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;To accomplish this goal, the paper tests the Linux implementation of Homa with four workloads from the original paper. The workloads cover a wide arrange of message sizes (including both small and large RPCs). Furthermore, the paper focuses on cases where there are many clients - Homa is not well suited for situations where there are few RPC clients (arguing that this situation does not arise in data center like environments). The same workloads are executed with TCP and DCTCP (a TCP-like protocol adapted for the datacenter), and compared to Homa’s results.&lt;/p&gt;
+
+&lt;p&gt;The key metric used in this set of performance evaluations is &lt;em&gt;slowdown&lt;/em&gt;. &lt;em&gt;Slowdown&lt;/em&gt; is calculated by comparing the round trip time (RTT) of an RPC to the RTT observed using Homa under ideal conditions (Homa is designed to perform well for small messages on a network under high load). Smaller values of slowdown are better than larger values - larger values for slowdown mean that the result is significantly worse than one would expect from Homa under ideal conditions.&lt;/p&gt;
+
+&lt;p&gt;The graphs below show Homa’s significantly lower slowdown relative to TCP and DCTCP for a variety of message sizes.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/pages/mlerner/assets/homa2/workloads.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper also includes a number of microbenchmarks focused on validating other aspects of the implementation, like how well Homa performs with different numbers of prioritiy levels, or how well the implementation performs under reduced load.&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;The conclusion of the Homa paper asserts that while the implementation “eliminates congestion as a significant performance factor”, remaining software-based overheads pose a future area of improvement. These overheads come from conflicts between Homa and Linux implementation details (like scheduling and load balancing that optimize for TCP).&lt;/p&gt;
+
+&lt;p&gt;The paper discusses two potential solutions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Moving transport protocols to user space&lt;/li&gt;
+  &lt;li&gt;Moving transport protocols to the NIC&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;I thoroughly enjoyed diving into Homa - stay tuned for when we resume in the next few weeks. When we will cover papers from OSDI, ATC, and the upcoming set of conferences. Until then!&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">Programming note: I will be taking a several week break from writing paper reviews for the summer. When we come back, I will be finishing off the papers from Usenix ATC and OSDI, then moving on to the great upcoming conferences (my non-exhaustive list is here). As always, feel free to reach out on Twitter with feedback or suggestions about papers to read! These paper reviews can be delivered weekly to your inbox, or you can subscribe to the new Atom feed.</summary>
+      
+
+      
+      
+    </entry>
+  
+</feed>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Homa: A Receiver-Driven Low-Latency Transport Protocol Using Network Priorities, Part I</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Homa: A Receiver-Driven Low-Latency Transport Protocol Using Network Priorities, Part I</h1>
+  
+  <h4>Published August 15, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-08-15-a-linux-kernel-implementation-of-the-homa-transport-protocol.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><em>Over the next few weeks I will be reading papers from <a href="https://www.usenix.org/conference/atc21">Usenix ATC</a> and <a href="https://www.usenix.org/conference/osdi21">OSDI</a> - as always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These weekly paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the new <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="https://people.csail.mit.edu/alizadeh/papers/homa-sigcomm18.pdf">Homa: A Receiver-Driven Low-Latency Transport Protocol Using Network Priorities</a>, Montazeri et al., SIGCOMM 2018</p>
+
+<p class="discussion">Discussion on <a href="https://news.ycombinator.com/item?id=28204808"> Hacker News</a></p>
+
+<p>This week’s paper review is part one of a two-part series on the same research topic - <em>Homa</em>, a transport protocol purpose-built to replace TCP for low-latency RPC inside the modern data center<label for="kurose" class="margin-toggle sidenote-number"></label><input type="checkbox" id="kurose" class="margin-toggle" /><span class="sidenote">If you are interested in learning more about networking, I can’t recommend the Kurose &amp; Ross book enough. Although it isn’t free, there <em>is</em> a large amount of course content (like videos), on <a href="https://gaia.cs.umass.edu/kurose_ross/online_lectures.htm">their site</a>. </span>.</p>
+
+<p>Specifically, <em>Homa</em> aims to replace TCP, which was designed in the era before modern data center environments existed. Consequently, TCP doesn’t take into account the unique properties of data center networks (like high-speed, high-reliability, and low-latency). Furthermore, the nature of RPC traffic is different - RPC communication in a data center often involve enormous amounts of small messages and communication between many different machines. TCP is non-ideal for this type of communication for several reasons - for example, it is designed to ensure reliable transmission of packets (under the assumption that the networks are not reliable), and is a connection-oriented protocol that requires state (meaning that operating many connections at once has a high overhead). The difference between the design goals of TCP and the nature of the data center leads to non-optimal performance under load, which shows up as tail latency<label for="tail" class="margin-toggle sidenote-number"></label><input type="checkbox" id="tail" class="margin-toggle" /><span class="sidenote">For more on tail latency, I’d recommend reading <a href="https://cacm.acm.org/magazines/2013/2/160173-the-tail-at-scale/fulltext">The Tail at Scale</a> - there are also several great reviews of the paper (<a href="https://blog.acolyer.org/2015/01/15/the-tail-at-scale/">The Morning Paper</a>, <a href="https://squidarth.com/article/systems/2020/02/29/tail-at-scale.html">Sid Shanker’s blog</a>, or <a href="https://www.youtube.com/watch?v=1Qxnrf2pW10">Vivek Haldar’s video review</a>). </span>. To address this issue, researchers and industry created a number of solutions<label for="newtransport" class="margin-toggle sidenote-number"></label><input type="checkbox" id="newtransport" class="margin-toggle" /><span class="sidenote">The paper cites <a href="https://dl.acm.org/doi/abs/10.1145/1851182.1851192">DCTCP</a>, <a href="https://dl.acm.org/doi/abs/10.1145/2534169.2486031">pFabric</a>, <a href="https://dl.acm.org/doi/abs/10.1145/3098822.3098825">NDP</a>, and <a href="https://dl.acm.org/doi/abs/10.1145/2716281.2836086">pHost</a>. </span> purpose built for the data center, of which Homa was the newest.</p>
+
+<p>I will be publishing this paper review in two parts. The first part gives an overview of the <em>Homa</em> protocol, based on <em>Homa: A Receiver-Driven Low-Latency Transport Protocol Using Network Priorities</em> from SIGCOMM 2018. This paper lays out the problems that the research area is trying to solve, designs a solution to those problems, and presents experimental results. The second paper, <em>A Linux Kernel Implementation of the Homa Transport Protocol</em> was published at this year’s USENIX ATC conference. It discusses the implementation (and challenges to implementing) Homa as a Linux Kernel module, with the goal of evaluating the protocol in a setting that is closer to a real production environment - this paper’s conclusion also discusses the limits of the implementation and a few exciting potential directions for future research.</p>
+
+<p>With that, let’s dive into understanding Homa.</p>
+
+<h2 id="the-homa-protocol">The Homa protocol</h2>
+
+<h3 id="background">Background</h3>
+
+<p>As discussed above, the problem that <em>Homa</em> is trying to solve is a disconnect between the design of TCP and the unique qualities of data center networks. This disconnect increases latency and overhead of RPC communications, meaning wasted data center resources. Thus, <em>Homa</em> is designed with the goal of achieving the “lowest possible latency” for RPC (in particular focusing on small messages at “high network load”).</p>
+
+<p>To achieve this goal, <em>Homa</em> must consider a primary source of latency in this type of network: <em>queuing delay</em>. Queuing delay occurs at routers in a network when more packets arrive than can be transmitted at once<label for="queue" class="margin-toggle sidenote-number"></label><input type="checkbox" id="queue" class="margin-toggle" /><span class="sidenote">For an in depth discussion of delays, I recommend <a href="https://archive.is/20130114163812/http://59.67.152.66:8000/newenglish/delay.htm">this</a> chapter from the Kurose and Ross networking book. </span> (meaning that they need to wait in a queue). More queuing leads to more latency!</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/homa/delay.png" /><figcaption class="maincolumn-figure">Queuing delay, sourced from <a href="http://www.cs.toronto.edu/~marbach/COURSES/CSC358_F19/delay.pdf">here</a>.</figcaption></figure>
+
+<p>To limit queuing, a design could aim to eliminate it entirely or could accept that queueing will happen (while aiming to minimize its negative impact). The paper mentions one system, <a href="http://fastpass.mit.edu/Fastpass-SIGCOMM14-Perry.pdf">FastPass</a>, that implements the first approach using a central scheduler that could theoretically optimally make packet-scheduling decisions. Unfortunately, interacting with the scheduler for every packet “triples the latency” for short messages.</p>
+
+<p>If queuing is accepted as inherent to the network, the paper argues <em>in-network priorities</em> must be used to provide finer grained control over how packets are queued<label for="pfabricq" class="margin-toggle sidenote-number"></label><input type="checkbox" id="pfabricq" class="margin-toggle" /><span class="sidenote">The paper mentions that previous work demonstrates the positive impact of using these types of priorities. </span>. <em>In-network priorities</em> allow a priority to be assigned to a packet, then for that packet to be assigned to a queue that contains only packets with that priority. This ensures that the highest priority packets are transmitted first and provides a degree of control over how different types of traffic is treated.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/homa/priorityq.png" /><figcaption class="maincolumn-figure">A depiction of a priority queue scheduling system sourced from <a href="http://www2.ic.uff.br/~michael/kr1999/6-multimedia/6_06-scheduling_and_policing.htm">this</a> resource on packet scheduling.</figcaption></figure>
+
+<p>To determine the priority of a packet, <em>Homa</em> uses a policy called <em>Shortest Remaining Processing Time first</em> (SRPT), “which prioritizes packets from messages with the fewest bytes remaining to transmit”. Another way of explaining SRPT is that it aims to schedule packets based on how close the RPC is to completing the transfer of its associated packets. If a packet is associated with an RPC request that has fewer packets left to transmit to a receiver, scheduling that packet first will allow the request to finish faster. The paper mentions that <em>SRPT</em> is not only common in previous work (like <a href="https://dl.acm.org/doi/10.1145/2486001.2486031">pFabric</a>), but is close to optimal in the conditions that one would see in a network under load.</p>
+
+<p>Lastly, the paper discusses which parts of the system (client or receiver) should make decisions about the priority of a packet (by appling the SRPT policy) and when. The paper argues that receivers are well positioned to determine packet priorities - they know which clients are sending packets to them and could be configured to keep track of how much data each client has left to send. Even though receivers calculate packet priorities, clients also need to apply SRPT to the packets that they send out (if a client is sending multiple RPCs at once, the RPC that is closest to finishing should have its associated packets sent out first).</p>
+
+<p>Receivers are also in a position to optimize packet priorities beyond applying the SRPT policy. An example of further optimization is a process called <em>overcommitting</em>, where the receiver instructs more than one sender to use the same priority at the same time to ensure full network utilization. As mentioned previously, a client might receive information about how to send out packets with optimal priorities, but might delay actually sending out the packets for some reason. One example of this is if a client is sending out multiple RPCs at once and the prioritized packets are delayed client-side while a different RPC is sent out.</p>
+
+<h3 id="design-and-implementation">Design and Implementation</h3>
+
+<p>Homa is implemented with the concerns above in mind, using receiver-driven priorities decided with the SRPT policy. To accomplish its goals, the system uses four packet types to send data, communicate priorities from receiver to sender, or signal metadata.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/homa/packets.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>When a client wants to send an RPC to a receiver, it sends an initial chunk and metadata that includes the total size of the message (which the receiver will use to track request completion). This chunk is given an <em>unscheduled</em> priority (as seen in the system diagram below).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/homa/protocol.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The receiver then applies the SRTP algorithm to decide the priority for the next set of packets associated with the given RPC, then communicates the priority back to the sender using a <em>GRANT</em> packet. The <em>GRANT</em> packet instructs the sender to send a configurable number of bytes (called <em>RTT Bytes</em>) before waiting for another grant. Once the sender receives this information, it sends packets using the <em>scheduled</em> priority until it reaches the configured limit set via <em>RTT Bytes</em> (the paper uses 10 KB, but mentions that this number will continue to grow as link speed increases).</p>
+
+<p>Now that we understand the basics of Homa, it is interesting to contrast the protocol with TCP. Homa forgoes features of TCP (and other RPC systems) that increase overhead and latency:</p>
+
+<ul>
+  <li><em>Explicit acknowledgements</em>: senders transmit many packets without requiring acknowledgement, occasionally waiting for feedback from the receiver (who provides feedback via <em>GRANT</em> packets). This approach means fewer packets need to be transmitted as part of the protocol, meaning more bandwidth can be dedicated to transmitting packets that contain RPC data.</li>
+  <li><em>Connections</em>: Homa is connectionless, unlike TCP. Foregoing connections means that Homa does not need to maintain certain types of state, like TCP does. Lower state overhead means Homa is able to service many more RPCs than a TCP-based sender-receiver pair would. Relatedly, the state that Homa maintains is bounded by the RTT bytes configuration parameter - there is a limit to how much data will be transmitted by a sender before waiting for feedback (and a limit to associated data that a single RPC request will consume in the router’s buffers).</li>
+  <li><em>At-most-once delivery semantics</em>: Other RPC protocols are designed to ensure at-most once-delivery of a complete message, but Homa targets <em>at-least-once</em> semantics<label for="atmostonce" class="margin-toggle sidenote-number"></label><input type="checkbox" id="atmostonce" class="margin-toggle" /><span class="sidenote">While <a href="https://www.lightbend.com/blog/how-akka-works-at-least-once-message-delivery">this guide</a> focuses on Akka, it is a helpful overview of the different messaging semantics. </span>. This means that Homa can possibly re-execute RPC requests if there are failures in the network (and an RPC ends up being retried). While at-least-once semantics put a greater burden on the receiving system (which might have to make RPCs idempotent), relaxing the messaging semantics allows Homa receivers to adapt to failures that happen in a data center environment. As an example, Homa receivers can discard state if an RPC becomes inactive, which might happen if a client exceeds a deadline and retries.</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The original Homa paper discusses testing the protocol on a variety of workloads - the most recent paper on Homa (covered next week) includes a Linux-compatible implementation and aims to reproduce the evaluation of the protocol in a setting that is closer to one used in production. If you enjoyed this paper review, stay tuned for the next in the series!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-08-15-a-linux-kernel-implementation-of-the-homa-transport-protocol.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

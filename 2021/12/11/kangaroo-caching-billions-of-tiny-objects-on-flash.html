@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Kangaroo: Caching Billions of Tiny Objects on Flash</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Kangaroo: Caching Billions of Tiny Objects on Flash</h1>
+  
+  <h4>Published December 11, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-12-11-kangaroo-caching-billions-of-tiny-objects-on-flash.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><em>The papers over the next few weeks will be from <a href="https://sosp2021.mpi-sws.org/">SOSP</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="https://dl.acm.org/doi/pdf/10.1145/3477132.3483568">Kangaroo: Caching Billions of Tiny Objects on Flash</a></p>
+
+<p>This week’s paper is <em>Kangaroo: Caching Billions of Tiny Objects on Flash</em>, which won a best paper award at SOSP - the implementation also builds on the <a href="https://www.cachelib.org">CacheLib</a> open source project. Kangaroo describes a two-level caching system that uses both flash and memory to cheaply and efficiently cache data at scale. Previous academic and industry research<label for="flash" class="margin-toggle sidenote-number"></label><input type="checkbox" id="flash" class="margin-toggle" /><span class="sidenote">See the <a href="https://www.usenix.org/system/files/nsdi19-eisenman.pdf">Flashield paper</a>. </span> demonstrates significant cost savings (around a factor of 10!) from hybrid memory/flash caches, but doesn’t solve the unique issues faced by small object caches that store information like tweets, social graphs, or data from Internet of Things devices<label for="smallobjs" class="margin-toggle sidenote-number"></label><input type="checkbox" id="smallobjs" class="margin-toggle" /><span class="sidenote">One example of tiny objects caching is covered by my previous paper review on <a href="/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html">TAO: Facebook’s Distributed Data Store for the Social Graph</a> </span>). Another unique property of Kangaroo is that it explicitly aims for different goals than those of persistent key-value stores (like Memcache, Redis, or RocksDB) - the system does not aim to be a persistent “source of truth” database, meaning that it has different constraints on how much data it stores and what is evicted from cache.</p>
+
+<p>A key tradeoff faced by hybrid flash and memory caches is between cost and speed. This tradeoff manifests in whether caching systems store data in memory (DRAM) or on flash Solid State Drives. Storing cached data (and potentially the metadata about the cached data) in memory is expensive and fast. In contrast, flash storage is cheaper, but slower.</p>
+
+<p>While some applications can tolerate increased latency from reading or writing to flash<label for="netflix" class="margin-toggle sidenote-number"></label><input type="checkbox" id="netflix" class="margin-toggle" /><span class="sidenote">One example of this is from Netflix’s caching system, <a href="https://netflixtechblog.com/application-data-caching-using-ssds-5bf25df851ef">Moneta</a>. </span>, the decision to use flash (instead of DRAM) is complicated by the limited number of writes that flash devices can tolerate before they wear out<label for="lifetime" class="margin-toggle sidenote-number"></label><input type="checkbox" id="lifetime" class="margin-toggle" /><span class="sidenote"><a href="https://www.usenix.org/system/files/nsdi19-eisenman.pdf">Flashield: a Hybrid Key-value Cache that Controls Flash Write Amplification</a> also provides more context on the dollar and cents of a hybrid flash/memory cache. </span>. This limit means that write-heavy workloads wear out flash storage faster, consuming more devices and reducing potential cost savings (as the additional flash devices aren’t free). To drive home the point about how important addressing this use case is, previous research<label for="leveldb" class="margin-toggle sidenote-number"></label><input type="checkbox" id="leveldb" class="margin-toggle" /><span class="sidenote">Previous research has noted limits to write heavy workloads targeted at key-value stores like <a href="https://www.cs.utexas.edu/~vijay/papers/sosp17-pebblesdb.pdf">LevelDB and RocksDB</a>. Additionally, <a href="https://www.usenix.org/system/files/osdi20-yang.pdf">A large scale analysis of hundreds of in-memory cache clusters at Twitter</a> notes that 30% of Twitters caches are write-heavy yet existing research has predominantly focused on read-heavy workloads. </span> to characterize cache clusters at Twitter noted that around 30% are write heavy!</p>
+
+<p>Kangaroo seeks to address the aforementioned tradeoff by synthesizing previously distinct design ideas for cache systems, along with several techniques for increasing cache hit rate. When tested in a production-like environment relative to an existing caching system at Facebook, Kangaroo reduces flash writes by ~40%.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions: characterization of the unique issues faced by small-object caches, a design and implementation of a cache that addresses these issues, and an evaluation of the system (one component of which involves production traces from Twitter and Facebook).</p>
+
+<h2 id="challenges">Challenges</h2>
+
+<p>Kangaroo aims to make optimal use of limited memory, while at the same time limiting writes to flash - the paper notes prior “flash-cache designs either use too much DRAM or write flash too much.”</p>
+
+<p>Importantly, the paper differentiates how it is addressing a different, but related, problem from other key value systems like Redis, Memcache, or RocksDB. In particular, Kangaroo makes different assumptions - “key-value stores generally assume that deletion is rare and that stored values must be kept until told otherwise. In contrast, caches delete items frequently and at their own discretion (i.e., every time an item is evicted)”. In other words, the design for Kangaroo is not intended to be a database-like key-value store that stores data persistently.</p>
+
+<h3 id="differences-from-key-value-systems">Differences from key-value systems</h3>
+
+<p>The paper cites two problems that traditional key-value systems don’t handle well when the cache has frequent churn: <em>write amplification</em> and <em>lower effective capacity</em>.</p>
+
+<p><em>Write amplification</em> is the phenomenon “where the actual amount of information physically written to the storage media is a multiple of the logical amount intended to be written”<label for="wa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="wa" class="margin-toggle" /><span class="sidenote">Helpful article on the topic <a href="https://en.wikipedia.org/wiki/Write_amplification">here</a>. </span>.</p>
+
+<p>The paper notes two types of write amplification:</p>
+
+<ul>
+  <li><em>Device-level write amplification (DLWA)</em> is caused by differences between what applications instruct the storage device to write and what the device actually writes<label for="dlwa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dlwa" class="margin-toggle" /><span class="sidenote">The <a href="https://www.usenix.org/system/files/nsdi19-eisenman.pdf">Flashield paper</a> writes that “Device-level write amplification (DLWA) is write amplification that is caused by the internal reorganization of the SSD. The main source of DLWA comes from the size of the unit of flash reuse. Flash is read and written in small ( ̃8 KB) pages. However, pages cannot be rewritten without first being erased. Erasure happens at a granularity of groups of several pages called blocks ( ̃256 KB). The mismatch between the page size (or object sizes) and the erase unit size induces write amplification when the device is at high utilization.” </span>.</li>
+  <li><em>Application-level write amplification (ALWA)</em> happens when an application intends to update a small amount of data in flash, but writes a larger amount of data to do so. This effect happens because flash drives are organized into blocks that must be updated as a whole. As an example, if a block of flash storage contains five items, and the application only wants to update one of them, the application must perform a read of all five items in the block, replace the old copy of an item with the updated version, then write back the updated set of all five items.</li>
+</ul>
+
+<p>The other problem that key-value stores encounter under write-heavy workloads is <em>lower effective capacity</em>. Specifically, this impacts key-value stores that store data in flash. RocksDB is one example - it keeps track of key-value data using a log<label for="lsmtrees" class="margin-toggle sidenote-number"></label><input type="checkbox" id="lsmtrees" class="margin-toggle" /><span class="sidenote">The log contains files called LSM Trees, and there are great articles about how they work <a href="https://yetanotherdevblog.com/lsm/">here</a> and <a href="https://www.igvita.com/2012/02/06/sstable-and-log-structured-storage-leveldb/">here</a>. </span> that is periodically cleaned up through a process called compaction. If RocksDB receives many writes, a fixed size disk will use more of its space to track changes to keys, instead of using space to track a larger set of keys<label for="nflxstorage" class="margin-toggle sidenote-number"></label><input type="checkbox" id="nflxstorage" class="margin-toggle" /><span class="sidenote">The <em>lower effective capacity</em> problem impacted Netflix’s implementation of a key-value datastore called <a href="https://netflixtechblog.com/application-data-caching-using-ssds-5bf25df851ef">EVCache</a>, which stores data on flash using RocksDB. RocksDB stores data in files that represent a log of the changes made to the system. Eventually older sections of the log are removed from storage, using a process called compaction. Many writes to the system create more computational work for the compaction cleanup process. In Netflix’s case, they had to change their compaction process. </span>.</p>
+
+<h3 id="existing-designs">Existing designs</h3>
+
+<p>There are two cache designs that the system aims to build on: <em>log structured caches</em> and <em>set-associative caches</em>.</p>
+
+<p><em>Log structured caches</em> store cached entries in a log<label for="ring" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ring" class="margin-toggle" /><span class="sidenote">Many also use a <a href="https://towardsdatascience.com/circular-queue-or-ring-buffer-92c7b0193326">circular buffer</a>. </span>. Production usage of the approach includes CDNs and Facebook’s image caching service<label for="ripq" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ripq" class="margin-toggle" /><span class="sidenote">See <a href="https://www.usenix.org/conference/fast15/technical-sessions/presentation/tang">RIPQ: Advanced Photo Caching on Flash for Facebook</a> </span>. To allow fast lookups into the cache (and prevent sequential scans of the cached data), many implementations create in memory indexes tracking the location of entries. These memory indexes poses a challenge<label for="cachelib" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cachelib" class="margin-toggle" /><span class="sidenote">See the <em>Size Variability</em> section of the <a href="https://www.usenix.org/system/files/osdi20-berg.pdf">CacheLib</a> paper. </span> when storing many small items, as:</p>
+
+<blockquote>
+  <p>The per-object overhead differs across existing systems between 8B and 100B. For a system with a median object size of 100B … this means that 80GB - 1TB of DRAM is needed to index objects on a 1TB flash drive.</p>
+</blockquote>
+
+<p><em>Set associative caches</em>, in contrast to <em>log structured caches</em>, do not have analagous<label for="tech" class="margin-toggle sidenote-number"></label><input type="checkbox" id="tech" class="margin-toggle" /><span class="sidenote">It is technically possible for set-associative caches to have them, but in memory indexes are not required as, “an objects possible locations are implied by its key.” </span> in-memory indexes. Instead, the key associated with an object is used during lookup to find a set of items on flash storage. Unfortunately, <em>set associative caches</em> don’t perform well for writes, as changing the set associated with a key involves reading the whole set, updating the set, then writing the whole set back to flash (incurring <em>application level write amplification</em>, as mentioned earlier).</p>
+
+<h3 id="design">Design</h3>
+
+<p>The Kangaroo system has three main components:</p>
+
+<ul>
+  <li>A small <em>DRAM Cache</em>, which stores a subset of recently written keys.</li>
+  <li><em>KLog</em> which has 1) a buffer of cached data on flash and 2) an in-memory index into the buffer for fast lookups, similar to log structured cache systems.</li>
+  <li><em>KSet</em> which stores a set of objects in pages on flash, as well as a Bloom filter<label for="bloom" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bloom" class="margin-toggle" /><span class="sidenote"><a href="https://llimllib.github.io/bloomfilter-tutorial/">Here</a> is a neat interactive tutorial on Bloom filters. </span> used to track how set membership, similar to set-associative caches.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/kangaroo/sys.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="system-operations">System Operations</h2>
+
+<p>Kangaroo uses the three components to implement two high-level operations: <em>lookup</em> and <em>insert</em>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/kangaroo/ops.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="lookups">Lookups</h3>
+
+<p><em>Lookups</em> get the value of a key if it is stored in the cache. This process occur in three main steps (corresponding to the three main components of the design).</p>
+
+<p>First, check the <em>DRAM cache</em>. On a cache hit, return the value and on a cache miss, continue on to check the KLog.</p>
+
+<p>If the key is not in the <em>DRAM Cache</em>, check the <em>KLog</em> in-memory index for the key to see whether the key is in flash, reading the value from flash on cache hit or continuing to check KSet on cache miss.</p>
+
+<p>On <em>KLog</em> miss, hash the key used in the lookup to determine the associated <em>KSet</em> for the key. Then, read the per-set in-memory Bloom filter for the associated <em>KSet</em> to determine whether data for the key is likely<label for="prob" class="margin-toggle sidenote-number"></label><input type="checkbox" id="prob" class="margin-toggle" /><span class="sidenote">‘Likely’ inserted here because Bloom filters are probabilistic. </span> to exist on flash - if the item is on flash, read the associated set, scan for the item until it is found, and return the data.</p>
+
+<h3 id="inserts">Inserts</h3>
+
+<p><em>Inserts</em> add a new value to the cache (again in three steps that correspond to the three components of the system).</p>
+
+<p>First, write new items to the <em>DRAM cache</em>. If the <em>DRAM Cache</em> is at capacity, some items will be evicted and potentially pushed to the KLog. Kangaroo doesn’t add all items evicted from the <em>DRAM Cache</em> to the <em>KLog</em>, as making this shift can incur writes to flash (part of what the system wants to prevent). The algorithm for deciding what is shifted is covered in the next section.</p>
+
+<p>If Kangaroo chooses to admit the items evicted from the <em>DRAM Cache</em> to the <em>KLog</em>, the system updates the <em>KLog</em> in-memory index and writes the entry to flash<label for="buffer" class="margin-toggle sidenote-number"></label><input type="checkbox" id="buffer" class="margin-toggle" /><span class="sidenote">The paper notes that writes to flash are actually buffered in memory - in a write-heavy system it is possible that the entries that make it to the KLog are quickly evicted. </span></p>
+
+<p>Writing an item to <em>KLog</em> has the potential to cause evictions from the <em>KLog</em> itself. Items evicted from the <em>KLog</em> are potentially inserted into an associated KSet, although this action depends on an algorithm similar to the one earlier (which decides whether to admit items evicted from the <em>DRAM Cache</em> to the <em>KLog</em>). If items evicted from the <em>KLog</em> are chosen to be inserted into a associated <em>KSet</em>, <em>all</em> items both currently in the <em>KLog</em> and associated with the to-be-written <em>KSet</em> are shifted to the <em>KSet</em> - “doing this amortizes flash writes in KSet, significantly reducing Kangaroo’s [application-level write amplification]”.</p>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>The implementation of Kangaroo couples <em>a DRAM Cache</em>, <em>KLog</em>, and <em>KSet</em> with three key ideas: <em>admission policies</em>, <em>partitioning of the KLog</em>, and <em>usage-based eviction</em>.</p>
+
+<p>As mentioned earlier, items from the <em>DRAM Cache</em> and <em>KLog</em> are not guaranteed to be inserted into the next component in the system. The decision whether to propagate an item is decided by a tunable <em>admission policy</em> that targets a certain level of writes to flash. The <em>admission policy</em> for DRAM Cache to KLog transitions is probabilistic (some percent of objects are rejected), while the policy controlling the KLog to KSet transition is based on the number of items currently in the <em>KLog</em> mapping to the candidate <em>KSet</em><label for="klogtokset" class="margin-toggle sidenote-number"></label><input type="checkbox" id="klogtokset" class="margin-toggle" /><span class="sidenote">Updating a KSet requires writing many (or all) of the objects in a set, so only making a few updates may not be not worth it. </span>.</p>
+
+<p>Next, <em>partitioning the KLog</em> reduces “reduces the per-object metadata from 190 b to 48 b per object, a 3.96× savings vs. the naïve design.” This savings comes from changes to the pointers used in traversing the index. One example is an <code class="language-plaintext highlighter-rouge">offset</code> field that maps an object to the page of flash it is stored in:</p>
+
+<blockquote>
+  <p>The flash offset must be large enough to identify which page in the flash log contains the object, which requires log2(𝐿𝑜𝑔𝑆𝑖𝑧𝑒/4 KB) bits. By splitting the log into 64 partitions, KLog reduces 𝐿𝑜𝑔𝑆𝑖𝑧𝑒 by 64× and saves 6 b in the pointer.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/kangaroo/partitions.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, <em>usage-based eviction</em> ensures infrequently-used items are evicted from the cache and is normally based on usage metadata - given fixed resources, these types of policies can increase cache hit ratio by ensuring that frequently accessed items stay in cache longer. To implement the idea while using minimal memory, Kangaroo adapts a technique from processor caches called <em>Re-Reference Interval Prediction (RRIP)</em>, (calling its adaptation <em>RRIParoo</em>):</p>
+
+<blockquote>
+  <p>RRIP is essentially a multi-bit clock algorithm: RRIP associates a small number of bits with each object (3 bits in Kangaroo), which represent reuse predictions from near reuse (000) to far reuse (111). Objects are evicted only once they reach far. If there are no far objects when something must be evicted, all objects’ predictions are incremented until at least one is at far.</p>
+</blockquote>
+
+<p><em>RRIParoo</em> tracks how long ago an item was read as well as whether it was read. For items in KLog, information about how long ago an item was read is stored using three bits in the in-memory index.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/kangaroo/rrip.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>In contrast, usage data for items in KSet is stored in flash (as KSet doesn’t have an in-memory index). Each KSet also has a bitset with one bit for every item in the KSet that tracks tracks whether an item was accessed - this set of single-bit usage data can be used to “reset” the timer for an item.</p>
+
+<h2 id="evaluation">Evaluation</h2>
+
+<p>To evaluate Kangaroo, the paper compares the system’s cache miss ratio rate against other cache systems and deploys it with a dark launch to production.</p>
+
+<p>Kangaroo is compared to a CacheLib deployment designed for small objects, and to a log-structured cache with a DRAM index. All three systems run on the same resources, but Kangaroo achieves the lowest cache miss ratio - this, “is because Kangaroo makes effective use of both limited DRAM and flash writes, whereas prior designs are hampered by one or the other.”</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/kangaroo/miss.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Kangaroo was dark launched to production inside of Facebook and compared with an existing small object cache - Kangaroo reduces flash writes and reduces cache misses. Notably, the Kangaroo configuration that allows all writes performs the best of the set, demonstrating the potential for operators to make the tradeoff between flash writes and cache miss ratio (more flash writes would be costlier, but seem to reduce the cache miss ratio).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/kangaroo/prod.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The Kangaroo paper demonstrates a unique synthesis of several threads of research, and the tradeoffs caching systems at scale make between cost and speed were interesting to read. As storage continues to improve (both in cost and performance), I’m sure we will see more research into caching systems at scale!</p>
+
+<p>As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback. Until next time.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-12-11-kangaroo-caching-billions-of-tiny-objects-on-flash.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

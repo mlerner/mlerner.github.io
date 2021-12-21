@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>POSH: A Data-Aware Shell</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>POSH: A Data-Aware Shell</h1>
+  
+  <h4>Published August 07, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-08-07-posh-a-data-aware-shell.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><em>This is the fourth paper in a series on “The Future of the Shell”<label for="series" class="margin-toggle sidenote-number"></label><input type="checkbox" id="series" class="margin-toggle" /><span class="sidenote">Here are links to <a href="/2021/07/14/unix-shell-programming-the-next-50-years.html">Part 1</a>, <a href="/2021/07/24/from-laptop-to-lambda-outsourcing-everyday-jobs-to-thousands-of-transient-functional-containers.html">Part 2</a>, and <a href="/2021/07/31/pash-light-touch-data-parallel-shell-processing.html">Part 3</a>. </span>. These weekly paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the new <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. Over the next few weeks I will be reading papers from <a href="https://www.usenix.org/conference/atc21">Usenix ATC</a> and <a href="https://www.usenix.org/conference/osdi21">OSDI</a> - as always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read!</em></p>
+
+<p><a href="https://www.usenix.org/conference/atc20/presentation/raghavan">POSH: A Data-Aware Shell</a> Deepti Raghavan, et. al</p>
+
+<p class="discussion">Discussion on <a href="https://news.ycombinator.com/item?id=28108347"> Hacker News</a></p>
+
+<p>This week’s paper review covers <em>POSH</em>, a system capable of achieving dramatic speedups for <em>unmodified</em><label for="adoption" class="margin-toggle sidenote-number"></label><input type="checkbox" id="adoption" class="margin-toggle" /><span class="sidenote">Requiring fewer changes to a shell script in order to make it POSH-compatible simplifies adoption. </span> shell scripts that perform large amounts of IO - intriguing use cases of POSH are log analysis or the git workflows of large software projects<label for="git" class="margin-toggle sidenote-number"></label><input type="checkbox" id="git" class="margin-toggle" /><span class="sidenote">The paper analyzes git workflows for <a href="https://github.com/chromium/chromium">Chromium</a>. </span>. In particular, POSH shines in environments that use distributed file systems like Network File System<label for="nfs" class="margin-toggle sidenote-number"></label><input type="checkbox" id="nfs" class="margin-toggle" /><span class="sidenote">NFS allows you to “mount” a remote disk to your computer and then sends RPC calls to a remote server to perform file accesses. I highly recommend <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/dist-nfs.pdf">this</a> amazing (and free!) description of NFS from <em>Operating Systems: Three Easy Pieces</em>. The entire book is available for free online <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">here</a>.  </span> (NFS) mounts - I’ve included a link to a great overview of NFS in the sidebar (or if you are on mobile, you can click the number “4” to reveal it).</p>
+
+<p>POSH achieves speedups by minimizing data transfers in scripts that use networked storage. To minimize data transfers, POSH can execute parts of a script that read or write remote files in a process on the remote machine. As an example, consider a <code class="language-plaintext highlighter-rouge">grep</code> of a file stored on a remote machine. When a client<label for="client" class="margin-toggle sidenote-number"></label><input type="checkbox" id="client" class="margin-toggle" /><span class="sidenote">Client in this case meaning the computer where the script was initiated by a user. </span> computer attempts to <code class="language-plaintext highlighter-rouge">grep</code> the file, the shell will transfer <em>the whole file</em> over the network to the client node, then filter the file on the client. In contrast, POSH can perform the <code class="language-plaintext highlighter-rouge">grep</code> on the remote storage server, and only transfer the filtered output back to the client, dramatically lowering network traffic.</p>
+
+<p>To make decisions about which parts of a script are executed remotely, POSH produces a graph representation of the shell script’s execution - the nodes in the graph are commands, while the edges represent the flow of data between commands. Correctly transforming a shell script into this graph representation is a nuanced, yet critical function. To facilitate it, POSH leverages an annotation language capable of describing a given command’s parameters, inputs, and outputs (as well as a number of important configuration options).</p>
+
+<p><em>POSH</em> and the system described in <a href="/2021/07/31/pash-light-touch-data-parallel-shell-processing.html">last week’s paper review</a>, <em>PaSh</em>, are similar in that they both aim to speedup shell script execution without requiring modifications to the original script. Additionally, they both leverage annotations of shell commands in their implementations. Even though the two projects are similar in some respects, PaSh and POSH focuses on different uses cases - PaSH focuses on parallelizing “trivially parallelizable” computation local to a machine, while POSH focuses on parallelizing scripts that perform large amounts of IO across remote machines. Both projects are part of an exciting (and high impact) thread of research related to modernizing the shell, and I’m looking forward to seeing more from the two teams!</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes two contributions. The first is an <em>annotation language</em> that describes a shell command. These command specifications are used to transform the script into a graph representation - the different steps of a script’s execution are the nodes, and the data flow between those nodes are the edges. The second contribution is a <em>scheduling algorithm</em> that decides how the steps in a script should be executed, taking into account the dependencies in the script’s graph representation as well as the interactions that a step has with remote storage.</p>
+
+<p>Before we dive into the details of these two contributions, it is first helpful to understand POSH’s three high level components:</p>
+
+<ul>
+  <li><em>Annotation interface</em>: As mentioned above, the annotation language allows a shell script to be correctly transformed into a graph representation.</li>
+  <li><em>Parser and scheduler</em>: The parser uses the aforementioned annotations to produce a graph representation of a shell script. The scheduler uses this graph representation to assign the execution of steps to remote or local nodes called <em>proxy servers</em>. The internals of the scheduling process are detailed later on in this paper review.</li>
+  <li><em>Execution engine</em>: Once the scheduler has assigned work to a <em>proxy server</em>, that work will be executed, and the result will be transferred over the network back to the client node.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/posh/system.png" /><figcaption class="maincolumn-figure">High-level POSH overview</figcaption></figure>
+
+<h2 id="shell-annotation-language">Shell annotation language</h2>
+
+<p>POSH uses its shell annotation language to describe the constraints of any given shell command’s execution. These annotations are then used to transform a shell script into a correct graph representation that, when scheduled, will accomplish POSH’s goal of minimizing network traffic.</p>
+
+<p>The paper outlines three questions that POSH (and the annotation language) must answer to achieve the system’s goals:</p>
+
+<ul>
+  <li><em>Which commands can be executed on remote nodes (called proxy servers)?</em>: this is important for determining what must run locally, versus what can run on a remote <em>proxy server</em>.</li>
+  <li><em>Do any commands in a provided script “filter their input”?</em>: knowing if a command does or does not filter its input is useful for determining whether it should be executed remotely in conjunction with other commands. The paper provides the example of a executing a <code class="language-plaintext highlighter-rouge">cat</code> followed by a <code class="language-plaintext highlighter-rouge">grep</code> on the same remote <em>proxy server</em> - as “cat usually produces the same amount of output as input, but grep usually filters its input, POSH must also offload grep” to minimize network traffic.</li>
+  <li><em>Can a command be parallelized?</em>: to enable optimal scheduling, POSH should aim to parallelize a command as much as possible. Without an annotation language, the system might not be have the information it needs to make scheduling decisions. One motivating example is <code class="language-plaintext highlighter-rouge">cat file1 file2 file3</code> - the annotation language defines that the inputs to <code class="language-plaintext highlighter-rouge">cat</code> are “splittable”, meaning that it might be possible run the three commands <code class="language-plaintext highlighter-rouge">cat file</code>, <code class="language-plaintext highlighter-rouge">cat file2</code>, and <code class="language-plaintext highlighter-rouge">cat file3</code> in parallel on different machines.</li>
+</ul>
+
+<p>I wanted to note two important components of the annotation language important to understanding the rest of the paper<label for="opt" class="margin-toggle sidenote-number"></label><input type="checkbox" id="opt" class="margin-toggle" /><span class="sidenote">The paper provides a significant amount of detail on the annotation language and I highly recommend referring to the original paper if this is interesting to you! </span>. First, the annotations can be defined per command and per argument - this flexibility is important because different arguments to a command can change its behavior and arguments. Second, a command’s inputs/outputs can be typed, and its behavior is defined. For example, the annotation language can indicate a command’s parallelizablity<label for="p" class="margin-toggle sidenote-number"></label><input type="checkbox" id="p" class="margin-toggle" /><span class="sidenote">As an example, <code class="language-plaintext highlighter-rouge">cat</code> is annotated with <code class="language-plaintext highlighter-rouge">splittable</code> to indicate that it is potentially parallelizable. </span> or whether the command relies on the current directory<label for="git" class="margin-toggle sidenote-number"></label><input type="checkbox" id="git" class="margin-toggle" /><span class="sidenote">An example being <code class="language-plaintext highlighter-rouge">git add</code> is dependent on the current directory. </span>. Defining these properties of a command allow the parser and scheduler to answer the three questions above.</p>
+
+<p>The next section covers how a graph representation of a shell script, produced by passing the shell script through POSH’s parser, is scheduled and executed.</p>
+
+<h2 id="scheduling">Scheduling</h2>
+
+<p>As discussed above, each shell script is passed through the POSH parser to produce a graph representation. The nodes in the graph representation are then scheduled to execute based on a two step process that <em>resolves scheduling constraints</em> and <em>minimizes network transfers</em>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/posh/dag.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The first step of scheduling, <em>resolving constraints</em>, determines whether any nodes in the graph <em>must</em> run on a given remote machine (and if so, which one). Scheduling constraints are created for a variety of reasons - one example constraint is for a command that accesses remote files. To avoid transferring the whole file over the network, that command <em>must</em> be scheduled on the remote node.</p>
+
+<p>The second step, <em>minimizing data transfer</em>, assigns commands to a remote machine if the command was not assigned in the first step. For this assignment, POSH makes use of some graph theory and implements an algorithm using <em>sources</em>, <em>sinks</em>, and <em>paths</em><label for="yegge" class="margin-toggle sidenote-number"></label><input type="checkbox" id="yegge" class="margin-toggle" /><span class="sidenote">To quote Steve Yegge, “Graphs are, like, really really important.” </span>. A <em>source</em> is a “file that is read”, a <em>sink</em> is the “output file that is written to”, and <em>paths</em> connect them. To assign nodes, POSH iterates over every source node, checking whether the sink and source node in the path are already assigned to the same machine - if they are, assign all the intermediate nodes along the path to that machine as well! If the sink is not on the same machine, “the scheduler must find the edge along which cross-location data transfer should occur: to minimize data transfer, this should be the edge where the least data flows.” The paper describes a set of heuristics (<a href="https://github.com/deeptir18/posh/blob/151b0729c4c45829485619c497506a264b0fea02/shell/src/scheduler/heuristic.rs#L37">implemented here in Rust!</a>) used to find the min-cut edge in the path. After this edge is found, unassigned nodes are scheduled to run on the machine that the source or sink is scheduled for, “depending on if the node is before or after the minimum cut edge”.</p>
+
+<h2 id="applying-and-evaluating-posh">Applying and evaluating POSH</h2>
+
+<p>POSH was evaluted on the time it takes to execute a number of applications. This paper review focuses on two specific applications: a distributed log analyis and a git workflow for Chromium. The experimental configuration involved using either a cloud-to-cloud setup (where client and machines are in the cloud) or a university-to-cloud setup (where the POSH client is located at Stanford). The cloud-to-cloud setup has significantly higher bandwidth and significantly lower RTT, and helps to demonstrate that POSH is capable of achieving speedups even with a more powerful network.</p>
+
+<p>The baseline performance measurement in these experiments comes from exercising each application using NFS instead of POSH. The NFS-only setup mimics a situation where the applications would perform IO-heavy workloads, but be unable to parallelize them (nor be able to limit network overhead).</p>
+
+<p>For the distributed log analysis (which involves searching for an IP address in a 15GB log dump), POSH sees a speedup from parallelizing across multiple NFS mounts in both experimental setups, although POSH sees a more dramatic speedup in the university-to-cloud setup than in the cloud-to-cloud setup (12.7x improvement in the former versus 2x improvement in the latter).</p>
+
+<p>For the <code class="language-plaintext highlighter-rouge">git</code> workflow experiment, git operations (like <code class="language-plaintext highlighter-rouge">git status</code>, <code class="language-plaintext highlighter-rouge">git add</code>, and <code class="language-plaintext highlighter-rouge">git commit</code>) were exercised by reverting, then recommitting 20 commits from the (quite large) Chromium open source project - <code class="language-plaintext highlighter-rouge">git</code> commands on such a large project make many metadata calls (to determine whether a file has changed, for example). POSH shines in this experiment, achieving a 10-15x latency improvement in the cloud-to-cloud environment. This application seems incredibly useful - in the past, I’ve read about Facebook’s efforts to <a href="https://engineering.fb.com/2014/01/07/core-data/scaling-mercurial-at-facebook/">scale Mercurial</a>.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>POSH is a novel system for parallelizing IO-intensive shell scripts by performing work “close to the data”. The paper is one component of an exciting thread of research that could lead to significant improvements to user experience - given that technical folks from many different backgrounds use the shell every day, these improvements would be high impact.</p>
+
+<p>Next week I will move on from this series and into papers from Usenix ATC and OSDI. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read. Until next time!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-08-07-posh-a-data-aware-shell.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

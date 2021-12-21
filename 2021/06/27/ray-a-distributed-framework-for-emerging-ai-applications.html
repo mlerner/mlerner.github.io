@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Ray: A Distributed Framework for Emerging AI Applications</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Ray: A Distributed Framework for Emerging AI Applications</h1>
+  
+  <h4>Published June 27, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-06-27-ray-a-distributed-framework-for-emerging-ai-applications.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><a href="https://www.usenix.org/system/files/osdi18-moritz.pdf">Ray: A Distributed Framework for Emerging AI Applications</a> Moritz, Nishihara, Wang et. al.</p>
+
+<p><em>This week I decided to revisit a paper from the 2018 edition of OSDI (Operating Systems Design and Impelementation). In the coming few weeks, I will likely be reading the <a href="https://sigops.org/s/conferences/hotos/2021/">new crop of papers from HotOS 2021</a>. If there are any that look particuarly exciting to you, feel free to ping me on <a href="https://twitter.com/micahlerner">Twitter</a>!</em></p>
+
+<p>Ray is a thriving open-source project focused on <a href="https://docs.google.com/document/d/1lAy0Owi-vPz2jEqBSaHNQcy2IBSDEHyXNOQZlGuj93c/preview#heading=h.ojukhb92k93n0">“providing a universal API for distributed computing”</a> - in other words, trying to build primitives that allow applications to easily run and scale (even across multi-cloud environments), using an actor-like framework. There are a few exciting <a href="https://www.youtube.com/watch?v=8GTd8Y_JGTQ">demos</a> which show how easy it is to parallelize computation<label for="Anyscale" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Anyscale" class="margin-toggle" /><span class="sidenote">The demos are from Anyscale, a company founded by several original authors of the paper. Apache Spark is to Databricks, as Ray is to Anyscale. </span>. The idea that (somewhat) unlimited cloud resources could be used to drastically speed up developer workflows is an exciting area of research - for a specific use case see <a href="https://stanford.edu/~sadjad/gg-paper.pdf">From Laptop to Lambda:  Outsourcing Everyday Jobs to Thousands  of Transient Functional Containers</a>.</p>
+
+<p>While the current vision of the project has changed from the published paper (which came out of Berkeley’s <a href="https://rise.cs.berkeley.edu/">RISELab</a><label for="rise" class="margin-toggle sidenote-number"></label><input type="checkbox" id="rise" class="margin-toggle" /><span class="sidenote">The RISELab is the <a href="https://engineering.berkeley.edu/news/2017/01/berkeley-launches-riselab-enabling-computers-to-make-intelligent-real-time-decisions/">“successor to the AMPLab”</a>, where Apache Spark, Apache Mesos, and other “big data” technologies were originally developed) </span>), it is still interesting to reflect on the original architecture and motivation.</p>
+
+<p>Ray was originally developed with the goal of supporting modern RL applications that must:</p>
+
+<ul>
+  <li>Execute large numbers of millisecond-level computations (for example, in response to user requests)</li>
+  <li>Execute workloads on heterogenous resources (running some system workloads on CPUs and others on GPUs)</li>
+  <li>Quickly adapt to new inputs that impact a reinforcement-learning simulation</li>
+</ul>
+
+<p>The authors argue that existing architectures for RL weren’t able to achieve these goals because of their a-la-carte design - even though technologies existed to solve individual problems associated with running RL models in production, no individual solution was able to cover all of the aforementioned requirements.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The Ray paper has three main contributions: a generic system designed to train, simulate, and server RL models, the <em>design and architecture</em> of that system, and a <em>programming model</em> used to write workloads that run on the system. We will dive into the programming and computation model first, as they are key to understanding the rest of the system.</p>
+
+<h2 id="programming-and-computation-model">Programming and computation model</h2>
+
+<p>Applications that run on Ray are made up of runnable subcomponents with two types: <em>tasks</em> or <em>actors</em>.</p>
+
+<p><em>Tasks</em> are a stateless function execution that rely on their inputs in order to produce a future result (futures are a common abstraction in asynchronous frameworks<label for="futures" class="margin-toggle sidenote-number"></label><input type="checkbox" id="futures" class="margin-toggle" /><span class="sidenote">For more on futures, I would recommend <a href="http://dist-prog-book.com/chapter/2/futures.html">Heather Miller’s book on  Programming Models for Distributed Computing</a>. </span>). A programmer can make a future depend on another future’s result, like one would be able to in most asynch programming frameworks.</p>
+
+<p><em>Actors</em> are functions that represent a stateful computation (like a counter), and can depend on or be depended on by other computations. Because they require maintenance of state, they are also more difficult to implement (for example, how is the state recovered in event of failure?).</p>
+
+<p>Resources can be explicitly allocated to <em>tasks</em> and <em>actors</em> - for example, an <em>actor</em> can be annotated with the number of GPUs it needs.</p>
+
+<p>Because <em>Tasks</em> and <em>Actors</em> in an application can depend on one another, Ray represents their execution as a graph. The nodes in the graph are computation or state that computation produces, while the edges in the graph describe relationships between computations and/or data. Representing computation as a graph allows the state of an application be to re-executed as needed - for example, if part of the state is stored on a node that fails, that state can be recovered <label for="lineage" class="margin-toggle sidenote-number"></label><input type="checkbox" id="lineage" class="margin-toggle" /><span class="sidenote">Several of the authors dig further into representing lineage in a future paper <a href="https://dl.acm.org/doi/pdf/10.1145/3341301.3359653">here</a>. </span>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/ray/api.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To instatiate <em>tasks</em> and <em>actors</em>, Ray provides a developer API in Python (and now in other languages). To initialize a remote function, a developer can add the <code class="language-plaintext highlighter-rouge">@ray.remote</code> decorator. The example below (from the open source project docs <a href="https://github.com/ray-project/ray#quick-start">here</a>) shows how one would create a remote function to square a range of numbers, then wait on the results.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>import ray
+ray.init()
+
+@ray.remote
+def f(x):
+    return x * x
+
+futures = [f.remote(i) for i in range(4)]
+print(ray.get(futures))
+</code></pre></div></div>
+
+<h2 id="architecture">Architecture</h2>
+
+<p>Ray aims to run <em>Tasks</em> and <em>Actors</em> created by developers in a fault-tolerant manner. To do so, it implements a distributed system containing two layers: the <em>Application Layer</em> and the <em>System Layer</em>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/ray/arch.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="the-application-layer">The Application Layer</h3>
+<p>The <em>Application Layer</em> has three components: a singleton <em>driver</em> (which orchestrates a specific user program on the cluster), <em>workers</em> (processes that run tasks), and <em>actors</em> (which as the name suggests, run <em>Actors</em> mentioned in the previous section).</p>
+
+<h3 id="the-system-layer">The System Layer</h3>
+<p>The <em>System Layer</em> is significantly more complex, and comprises three components: a <em>Global Control Store</em> (which maintains state of the system), a <em>scheduler</em> (which coordinates running computation), and a <em>distributed object store</em> (which store the input and output of computation).</p>
+
+<p>The <em>Global Control Store</em> (a.k.a. GCS) is a key-value store that maintains the state of the system. One of its key functions is maintaining the lineage of execution so that the system can recover in the event of failure. The authors argue that separating the system metadata from the scheduler allows every other component of the system to be stateless (making it easier to reason about how to recover if the different subcomponents fail).</p>
+
+<p>The original paper does not dive into the subcomponents of the <em>GCS</em>, but the <a href="https://docs.google.com/document/d/1lAy0Owi-vPz2jEqBSaHNQcy2IBSDEHyXNOQZlGuj93c/preview#">Ray v1.x Architecture paper</a> provides more context on how components work (or in some cases, how they have been reworked). One of the most important subystems from the original paper was the <em>Object Table</em>, which stores locations of values used by Ray operations - for example, on which node a task is storing its output. We will see the <em>Object Table</em> again in the end-to-end example section of the paper review.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/ray/scheduler.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>Scheduler</em> operates “bottoms up” in order to assign the execution of a function to a specific node in the cluster. In contrast to existing schedulers, the Ray scheduler aims to schedule millions of tasks per second (where the tasks are possibly short lived), while also taking into account data locality<label for="assumptions" class="margin-toggle sidenote-number"></label><input type="checkbox" id="assumptions" class="margin-toggle" /><span class="sidenote">The paper also mentions other assumptions that existing schedulers make - other schedulers “assume tasks belong to independent jobs, or assume the computation graph is known.” </span>. Data locality matters for scheduling because the output of computation will end up on a specific node - transferring that data to another node incurs overhead. The scheduler is called “bottoms up” because tasks are first submitted to a local scheduler, only bubbling up to a global scheduler if they cannot be scheduled on the local machine.</p>
+
+<p>Lastly, the <em>distributed object store</em> stores immutable inputs and outputs of every task in memory, transferring the inputs for a task to a different machine if needed (for example, if the local scheduler can’t find resources).</p>
+
+<h3 id="running-an-application-in-ray">Running an application in Ray</h3>
+
+<p>Now that we have an understanding of the different components of Ray, lets walk through an example execution (as described in the original paper)<label for="caveat" class="margin-toggle sidenote-number"></label><input type="checkbox" id="caveat" class="margin-toggle" /><span class="sidenote">I will caveat this section of the paper review with the fact that Ray has changed significantly, and not all functionality may have stayed exactly the same - even so, understanding how the different components fit together is interesting. </span>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/ray/execute.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The execution involves adding the results of two existing Ray tasks (using a call to <code class="language-plaintext highlighter-rouge">add.remote(a, b)</code>). To begin, a function execution is initiated and submitted for scheduling on the local node (<em>N1</em>). The scheduling request is then forwarded to the <em>Global Scheduler</em> (possibly because the original node didn’t have enough capacity). The <em>Global Scheduler</em> checks the <em>Object Table</em> (which stores task outputs and their locations) for the location of the outputs of the <em>a</em> and <em>b</em> tasks. Then, the <em>Global Scheduler</em> assigns the new computation to a different node (<em>N2</em>). <em>N2</em> only has the outputs of <em>b</em>, so it needs to fetch the outputs of <em>a</em> from a remote node. In order to fetch <em>a</em>, <em>N2</em> makes a call to the <em>GCS</em> in order to determine where the other output (<em>a</em>) is stored, then fetches the output. Lastly, execution begins on <em>N2</em>.</p>
+<h2 id="evaluation-and-microbenchmarks">Evaluation and microbenchmarks</h2>
+
+<p>The original paper evaluates whether Ray achieves the desired goal of being able to schedule millions of tasks with variable running times, and whether doing so on heterogenous architecture provides any benefits. A few of the benchmarks stick out to me, primarily those that show how Ray is able to take advantage of heterogenous computing resources.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/ray/ppo.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Ray is primarily impressive in this regard:</p>
+
+<blockquote>
+  <p>Ray implementation out-performs the optimized MPI implementation in all experiments, while using a fraction of the GPUs. The reason is that Ray is heterogeneity-aware and allows the user to utilize asymmetric architectures by expressing resource requirements at the granularity of a task or actor. The Ray implementation can then leverage TensorFlow’s single-process multi-GPU support and can pin objects in GPU memory when possible. This optimization cannot be easily ported to MPI due to the need to asynchronously gather rollouts to a single GPU process</p>
+</blockquote>
+
+<p>For the Proximal Policy Optimization (PPO) algorithm (more information <a href="https://openai.com/blog/openai-baselines-ppo/">on PPO</a>), the system is able to scale much better than an OpenMPI alternative: “Ray’s fault tolerance and resource-aware scheduling together cut costs by 18×.”</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>While originally designed as a system for RL applications, Ray is paving an exciting path forward in computing by providing abstractions on top of cloud resources (in particular, I’m excited to see how the projects innovates in multi-cloud deployments). They have an detailed design document for the new version of the system <a href="https://docs.google.com/document/d/1lAy0Owi-vPz2jEqBSaHNQcy2IBSDEHyXNOQZlGuj93c/preview#">here</a>.</p>
+
+<p>If you find this paper interesting, <a href="https://raysummit.anyscale.com/speakers">Ray Summit</a> was last week and covers various Ray system internals (in addition to discussions of the technology being adopted in industry).</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-06-27-ray-a-distributed-framework-for-emerging-ai-applications.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

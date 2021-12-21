@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Log-structured Protocols in Delos</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Log-structured Protocols in Delos</h1>
+  
+  <h4>Published November 23, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-11-23-log-structured-protocols-in-delos.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><em>The papers over the next few weeks will be from <a href="https://sosp2021.mpi-sws.org/">SOSP</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="https://dl.acm.org/doi/10.1145/3477132.3483544">Log-structured Protocols in Delos</a></p>
+
+<p>This week’s paper review, “Log-structured Protocols in Delos” discusses a critical component of Delos, Facebook’s system for storing control plane data, like scheduler metadata and configuration<label for="adrian" class="margin-toggle sidenote-number"></label><input type="checkbox" id="adrian" class="margin-toggle" /><span class="sidenote">A previous paper on the system, <a href="https://www.usenix.org/conference/osdi20/presentation/balakrishnan">Virtual Consensus in Delos</a>, won a best paper award at OSDI 2020. There are great overviews of this paper from <a href="https://muratbuffalo.blogspot.com/2021/01/virtual-consensus-in-delos.html">Murat Demirbas</a> and <a href="https://blog.acolyer.org/2020/11/09/delos/">The Morning Paper</a>, and a great talk from Mahesh at <a href="https://atscaleconference.com/2021/03/15/virtualizing-consensus/">@scale</a>. </span> - according to the authors, Delos is replacing Zookeeper<label for="zookeeper" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zookeeper" class="margin-toggle" /><span class="sidenote">From the <a href="https://zookeeper.apache.org/">Zookeeper site</a>: “ZooKeeper is a centralized service for maintaining configuration information, naming, providing distributed synchronization, and providing group services. All of these kinds of services are used in some form or another by distributed applications. Each time they are implemented there is a lot of work that goes into fixing the bugs and race conditions that are inevitable. Because of the difficulty of implementing these kinds of services, applications initially usually skimp on them, which make them brittle in the presence of change and difficult to manage. Even when done correctly, different implementations of these services lead to management complexity when the applications are deployed.” </span> inside of Facebook<label for="zelos" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zelos" class="margin-toggle" /><span class="sidenote">The authors call the Zookeeper implementation on Delos <em>Zelos</em> - more on this later on in this paper review. </span>.</p>
+
+<p>Storage systems for control plane data are placed under different constraints than systems that store application data - for example, control plane systems must be highly available and strive for zero-dependencies. At the same time, it is not sufficient to provide a single API (like a simple key-value store) for control plane databases, meaning that several systems need to be implemented according to these requirements. Delos aims to limit duplicate solutions to the problems that control plane databases face by providing a common platform for control plane databases.</p>
+
+<p>A key feature of Delos is a replicated log - many systems use log replication to maintain multiple copies of a dataset or to increase fault tolerance<label for="log replication" class="margin-toggle sidenote-number"></label><input type="checkbox" id="log replication" class="margin-toggle" /><span class="sidenote">Two examples are MySQL replication, covered in previous papers reviews on <a href="/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html">TAO: Facebook’s Distributed Data Store for the Social Graph</a> and <a href="/2021/05/31/scaling-memcache-at-facebook.html">Scaling Memcache at Facebook</a>. </span>. Consumers of a replicated log execute logic on the data in log entries to produce a “state of the world”. Each node that has consumed the log up to the same point will have the same “state of the world” (assuming that the log consumption code is deterministic!). The name for this technique is <em>state machine replication</em><label for="smr" class="margin-toggle sidenote-number"></label><input type="checkbox" id="smr" class="margin-toggle" /><span class="sidenote">The paper cites <a href="https://raft.github.io/">Raft</a>, which I wrote about in a <a href="/2020/05/08/understanding-raft-consensus.html">previous paper review</a>. I also highly recommend like <a href="https://eli.thegreenplace.net/2020/implementing-raft-part-0-introduction/">this overview</a> from Eli Bendersky. </span> (aka SMR).</p>
+
+<p>The authors note that many systems taking advantage of <em>state machine replication</em> unnecessarily re-implement similar functionality (like batching writes to the log). To enable code reuse, Delos implements common functionality in reusable building blocks that run under higher-level, application-specific logic. The authors call this stack-like approach <em>log-structured protocols</em>, and discuss how the technique simplifies the development and deployment of SMR systems through code-reuse, upgradability, and implementation flexibility.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?’</h2>
+
+<p>The paper makes three main contributions: the design for <em>log-structured protocols</em>, implementations of nine <em>log-structured protocols</em> and two production databases using the abstraction, and the evaluation of the implementations scaled to a production environment.</p>
+
+<h2 id="log-structured-protocol-design">Log Structured Protocol Design</h2>
+
+<p>Each log-structured protocol has four primary components:</p>
+
+<ul>
+  <li><em>Application logic</em>: unique functionality that often represents the interface between the replicated state machine and an external system. On example is application logic that converts log entries into SQL statements that write to a database table.</li>
+  <li><em>Engines</em>: implement common functionality like batching writes to the log or backing up log entries to external storage. More information on the various <em>engines</em> in a later section.</li>
+  <li><em>Local store</em>: contains the state of the world. Engines and application logic read/write to the local store, which is implemented using RocksDB.</li>
+  <li><em>Shared log</em>: the lowest level of the stack. A common <em>base engine</em> handles writes and reads to the <em>shared log</em>.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/log-structured-delos/stack.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Engines</em> are a key building block of each log-structured protocol - they allow developers to compose existing functionality and to focus on implementing a small set of custom logic.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/log-structured-delos/proposals.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Each engine interacts with the layers above or below through an API that relies on <em>proposals</em>:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">propose</code>, used to send messages down the stack, towards the shared log.</li>
+  <li><code class="language-plaintext highlighter-rouge">apply</code>, used by lower level engines to transfer messages up the stack.</li>
+</ul>
+
+<p>While responding to calls, the engines can also read or write to the LocalStore, which maintains the current state of the system. Additional calls setup the layering in a log-structured protocol (<code class="language-plaintext highlighter-rouge">registerUpcall</code>), coordinate trimming the log (<code class="language-plaintext highlighter-rouge">setTrimPrefix</code>), request all entries from a lower level engine (<code class="language-plaintext highlighter-rouge">sync</code>), and allow an engine to respond to events (using a <code class="language-plaintext highlighter-rouge">postApply</code> callback).</p>
+
+<h2 id="two-databases-and-nine-engines">Two Databases and Nine Engines</h2>
+
+<p>In addition to outlining the structure of <em>log-structured protocols</em>, the paper describes the implementation of a set of databases and engines using the approach.</p>
+
+<h3 id="databases">Databases</h3>
+
+<p>The paper discusses the implementation of two databases using the Delos infrastructure: <em>DelosTable</em> and <em>Zelos</em>.</p>
+
+<p><a href="https://engineering.fb.com/2019/06/06/data-center-engineering/delos/">Existing research from FB</a> describes how <em>DelosTable</em>, “offers a rich API, with support for transactions, secondary indexes, and range queries. It provides strong guarantees on consistency, durability, and availability.” <em>DelosTable</em> is used in Facebook’s, “Tupperware Resource Broker<label for="twine" class="margin-toggle sidenote-number"></label><input type="checkbox" id="twine" class="margin-toggle" /><span class="sidenote">I haven’t had a chance to read it yet, but Tupperware is mentioned in Facebook’s paper on resource management - <a href="https://www.usenix.org/system/files/osdi20-tang.pdf">Twine: A Unified Cluster Management System for Shared Infrastructure</a>. </span>, which maintains a ledger of all machines in our data centers and their allocation status”.</p>
+
+<p><em>Zelos</em> provides a Zookeeper-like interface that supports CRUD operations on a hiearchical structure of nodes<label for="zookeeper" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zookeeper" class="margin-toggle" /><span class="sidenote">See the <a href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">Zookeeper documentation</a> for more details. </span> (among other, more advanced functions).</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/log-structured-delos/zknamespace.jpg" /><figcaption class="maincolumn-figure">Example Zookeeper namespace (<a href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">source</a>)</figcaption></figure>
+
+<p>When covering Zelos, the paper discusses how internal customer needs stemming from the Zookeeper-port shaped the Delos design<label for="pivot" class="margin-toggle sidenote-number"></label><input type="checkbox" id="pivot" class="margin-toggle" /><span class="sidenote">The paper also notes another pivot: “The Delos project was initially conceived with the goal of adding a quorum-replicated Table store to this menagerie of distributed systems, filling a gap for applications that required the fault-tolerance of ZooKeeper with the relational API of MySQL. However, a secondary goal soon emerged: could we implement the ZooKeeper API on the same codebase as this new Table store, eliminating the need to maintain and operate a separate ZooKeeper service?” </span>:</p>
+
+<blockquote>
+  <p>Our initial design for Delos involved a reusable platform layer exposing an SMR API, allowing any arbitrary application black box to be replicated above it. The platform itself is also a replicated state machine, containing functionality generic to applications…Unfortunately, structuring the platform as a monolithic state machine limited its reusability. When the ZooKeeper team at Facebook began building Zelos on the Delos platform, they needed to modify the platform layer to obtain additional properties such as session ordering guarantees, batching / group commit, and nonvoting modes<label for="zookeeperunique" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zookeeperunique" class="margin-toggle" /><span class="sidenote">These unique properties of Zookeeper are discussed in a later section </span>.</p>
+</blockquote>
+
+<p>Because these unique features of Zookeeper were too difficult to implement in a monolithic architecture, the Delos design pivoted to a stack-like, engine-based approach.</p>
+
+<h3 id="engines">Engines</h3>
+
+<p>The paper describes nine different engines that comprise common functionality. I focus on three that highlight Delos’ strengths: the <em>ObserverEngine</em>, <em>SessionOrderEngine</em>, and <em>BatchingEngine</em>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/log-structured-delos/nine-engines.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>ObserverEngine</em> is placed between different layers of a Delos stacks, and provides reusable monitoring functionality by tracking the time spent in a given engine.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/log-structured-delos/stacks.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>SessionOrderEngine</em> implements the idea of Zookeeper sessions<label for="sessions" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sessions" class="margin-toggle" /><span class="sidenote">The original <a href="https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf">Zookeeper paper</a> seems to discuss this idea in the <em>Zookeeper guarantees</em> section. Documentation on mechanics of Zookeeper sessions is <a href="http://zookeeper.apache.org/doc/current/zookeeperProgrammers.html#ch_zkSessions">here</a>. </span>:</p>
+
+<blockquote>
+  <p>ZooKeeper provides a session-ordering guarantee: within a session, if a client first issues a write and then a concurrent read (without waiting for the write to complete), the read must reflect the write. This property is stronger than linearizability, which allows concurrent writes and reads to be ordered arbitrarily; and encompasses exactly-once semantics<label for="39" class="margin-toggle sidenote-number"></label><input type="checkbox" id="39" class="margin-toggle" /><span class="sidenote">The Delos paper references <a href="http://web.stanford.edu/~ouster/cgi-bin/papers/rifl.pdf">Implementing Linearizability at Large Scale and Low Latency</a> when discussing how Zookeeper’s guarantees are stronger than linearizability (definition of linearizability <a href="https://jepsen.io/consistency/models/linearizable">here</a>). The system proposed by this paper uses log-based recovery on the server to ensure that if clients retry a request after crashing, the system will preserve linearizability. When reading the referenced paper, I also found this <a href="https://www.youtube.com/watch?v=MkF2wuHaf04">talk</a> from the authors and this review from <a href="https://blog.acolyer.org/2015/10/22/implementing-linearizability-at-large-scale-and-low-latency/">The Morning Paper</a>. </span></p>
+</blockquote>
+
+<p>Delos implements these semantics in the <em>SessionOrderEngine</em> by assigning sequence numbers (essentially autoincrementing IDs) to outgoing writes. When other nodes read from the log, they check that the writes are ordered based on sequence number, reordering them into the correct sequence as necessary<label for="reorder" class="margin-toggle sidenote-number"></label><input type="checkbox" id="reorder" class="margin-toggle" /><span class="sidenote">The Delos paper mentions that “disorder can occur due to leader changes within the log implementation, or due to code changes in the Delos stack”. </span>.</p>
+
+<p>The <em>BatchingEngine</em> groups entries into a single transaction write to the <em>LocalStore</em>. This approach enables higher performance and provides a common implementation that both DelosTable and Zelos use (related to Delos’ design goal of code re-use).</p>
+
+<h2 id="evaluation">Evaluation</h2>
+
+<p>The paper evaluates Delos log-structured protocols on two dimensions: the overhead (if any) inherent to the design, and the performance/productivity gains that the design allows.</p>
+
+<p>When evaluating overhead, the paper considers the <code class="language-plaintext highlighter-rouge">apply</code> thread (as this upcall relates to the different transitions between each engine). The paper notes that of the CPU consumed in the fleet, apply only makes up 10% of the utilization.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/log-structured-delos/apply.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The second main category of results is related to the benefits of code-reuse. One example that the paper cites is the introduction of the <em>BatchingEngine</em> discussed in the previous section. The deployment of the <em>BatchingEngine</em> was relatively straightfoward and contributed to a 2X throughput improvement. Furthermore, the engine could be rolled out to other protocols.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/log-structured-delos/batchingengine.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>I greatly enjoyed this paper! The paper’s authors have been researching related topics for some time<label for="tango" class="margin-toggle sidenote-number"></label><input type="checkbox" id="tango" class="margin-toggle" /><span class="sidenote">Mahesh published a <a href="http://www.cs.cornell.edu/~taozou/sosp13/tangososp.pdf">paper</a> on building data structures from a shared log at SOSP’13. </span>, and seeing their expertise applied to a new production setting was quite interesting. Additionally, the newest Delos papers share production-focused experiences, and a design guided by collaboration with internal customers - it is always fun to read about rubber-meets-the-road approaches!</p>
+
+<p>As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback! Until next time.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-11-23-log-structured-protocols-in-delos.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

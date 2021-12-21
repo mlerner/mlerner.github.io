@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>The Cybersecurity Rabbithole</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>The Cybersecurity Rabbithole</h1>
+  
+  <h4>Published June 03, 2019</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_fragments/2019-05-22-CTFs.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p>Over the past couple of months, I have been diving into the goal areas I set out for myself at the beginning of the year. One umbrella covers several areas (CTF’s, cryptography, and operating systems) I am interested in - cybersecurity. After participating in a few CTF’s (Capture the Flag’s), I realized this is an opportunity to blog!</p>
+
+<p>First off, what is a CTF? They are problem solving competitions often organized by companies (Square, Stripe, and G), universities (UCSB, KTH), or conferences (Defcon, BSides). They are not only fun, but are a significant way that computer security professionals learn the ropes, improve their skills, and stay involved in their community. The name of the game comes from what happens when you solve a challenge - you find a string (“the flag”) that you input into a system to prove that you have solved (“captured”) the challenge.</p>
+
+<p>There are several styles of CTF’s, but one of the most popular is “jeopardy”. This type of competition involves a set of challenges that an individual or team can solve in the order that they desire. Most CTFs have a time limit ranging from several days to a week.</p>
+
+<p>There are several main types of challenges in these types of competitions, all of which are designed to test your skills and knowledge. While the challenges I have seen do not represent the complete set of options for CTF designers, the ones that I have seen could be grouped into several categories:</p>
+<ul>
+  <li>Web Security - flags are revealed when you find a vulnerability in a web application, like SQL injection, file inclusion, or cross-site scripting bugs. I dived into this set first because of my existing familiarty with these problems.</li>
+  <li>Programming - find bugs in a program or write a program to solve a puzzle to reveal a flag.</li>
+  <li>Cryptography / Math - Solve a puzzle involving some knowledge of cryptographic primitives or mathematical problem solving (for example, the <a href="https://squarectf.com/2018/captcha.html">Square CTF</a> has these).</li>
+  <li>Reverse Engineering - reveal a flag by figuring out what a program does, most of the time not being able to see the source code (for example, being given a binary file and needing to find a flag in a C program)</li>
+</ul>
+
+<p>Of this set, cryptography and reverse engineering seem to be the most difficult.  Luckily, the internet has proven to be a good source of information about where to improve (again, another future blog topic).</p>
+
+<p>I’m also looking forward to digging into a type of challenge that closely aligns with my professional interests, but doesn’t show up in every set of challenges - Ethereum contract vulnerabilities. There is a wealth of information about auditing these contracts - ranging from <a href="https://blog.zeppelin.solutions/augur-core-audit-244160d77c09">public audits</a>, <a href="https://consensys.github.io/smart-contract-best-practices/security_tools/">tools to perform the audits</a>, and <a href="https://github.com/smartcontractkit/LinkToken/blob/master/contracts/LinkToken.sol">publicly accessible open source contracts</a>.</p>
+
+<p>A knock-on effect of diving into computer security has been learning more about various other low-level computer components. In some sense, it converts learning into a problem-solving exercise, rather than poring over textbooks. For example, I’ve been able to practice x86, C, and other rusty skills as a result of doing CTFs.</p>
+
+<p>I have several takeaways from the past several months. First off, knowledge about these topics seems to be somewhat scattered, and resources vary dramatically in terms of quality. Additionally, there doesn’t seem to be a systematized way to <em>begin</em> learning (although there are certifications like CEH and OSCP to do when you reach a certain threshold of knowledge). Lastly, there is a culture of forcing people to struggle through problems as part of the learning process. I’ve taken a course where I learned about C, I know what a register is, and I program professionally, but not all of those things are true for those who begin learning about computer security. Some people could start with the beginning certifications that teach about networking or Linux, but it seems like a clear path along the lines of Khan Academy would work better than what is currently out there. Additionally, I think the internet enables curious people to pursue rabbit-hole-style learning, but there is significant friction in doing so.</p>
+
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_fragments/2019-05-22-CTFs.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>

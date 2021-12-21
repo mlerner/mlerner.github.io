@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Noria: dynamic, partially-stateful data-flow for high-performance web applications</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Noria: dynamic, partially-stateful data-flow for high-performance web applications</h1>
+  
+  <h4>Published March 28, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-03-28-noria-dynamic.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section>
+    <p><a href="https://pdos.csail.mit.edu/papers/noria:osdi18.pdf">Noria: dynamic, partially-stateful data-flow for high-performance web applications</a> Gjengset, Schwarzkopf, et al. OSDI 2018</p>
+
+<p>I started reading this paper after finding the work of <a href="https://thesquareplanet.com/">Jon Gjengset</a> - he has great streams about Rust (in particular, I have been enjoying <a href="https://www.youtube.com/playlist?list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa">Crust of Rust</a>, where he goes over intermediate Rust topics).</p>
+
+<h2 id="what-is-noria">What is Noria?</h2>
+<p>The Noria paper outlines a system that could replace a traditional two-tier architecture used in web applications to serve high read request volume.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/noria/two-tier.png" /><figcaption class="maincolumn-figure">Classic two tier architecture</figcaption></figure>
+
+<p>This two-tier architecture uses a backing database and a cache (like Memcached, Redis, etc.) to limit the number of requests that hit the backing database. Putting a cache in front of the database to serve read requests raises several important questions:</p>
+<ul>
+  <li>How is the cache invalidated when a write is made to the backing datastore? Presumably, the cache should be invalidated when a write happens, but how does one make sure that cache invalidations don’t trigger all at once (an event that could overload your infrastructure if all reads suddenly hit the backing database, causing it to fall over).</li>
+  <li>How is the cache set up to handle changes in user patterns? For example, say that the cache only has a subset of popular records, but traffic suddenly shifts to a different set of records (imagine that a different set of videos go viral).</li>
+</ul>
+
+<p>Another challenge with a traditional two-tier architecuture is being able to handle aggregations well - for example, say that you wanted to maintain the top-k posts on a site, or the min/max of a set of values. These types of aggregations are supported by current stream processing systems, with a caveat - the stream processing systems often perform aggregations over a window of time to limit the data that needs to be retained. 
+<label for="window" class="margin-toggle sidenote-number"></label><input type="checkbox" id="window" class="margin-toggle" /><span class="sidenote">Once a record goes out of the window used by the aggregation, the record is dropped, limiting the number of records that need to be kept around. </span></p>
+
+<h2 id="data-flow">Data Flow</h2>
+
+<p>The Noria paper proposes a new database (and includes an <a href="https://github.com/mit-pdos/noria">implementation</a>), that aims to support “read-heavy applications that tolerate eventual consistency”.</p>
+
+<p>In order to achieve the goal of getting rid of an external cache, Noria effectively caches results for common queries <em>inside</em> the database. <label for="cache in db" class="margin-toggle">⊕</label><input type="checkbox" id="cache in db" class="margin-toggle" /><span class="marginnote"><img class="fullwidth" src="/pages/mlerner/assets/noria/cacheindb.gif" /><br /></span></p>
+
+<p>To supporting caching inside the database, two structures are used:</p>
+<ul>
+  <li>Base tables (a persistent store of the database state)</li>
+  <li>Derived views (“the data that an application might choose to cache”)</li>
+</ul>
+
+<p>Derived views (similar to materialized views in current database implementations) are populated using data from base tables. Operations on the database like writes, updates, and deletes <em>flow</em> through a graph that contains state, updating the cache - the concept of changes propagating through graph is called <strong>data flow</strong><label for="data flow" class="margin-toggle sidenote-number"></label><input type="checkbox" id="data flow" class="margin-toggle" /><span class="sidenote">The paper points to past research on data-flow systems, like <a href="https://cs.stanford.edu/~matei/courses/2015/6.S897/readings/naiad.pdf">Naiad: A Timely Dataflow System</a>. </span>.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/noria/data-flow.png" /><figcaption class="maincolumn-figure">Data flow example</figcaption></figure>
+
+<p>The nodes in the data-flow graph are views of the database used by readers, or cached intermediate results used to build those views. The edges can represent relationships between intermediate results - for example, if a derived view relies on two tables, there would be edges between the intermediate results and the output derived view. Interestingly, related derived views (views that use the same underlying tables) can <strong>reuse</strong> the graph of state (more on reuse of the state in the graph later).</p>
+
+<p>If a read query occurs, but the data required to answer the query is not cached, Noria can choose to fetch the data using an <strong>upquery</strong>.</p>
+
+<p>The idea of representing derived views as a graph of intermediate results comes in handy when new user patterns emerge or new derived tables are added. In this situation, Noria will <em>transition</em> to a new graph of data-flow:</p>
+<blockquote>
+  <p>Noria first plans the transition, reusing operators and state of existing expressions where possible (§5.1). It then incrementally applies these changes to the data-flow, taking care to maintain its correctness invariants (§5.2). Once both steps complete, the application can use new tables and queries.</p>
+</blockquote>
+
+<p>The paper argues that this transitioning pattern is fundamentally different than existing data-flow systems, which can not perform updates to the graph on the fly (or without a restart).</p>
+
+<p>To ensure that the size of the data in the derived views does not have unbounded growth, Noria implements <em>partially</em> stateful data-flow - 
+if the footprint of the derived views grows to be too large, the system evicts data intelligently 
+(a user of the system need to ensure enough resources are provided so that there is not significant churn in the data kept in cache).
+<label for="materialized views" class="margin-toggle sidenote-number"></label><input type="checkbox" id="materialized views" class="margin-toggle" /><span class="sidenote">The paper mentions that partial materialization is not entirely new, but that applying the idea to “data-flow” systems is. </span>.</p>
+
+<h3 id="performance-evaluation">Performance evaluation</h3>
+
+<p>The paper includes an evaluation section, where the system is benchmarked against a set of other databases. The benchmark contains a simulation of read traffic to <a href="https://lobste.rs">lobste.rs</a>, and in this comparison Noria does quite well, scaling to many millions of requests before hitting a wall.</p>
+
+<figure><img class="maincolumn-img" src="/pages/mlerner/assets/noria/evaluation.png" /><figcaption class="maincolumn-figure">Comparison of Noria to competing systems</figcaption></figure>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-03-28-noria-dynamic.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div
+      id="gh-portal-triggerbtn-wrapper"
+      class="gh-portal-triggerbtn-wrapper"
+    >
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of distributed systems and operating
+                  systems around once a week.
+                </p>
+                <p>
+
+                </p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "visible";
+  });
+
+  closeButton.addEventListener("click", function () {
+    popupRoot.classList.toggle("m-fadeOut");
+    popupRoot.classList.toggle("m-fadeIn");
+    popupRoot.style.visibility = "hidden";
+  });
+</script>
+
+  </body>
+</html>
