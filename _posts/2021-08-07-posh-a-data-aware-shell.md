@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "POSH: A Data-Aware Shell"
+hn: "https://news.ycombinator.com/item?id=28108347"
 categories:
 ---
 

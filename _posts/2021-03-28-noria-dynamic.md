@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Noria: dynamic, partially-stateful data-flow for high-performance web applications"
+hn: "https://news.ycombinator.com/item?id=29615085"
 categories:
 ---
 

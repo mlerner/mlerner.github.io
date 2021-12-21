@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "TAO: Facebook’s Distributed Data Store for the Social Graph"
+hn: "https://news.ycombinator.com/item?id=29045443"
 categories:
 ---
 

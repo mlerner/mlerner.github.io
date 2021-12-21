@@ -1,9 +1,9 @@
 ---
 layout: post
 title: "Unix Shell Programming: The Next 50 Years (The Future of the Shell, Part I)"
+hn: "https://news.ycombinator.com/item?id=29610956"
 categories:
 ---
-
 
 [Unix Shell Programming: The Next 50 Years](https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s06-greenberg.pdf)
 

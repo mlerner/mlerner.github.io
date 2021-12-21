@@ -820,3 +820,12 @@ section > p.discussion {
   opacity: 1;
   transition: visibility 0s linear 0s, opacity 300ms;
 }
+
+.hn {
+  color: #828282;
+  text-decoration: none !important;
+}
+
+.hn-image {
+  max-width: 18px;
+}

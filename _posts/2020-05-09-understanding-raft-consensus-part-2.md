@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Understanding Raft - Part 2 (Raft leaders, logs, and safety)"
+hn: "https://news.ycombinator.com/item?id=23128787"
 tags: ["Distributed Systems"]
 ---
 > This post is a continuation in the series I wrote about Raft, the first part of which is [here](2020/05/08/understanding-raft-consensus.html). This post focuses on what underlies leader election, log replication, and Raft safety. Enjoy!

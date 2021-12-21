@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "FoundationDB: A Distributed Unbundled Transactional Key Value Store"
+hn: "https://news.ycombinator.com/item?id=28740497"
 categories:
 ---
 

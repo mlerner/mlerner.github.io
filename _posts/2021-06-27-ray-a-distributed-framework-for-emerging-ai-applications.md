@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Ray: A Distributed Framework for Emerging AI Applications"
+hn: "https://news.ycombinator.com/item?id=27730807"
 categories:
 ---
 

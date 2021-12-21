@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Scaling Large Production Clusters with Partitioned Synchronization"
+hn: "https://news.ycombinator.com/item?id=28819518"
 categories:
 ---
 

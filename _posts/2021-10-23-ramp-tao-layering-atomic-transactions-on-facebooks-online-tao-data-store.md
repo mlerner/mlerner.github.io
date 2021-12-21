@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store"
+hn: "https://news.ycombinator.com/item?id=29610334"
 categories:
 ---
 

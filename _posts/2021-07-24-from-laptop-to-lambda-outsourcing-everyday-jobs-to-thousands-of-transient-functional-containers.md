@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transient Functional Containers"
+hn: "https://news.ycombinator.com/item?id=27950204"
 categories:
 ---
 

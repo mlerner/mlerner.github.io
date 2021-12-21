@@ -6,45 +6,69 @@ layout: default
   <h2>Micah Lerner</h2>
   <section>
     <p>
-      Hello! I'm Micah. This is my blog, where I publish my writing (mostly focused on Computer Science research).
+      Hello! I'm Micah. This is my blog, where I publish my writing (mostly
+      focused on Computer Science research).
     </p>
     <p>
-
       I am an <a href="http://github.com/mlerner">engineer</a> interested in
       maps, space, and futuristic ideas. I currently work on the SRE team at
       Google. Previously, I helped build the Geospatial datasets powering
       Mapbox. Before that, I was a member of the infrastructure team at
-      <a href="https://www.strava.com/">Strava</a> (and the first engineering intern!).
+      <a href="https://www.strava.com/">Strava</a> (and the first engineering
+      intern!).
     </p>
   </section>
   <section class="main-signup">
-    <form action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
-      method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank"
-      novalidate>
+    <form
+      action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+      method="post"
+      id="mc-embedded-subscribe-form"
+      name="mc-embedded-subscribe-form"
+      class="validate"
+      target="_blank"
+      novalidate
+    >
       <label for="mce-EMAIL">
         <h3 class="fw8 f5 ttu mt0 mb1">Get essays a bit faster</h3>
       </label>
       <p id="mce-email-describe" class="mt0">
-        I write about computer science papers around once a week, mostly from the
-        fields of distributed systems, operating systems, and computer security. I also publish blog updates
+        I write about computer science papers around once a week, mostly from
+        the fields of distributed systems, operating systems, and computer
+        security. I also publish blog updates
         <a href="https://twitter.com/micahlerner">on Twitter</a> and via
         <a href="/feed.xml">Atom feed</a>.
       </p>
 
       <div id="mc_embed_signup_scroll">
         <div>
-          <input type="email" value="" name="EMAIL" class="email" id="tlemail" placeholder="email address" required />
+          <input
+            type="email"
+            value=""
+            name="EMAIL"
+            class="email"
+            id="tlemail"
+            placeholder="email address"
+            required
+          />
           <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
           <div style="position: absolute; left: -5000px" aria-hidden="true">
-            <input type="text" name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1" tabindex="-1" value="" />
+            <input
+              type="text"
+              name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+              tabindex="-1"
+              value=""
+            />
           </div>
-          <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button" />
+          <input
+            type="submit"
+            value="Subscribe"
+            name="subscribe"
+            id="mc-embedded-subscribe"
+            class="button"
+          />
         </div>
       </div>
     </form>
-    <p>
-
-    </p>
   </section>
   <section>
     <div style="padding-top: 20px">
@@ -54,9 +78,17 @@ layout: default
         <li>
           <p>
             <a href="{{post.url}}">{{post.title}}</a> - {{ post.date | date: '%B
-            %d, %Y' }}
+            %d, %Y' }} {% if post.hn.size > 0 %}
+            <a href="{{post.hn}}" class="hn" style="text-decoration: none">
+              <img class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            {% endif %}
           </p>
-          <!-- <p>Published {{ post.date | date: '%B %d, %Y' }} </p> -->
         </li>
         {% endunless %} {% endfor %}
       </ul>

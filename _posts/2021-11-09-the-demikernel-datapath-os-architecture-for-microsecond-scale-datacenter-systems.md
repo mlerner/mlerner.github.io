@@ -1,12 +1,11 @@
 ---
 layout: post
 title: "The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems"
+hn: "https://news.ycombinator.com/item?id=29237007"
 categories:
 ---
 
 _The papers over the next few weeks will be from [SOSP](https://sosp2021.mpi-sws.org/). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._  
-
-{% discussion 'https://news.ycombinator.com/item?id=29237007' %}
 
 [The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems](https://dl.acm.org/doi/10.1145/3477132.3483569)
 

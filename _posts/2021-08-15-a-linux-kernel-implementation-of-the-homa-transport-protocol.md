@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Homa: A Receiver-Driven Low-Latency Transport Protocol Using Network Priorities, Part I"
+hn: "https://news.ycombinator.com/item?id=28204808"
 categories:
 ---
 _Over the next few weeks I will be reading papers from [Usenix ATC](https://www.usenix.org/conference/atc21) and [OSDI](https://www.usenix.org/conference/osdi21) - as always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These weekly paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the new [Atom feed](https://www.micahlerner.com/feed.xml)._

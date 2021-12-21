@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Understanding Raft Consensus  - Part 1"
+hn: "https://news.ycombinator.com/item?id=23128787"
 tags: ["Distributed Systems"]
 ---
 
