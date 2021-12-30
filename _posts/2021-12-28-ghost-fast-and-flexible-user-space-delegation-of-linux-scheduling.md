@@ -10,17 +10,21 @@ _This is one of the last papers I'm writing about from SOSP - I am trying out so
 
 ### What is the research? 
 
-This week's paper review is _ghOSt: Fast & Flexible User-Space Delegation of Linux Scheduling_. The paper describes a system for implementing Linux scheduling policies in user space{% sidenote 'userspace' "See [What is difference between User space and Kernel space?](https://unix.stackexchange.com/questions/87625/what-is-difference-between-user-space-and-kernel-space)." %}, and is also [open source](https://github.com/google/ghost-userspace)! 
+This week's paper is _ghOSt: Fast & Flexible User-Space Delegation of Linux Scheduling_. The paper describes a system for implementing Linux scheduling{% sidenote 'schedule' "This paper is about CPU scheduling, not data center scheduling (like I covered in a [previous paper review](/2021/10/10/scaling-large-production-clusters-with-partitioned-synchronization.html))." %} policies in user space{% sidenote 'userspace' "See [What is difference between User space and Kernel space?](https://unix.stackexchange.com/questions/87625/what-is-difference-between-user-space-and-kernel-space)." %}, and is also [open source](https://github.com/google/ghost-userspace)! 
 
 Operating system schedulers decide what to run on a system, but this decision making is more complicated for data center workloads - there are additional factors to consider when deciding what to run and when, like the perceived latency for users. Previous research aims to take higher-level context about applications into consideration when making scheduling decisions{% sidenote 'shinjuku' "One example scheduler, [Shinjuku](https://www.usenix.org/conference/nsdi19/presentation/kaffes), is designed to reduce tail latency. The approach is able to achieve up to 6.6× higher throughput and 88% lower tail latency by implementing a custom scheduling policy."%}, with dramatic (positive!) results.
 
 ### Why does it matter?
 
-Custom schedulers can achieve dramatic performance improvements for workloads running at scale. Unfortunately, custom schedulers can be difficult to implement, deploy, and maintain. [Shinjuku](https://www.usenix.org/conference/nsdi19/presentation/kaffes) is an example of a custom scheduler facing these problems - it is designed to reduce tail latency for data center applications, but requires tight coupling between an application and the scheduler. This tight coupling means that changes to the kernel could also unintentionally impact applications using the approach, potentially causing a brittle implementation with high ongoing maintenance costs.
+Custom schedulers can achieve dramatic performance improvements for workloads running at scale. Unfortunately, custom schedulers can be difficult to implement, deploy, and maintain. [Shinjuku](https://www.usenix.org/conference/nsdi19/presentation/kaffes) is an example{% sidenote 'caladan' "The paper also cites a set of Dune-themed projects, like [Caladan](https://www.usenix.org/system/files/osdi20-fried.pdf) and [Shenango](https://www.usenix.org/system/files/nsdi19-ousterhout.pdf) as prior work in the space that runs into the coupling problem."%} of a custom scheduler facing these problems - it is designed to reduce tail latency for data center applications, but requires tight coupling between an application and the scheduler. This tight coupling means that changes to the kernel could also unintentionally impact applications using the approach, potentially causing a brittle implementation with high ongoing maintenance costs.
 
 ### How does it work?
 
-ghOSt aims to address the problems faced by custom schedulers and those who implement them, while facilitating the dramatic performance and scalability gains workload-specific schedulers allow. The key to its approach is separating scheduling logic and the components that interact with the kernel. Custom schedulers, called _policies_, are moved into user space. In contrast, relatively stable in-kernel code exposes an API that the migrated custom logic can interact with. This approach means that custom schedulers run just like any other application in user-space - as a result, schedulers can be deployed and changed at a faster rate, for a wider set of workloads.
+ghOSt aims to address the problems faced by custom schedulers and those who implement them, while facilitating the dramatic performance and scalability gains workload-specific schedulers allow. 
+
+The key to its approach is separating scheduling logic and the components that interact with the kernel. Custom schedulers, called _policies_, are moved into user space. In contrast, relatively stable code that interacts directly with the Linux kernel remains in kernel-space, and exposes an API for the user-space schedulers to interact with. 
+
+This split approach means that custom schedulers run just like any other application in user-space - as a result, schedulers can be deployed and changed at a faster rate, for a wider set of workloads.
 
 ## What are the paper's contributions?
 
@@ -85,12 +89,11 @@ To evaluate the overheads of the system, the paper includes microbenchmarks that
 
 The paper also determines the performance of a global scheduler (that schedules all cores on a system) implemented with ghOSt - previous research shows the potential advantage of this approach as the scheduler has more complete knowledge of the system. The evaluation shows that ghOSt is able to scale to millions of transactions, even when responsible for many CPUs. 
 
-
 {% maincolumn 'assets/ghost/global.png' '' %}
 
 ### Comparison to existing systems
 
-Next, the paper compares ghOSt to Shinjuku{% sidenote 'shinjukucomp' "See the [Shinjuku](https://www.usenix.org/conference/nsdi19/presentation/kaffes) paper." %}, an example of a custom scheduling system tailored to reduce tail latency. The goal of this evaluation is to see whether _ghOSt_ performs similarly to a custom scheduler (which theoretically could achieve higher performance by using tailored optimization techniques). Shinjuku has a number of differences from _ghOSt_ - it uses dedicated resources (spinning threads that consume all of a CPU or set of CPUs), is constrained to a physical set of cores, and takes advantage of virtualization features to increase performance (like [posted interrupts](https://xenbits.xen.org/docs/4.9-testing/misc/vtd-pi.txt)).
+Next, the paper compares ghOSt to Shinjuku{% sidenote 'shinjukucomp' "See the [Shinjuku](https://www.usenix.org/conference/nsdi19/presentation/kaffes) paper." %}, an example of a custom scheduling system tailored to reduce tail latency. The goal of this evaluation is to see whether _ghOSt_ performs similarly to a custom scheduler (which theoretically could achieve higher performance by using tailored optimization techniques). Shinjuku has a number of differences from _ghOSt_ - it uses dedicated resources (spinning threads that consume all of a CPU or set of CPUs), is constrained to a physical set of cores, and takes advantage of virtualization features to increase performance (like [posted interrupts](https://xenbits.xen.org/docs/4.9-testing/misc/vtd-pi.txt)). The authors also port the Shinjuku scheduling policy itself so that it is compatible with ghOSt.
 
 The two systems run a generated workload, "in which each request includes a GET query to an in-memory RocksDB key-value store and performs a small amount of processing". 
 
