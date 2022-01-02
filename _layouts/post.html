@@ -36,6 +36,14 @@ layout: default
       {% discussion params=page.hn %}
     {% endif %}
 
+    {% if page.intro %}
+    <p>
+      <em>
+      {{ page.intro | markdownify }}
+      </em>
+    </p>
+    {% endif %}
+
     {{ content }}
 
     <footer>
