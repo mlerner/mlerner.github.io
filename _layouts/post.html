@@ -25,26 +25,19 @@ layout: default
       href="{{ site.github.repository_url }}/edit/master/{{ page.relative_path }}"
       >Submit a pull request!</a
     >
-
   </h5>
   <section>
-
-    {% assign thesize = page.hn | size %}
-
-    {% if thesize > 0 %}
-      {% assign hn_link = page.hn %}
-      {% discussion params=page.hn %}
-    {% endif %}
-
-    {% if page.intro %}
+    {% assign thesize = page.hn | size %} {% if thesize > 0 %} {% assign hn_link = page.hn %} {% discussion params=page.hn %} {% endif %} {% if page.intro %}
     <p>
       <em>
-      {{ page.intro | markdownify }}
+        {{ page.intro | markdownify | remove: '<p>' | remove: '</p>' }}
+        {% if page.include_default_intro %}
+        {{ page.default_intro | markdownify | remove: '<p>' | remove: '</p>' }}
+        {% endif %}
       </em>
     </p>
-    {% endif %}
 
-    {{ content }}
+    {% endif %} {{ content }}
 
     <footer>
       <form
@@ -104,10 +97,7 @@ layout: default
 
 <div id="portal-root">
   <div id="subscribe-container">
-    <div
-      id="gh-portal-triggerbtn-wrapper"
-      class="gh-portal-triggerbtn-wrapper"
-    >
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
       <div class="gh-portal-triggerbtn-container with-label">
         <svg
           width="24"
@@ -187,12 +177,10 @@ layout: default
               >
                 <label for="mce-EMAIL"> </label>
                 <p id="mce-email-describe" class="mt0">
-                  I write about computer science research from the fields of distributed systems and operating
-                  systems around once a week.
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
                 </p>
-                <p>
-
-                </p>
+                <p></p>
                 <div id="mc_embed_signup_scroll">
                   <div>
                     <input
