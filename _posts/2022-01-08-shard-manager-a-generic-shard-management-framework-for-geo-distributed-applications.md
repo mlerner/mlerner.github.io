@@ -4,6 +4,7 @@ title: "Shard Manager: A Generic Shard Management Framework for Geo-distributed 
 intro: This is one of the last papers I'm writing about from SOSP - I am trying out something new and publishing the queue of papers I plan on reading [here](https://www.micahlerner.com/paper-queue). These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!
 hn: https://news.ycombinator.com/item?id=30400447
 categories:
+hn: https://news.ycombinator.com/item?id=30400447
 ---
 
 [Shard Manager: A Generic Shard Management Framework for Geo-distributed Applications](https://dl.acm.org/doi/10.1145/3477132.3483546)
