@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Monarch: Google’s Planet-Scale In-Memory Time Series Database"
+intro: These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!
 categories:
 ---
 
@@ -14,7 +15,7 @@ Monarch is not the first time series database, nor is it the first optimized for
 
 First, Monarch optimizes for availability - you wouldn't a metrics system to be down before, during, or after a production incident, potentially lengthening the time to detection or resolution of an outage. One example of this tradeoff in practice is Monarch's choice to store data in (relatively) more expensive memory, rather than on persistent storage. This design choice limits dependence on external databases (increasing availability by limiting dependencies), but increases cost.
 
-Second, Monarch chooses a _push-based_ approach to collecting metrics from external services. This is contrast to _pull-based_ systems like [Prometheus](https://www.vldb.org/pvldb/vol8/p1816-teller.pdf) and Borgmon ([Monarch's predecessor](https://sre.google/sre-book/practical-alerting/)){% sidenote 'pull' 'The paper notes that the pull-based approach, "required setting up discovery services and proxies, complicating system architecture and negatively impacting overall scalability. Push-based collection, where entities simply send their data to Monarch, eliminates these dependencies." Other existing time series databases, like [Facebook Scuba](https://research.facebook.com/publications/scuba-diving-into-data-at-facebook/) also use a push-based approach.'%}.
+Second, Monarch chooses a _push-based_ approach to collecting metrics from external services. This is contrast to _pull-based_ systems like [Prometheus](https://www.vldb.org/pvldb/vol8/p1816-teller.pdf) and Borgmon ([Monarch's predecessor](https://sre.google/sre-book/practical-alerting/)){% sidenote 'pull' 'The paper notes that the pull-based approach, "Other existing metrics databases, like [Facebook Scuba](https://research.facebook.com/publications/scuba-diving-into-data-at-facebook/) also use a push-based approach.'%}. The paper notes several challenges with a _pull-based_ approach to gathering metrics, including that the monitoring system itself needs to implement complex functionality to ensure that relevant data are being collected.
 
 ## What are the paper's contributions?
 
@@ -100,3 +101,9 @@ Notably, "Monarch’s internal deployment ingested around *2.2 terabytes of data
 {% maincolumn 'assets/monarch/scale.png' '' %}
 
 When evaluating query performance, the paper notes that 95% of queries are _standing queries_, configured in advance by users. Standing queries are evaluated in parallel at the _zone_ level, enabling significant amounts of data to be filtered out of the query before being returned in a response.
+
+## Conclusion
+
+The Monarch paper is a unique example of a metrics database running at global scale. Along the way, the paper includes an interesting discussion of the tradeoffs if makes to increase availability at the cost of consistency.
+
+Time-series databases, including those designed explicitly for metrics, are an active area of research, and I'm looking forward to seeing the development of open-source approaches targeted for similar scale, like [Thanos](https://thanos.io/tip/thanos/design.md/) and [M3](https://m3db.io/)!
