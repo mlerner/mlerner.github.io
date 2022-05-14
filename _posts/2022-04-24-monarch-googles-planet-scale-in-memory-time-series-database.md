@@ -104,6 +104,6 @@ When evaluating query performance, the paper notes that 95% of queries are _stan
 
 ## Conclusion
 
-The Monarch paper is a unique example of a metrics database running at global scale. Along the way, the paper includes an interesting discussion of the tradeoffs if makes to increase availability at the cost of consistency.
+The Monarch paper is a unique example of a metrics database running at global scale. Along the way, the paper includes an interesting discussion of the tradeoffs it makes to increase availability at the cost of consistency.
 
 Time-series databases, including those designed explicitly for metrics, are an active area of research, and I'm looking forward to seeing the development of open-source approaches targeted for similar scale, like [Thanos](https://thanos.io/tip/thanos/design.md/) and [M3](https://m3db.io/)!
