@@ -2,6 +2,7 @@
 layout: post
 title: "Monarch: Google’s Planet-Scale In-Memory Time Series Database"
 intro: These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!
+hn: https://news.ycombinator.com/item?id=31379383
 categories:
 ---
 
