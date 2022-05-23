@@ -1,10 +1,10 @@
 ---
 layout: post
-title: "Investigation docs"
+title: "Investigating technical topics"
 categories:
 ---
 
-When working on a big and complex project at the early stages, I've found it hard to ship out a design doc{% sidenote 'design' "While some folks think design docs aren't necessary, I think that having something written down about a project's details is very helpful to share so that others can quickly get up to speed on what you are thinking about and why."%}.
+When working on a large and complex technical project at the early stages, I've found it hard to ship out a design doc{% sidenote 'design' "While some folks think design docs aren't necessary, I think that having something written down about a project's details is very helpful to share so that others can quickly get up to speed on what you are thinking about and why."%}.
 
 Designs can be difficult to write, espescially at the research stage, when you're not yet sure which direction the project will go. To combat this feeling, I copied a pattern I saw other folks following, which I call an "investigation doc".
 

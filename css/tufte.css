@@ -111,6 +111,15 @@ h3 {
   line-height: 1;
 }
 
+h4 {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 1.4rem;
+  line-height: 1;
+}
+
 hr {
   display: block;
   height: 1px;
