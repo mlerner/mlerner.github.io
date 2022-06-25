@@ -3,7 +3,6 @@ layout: post
 title: "The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale"
 intro: This week's paper is from a conference earlier in 2021 (SIGCOMM 2021). I'm also trying out a new format for the paper reviews, your thoughts are greatly appreciated.
 include_default_intro: true
-hn: https://news.ycombinator.com/item?id=30356665
 categories:
 ---
 
