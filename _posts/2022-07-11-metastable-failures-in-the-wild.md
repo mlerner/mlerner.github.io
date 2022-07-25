@@ -44,7 +44,7 @@ The _Metastable Failures in the Wild_ makes four main contributions:
 
 ## Metastable Failures in the Wild
 
-To understand the ocurrence of _metastable failures_, the paper first build a dataset from publicly available data outage reporting tools and community datasets. In particular, the authors draw on public information from cloud providers (AWS, Azure, GCP), businesses (IBM, Spotify), and open source projects (Elasticsearch, Apache Cassandra){% sidenote 'outages' "The paper cites a number of great resources that track public postmortems, including [collections on Pinboard](https://pinboard.in/u:peakscale/), [postmortems.info](https://postmortems.info/), and [SRE Weekly](https://sreweekly.com/)."%}.
+To understand the occurrence of _metastable failures_, the paper first builds a dataset from publicly available data outage reporting tools and community datasets. In particular, the authors draw on public information from cloud providers (AWS, Azure, GCP), businesses (IBM, Spotify), and open source projects (Elasticsearch, Apache Cassandra){% sidenote 'outages' "The paper cites a number of great resources that track public postmortems, including [collections on Pinboard](https://pinboard.in/u:peakscale/), [postmortems.info](https://postmortems.info/), and [SRE Weekly](https://sreweekly.com/)."%}.
 
 The paper then evaluates this dataset for shared characteristics of the failure class, looking for:
 
@@ -56,7 +56,7 @@ After filtering the dataset, the authors annotate outages with information about
 
 Many (45%) of the incidents have multiple triggers, while load spikes and engineer errors are involved in 35% and 45% of incidents respectively. Interestingly retry policy is one of the most common _sustaining effects_ (50% of the incidents).
 
-Pulling one example from the dataset, Amazon EC2 and RDS are [the subject of one of the most severe incidents](https://aws.amazon.com/message/65648/) in the paper{% sidenote 'ebs' "This incident has an amazing amount of detail on the system internals impacted during the incident, making this paper's research possible!"%}. A trigger for the incident was network overload that occurred while attempting to migrate traffic. When the network overload was resolved, nodes in the now restored part of the network sent a surge of requests, increasing latency in other parts of the system. To bring EBS back to a workable condition, the team had to add additional capacity, shed load, and manipulate traffic prioritization to ensure that the requests required to restore the system could complete.
+Pulling one example from the dataset, Amazon EC2 and RDS are [the subjects of one of the most severe incidents](https://aws.amazon.com/message/65648/) in the paper{% sidenote 'ebs' "This incident has an amazing amount of detail on the system internals impacted during the incident, making this paper's research possible!"%}. A trigger for the incident was network overload that occurred while attempting to migrate traffic. When the network overload was resolved, nodes in the now restored part of the network sent a surge of requests, increasing latency in other parts of the system. To bring EBS back to a workable condition, the team had to add additional capacity, shed load, and manipulate traffic prioritization to ensure that the requests required to restore the system could complete.
 
 ## Metastable Model
 
@@ -69,8 +69,8 @@ This framework is used to model two types of _triggers_:
 
 The triggers are combined with two types of _amplification_:
 
-- _Workload amplification_: a feedback loop which increases the system load (retries would be an example).
-- _Capacity degradation amplification_: a feedback loop which decreases the system load. For example, a lookaside{% sidenote 'lookaside' "Lu Pan has [an article](https://blog.the-pans.com/different-ways-of-caching-in-distributed-system/) on the different types of caches, and [this](https://tanzu.vmware.com/content/blog/an-introduction-to-look-aside-vs-inline-caching-patterns) article from VMWare also contains help context."%} cache-based system not being able to refill a cache in an overload situation.
+- _Workload amplification_: a feedback loop that increases the system load (retries would be an example).
+- _Capacity degradation amplification_: a feedback loop that decreases the system load. For example, a lookaside{% sidenote 'lookaside' "Lu Pan has [an article](https://blog.the-pans.com/different-ways-of-caching-in-distributed-system/) on the different types of caches, and [this](https://tanzu.vmware.com/content/blog/an-introduction-to-look-aside-vs-inline-caching-patterns) article from VMWare also contains help context."%} cache-based system not being able to refill a cache in an overload situation.
 
 The authors model combinations of these triggers and amplification mechanisms in order to represent how a system behaves in different situations.
 
@@ -93,11 +93,11 @@ The paper includes a section with experimental results from triggering metastabi
 
 One of the experiments is related to state machine replication implemented in MongoDB{% sidenote 'mongodb' "The original paper is [here](https://www.usenix.org/conference/nsdi21/presentation/zhou), although there is also a summary from Aleksey Charapko's reading group [here](http://charap.co/reading-group-fault-tolerant-replication-with-pull-based-consensus-in-mongodb/)."%}. The primary goal of this experiment is to demonstrate that the duration/magnitude of a trigger (in this case, resource constriction that leads to retries) can cause a system to transition from _vulnerable_ to _metastable_ failure.
 
-The experiment evaluates how temporarily restricting CPU resources for different periods of time introduces latency that leads to client timeouts and retry storms. In response to triggers of limited duration, the system doesn't transition to _metastable state_. This is not true for longer triggers with the same level of resource constriction, which cause client timeouts and subsequent retries (introducing a _sustaining effect_). This experiment demonstrates that the duration of a trigger impacts whether a system transitions into a _metastable_ failure mode.
+The experiment evaluates how temporarily restricting CPU resources for different periods introduces latency that leads to client timeouts and retry storms. In response to triggers of limited duration, the system doesn't transition to a _metastable state_. This is not true for longer triggers with the same level of resource constriction, which cause client timeouts and subsequent retries (introducing a _sustaining effect_). This experiment demonstrates that the duration of a trigger impacts whether a system transitions into a _metastable_ failure mode.
 
 {% maincolumn 'assets/metastable/figure5.png' '' %}
 
-The paper also tests a look-aside cache{% sidenote 'lookaside' "See prior side note on lookaside caches above." %} implementation, where a drop in cache hit rate (the _trigger_) causes a significant increase in requests to the backend service. The backend service is not able to increase its capacity, and begins timing out requests. Timed out requests do not refill the cache, meaning that the system can not recover its cache hit rate (serving as the _sustaining effect_).
+The paper also tests a look-aside cache{% sidenote 'lookaside' "See prior side note on lookaside caches above." %} implementation, where a drop in cache hit rate (the _trigger_) causes a significant increase in requests to the backend service. The backend service is not able to increase its capacity, and begins timing out requests. Timed-out requests do not refill the cache, meaning that the system can not recover its cache hit rate (serving as the _sustaining effect_).
 
 {% maincolumn 'assets/metastable/figure6.png' '' %}
 
