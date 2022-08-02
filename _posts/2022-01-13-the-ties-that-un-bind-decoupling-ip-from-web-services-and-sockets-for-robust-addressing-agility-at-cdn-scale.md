@@ -10,11 +10,11 @@ categories:
 
 ## What is the research?
 
-The research in  _The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale_ describes CloudFlare's work to decouple networking concepts (hostnames and sockets) from IP addresses.
+The research in  _The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale_ describes Cloudflare's work to decouple networking concepts (hostnames and sockets) from IP addresses.
 
 {% maincolumn 'assets/ties/fig1.png' '' %}
 
-By decoupling hostnames and sockets from addresses, CloudFlare's infrastructure can quickly change the machines that serve traffic for a given host, as well as the services running on each host - the authors call this approach _addressing agility_.
+By decoupling hostnames and sockets from addresses, Cloudflare's infrastructure can quickly change the machines that serve traffic for a given host, as well as the services running on each host - the authors call this approach _addressing agility_.
 
 ## What are the paper's motivations?
 
@@ -33,7 +33,7 @@ The paper focuses on two types of bindings:
 - _Hostname-to-address_ bindings control how hostnames (like `www.micahlerner.com`) map to IP addresses/machines that can serve requests
 - _Address-to-socket_ bindings control how services running on machines{% sidenote 'sockets' "For a reference on network sockets, I have really enjoyed [Beej's Guide to Networking Programming](https://beej.us/guide/bgnet/)"%} service client requests.
 
-First, the paper describes how CloudFlare can quickly and dynamically update _hostname-to-address_ bindings by changing configurations called _policies_ - DNS servers ingest _policies_ and use them to decide which IP addresses to return for a given hostname.
+First, the paper describes how Cloudflare can quickly and dynamically update _hostname-to-address_ bindings by changing configurations called _policies_ - DNS servers ingest _policies_ and use them to decide which IP addresses to return for a given hostname.
 
 {% maincolumn 'assets/ties/fig3.png' '' %}
 
@@ -45,7 +45,7 @@ Normally a service receives traffic on a fixed set of ports - this approach has 
 
 {% maincolumn 'assets/ties/fig4.png' '' %}
 
-To addresses these challenges, CloudFlare's system introduces _programmable socket lookup_{% sidenote 'crowded' "The CloudFlare blog has more background [here](https://blog.cloudflare.com/its-crowded-in-here/)."%}, using BPF{% sidenote 'bpf' "eBPF/BPF have come up a few times in past paper reviews, and I really like [this post](https://jvns.ca/blog/2017/06/28/notes-on-bpf---ebpf/) from Julia Evans on the topic."%} (as part of the implementation, the authors built [`sk_lookup`](https://lwn.net/Articles/819618/){% sidenote 'ebpf' "There is also a greta tutorial [here](https://ebpf.io/summit-2020-slides/eBPF_Summit_2020-Lightning-Jakub_Sitnicki-Steering_connections_to_sockets_with_BPF_socke_lookup_hook.pdf)." %}). This approach routes traffic inside of the kernel based on rules. An example rule could route client traffic to different instances of the same service running side-by-side, with a separate socket for every instance.
+To addresses these challenges, Cloudflare's system introduces _programmable socket lookup_{% sidenote 'crowded' "The Cloudflare blog has more background [here](https://blog.cloudflare.com/its-crowded-in-here/)."%}, using BPF{% sidenote 'bpf' "eBPF/BPF have come up a few times in past paper reviews, and I really like [this post](https://jvns.ca/blog/2017/06/28/notes-on-bpf---ebpf/) from Julia Evans on the topic."%} (as part of the implementation, the authors built [`sk_lookup`](https://lwn.net/Articles/819618/){% sidenote 'ebpf' "There is also a greta tutorial [here](https://ebpf.io/summit-2020-slides/eBPF_Summit_2020-Lightning-Jakub_Sitnicki-Steering_connections_to_sockets_with_BPF_socke_lookup_hook.pdf)." %}). This approach routes traffic inside of the kernel based on rules. An example rule could route client traffic to different instances of the same service running side-by-side, with a separate socket for every instance.
 
 {% maincolumn 'assets/ties/fig5.png' '' %}
 
@@ -53,9 +53,9 @@ To addresses these challenges, CloudFlare's system introduces _programmable sock
 
 The paper discusses a number of performance and security benefits that _addressing agility_ provides - importantly, these benefits are available with no discernible change to other important system metrics!
 
-First, decoupling _hostname-to-address_ and _address-to-socket_ bindings allows the CloudFlare CDN{% sidenote 'transfer' "The paper notes that the approach is transferable to external deployments as well, with a few caveats." %} to operate with fewer IPs. Addresses no longer need to be reserved for use by a specific host name and machines can now have significantly more sockets. Fewer IP addresses impacts cost and lowers barrier to entry - the paper notes that the IP space owned by the major cloud providers is worth north of 500 million USD (if not more).
+First, decoupling _hostname-to-address_ and _address-to-socket_ bindings allows the Cloudlare CDN{% sidenote 'transfer' "The paper notes that the approach is transferable to external deployments as well, with a few caveats." %} to operate with fewer IPs. Addresses no longer need to be reserved for use by a specific host name and machines can now have significantly more sockets. Fewer IP addresses impacts cost and lowers barrier to entry - the paper notes that the IP space owned by the major cloud providers is worth north of 500 million USD (if not more).
 
-The IP addresses that CloudFlare does continue to use are also become easier to manage. Dynamically allocating IP addresses to hostnames turns the operational task of taking machines (and the associated addresses) offline into a matter of removing addresses from the pool provided to clients.
+The IP addresses that Cloudflare does continue to use are also become easier to manage. Dynamically allocating IP addresses to hostnames turns the operational task of taking machines (and the associated addresses) offline into a matter of removing addresses from the pool provided to clients.
 
 Furthermore, the randomization approach described (where IP addressess from a pool are returned in response to DNS queries) by the paper results in better load balancing.
 
@@ -63,4 +63,4 @@ Furthermore, the randomization approach described (where IP addressess from a po
 
 While the paper discusses the scalability benefits _addressing agility_ provides, it also discusses other implications beyond limiting address use - as an example, the approach can help with Denial of Service attacks.
 
-If a specific address is under attack, the traffic to that address can be blackholed{% sidenote 'blackholed' "CloudFlare's reference on blachole routing [here](https://www.cloudflare.com/learning/ddos/glossary/ddos-blackhole-routing/)."%}. If a hostname is under attack, the traffic to that hostname will be distributed evenly across machines in the address pool.
+If a specific address is under attack, the traffic to that address can be blackholed{% sidenote 'blackholed' "Cloudflare's reference on blachole routing [here](https://www.cloudflare.com/learning/ddos/glossary/ddos-blackhole-routing/)."%}. If a hostname is under attack, the traffic to that hostname will be distributed evenly across machines in the address pool.
