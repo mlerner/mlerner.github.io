@@ -4,6 +4,7 @@ title: "The Ties that un-Bind: Decoupling IP from web services and sockets for r
 intro: This week's paper is from a conference earlier in 2021 (SIGCOMM 2021). I'm also trying out a new format for the paper reviews, your thoughts are greatly appreciated.
 include_default_intro: true
 categories:
+hn: https://news.ycombinator.com/item?id=32298751
 ---
 
 [The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale](https://dl.acm.org/doi/10.1145/3452296.3472922)

@@ -2,14 +2,15 @@
 layout: post
 title: "Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale"
 categories:
+hn: https://news.ycombinator.com/item?id=32465052
 ---
-_The papers over the next few weeks will be from [SOSP](https://sosp2021.mpi-sws.org/). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._  
+_The papers over the next few weeks will be from [SOSP](https://sosp2021.mpi-sws.org/). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions about papers to read! These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml)._
 
 [Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale](https://dl.acm.org/doi/pdf/10.1145/3477132.3483570)
 
-This week's paper is about _Rudra_, a system{% sidenote 'os' "The Rudra code itself is [open source on Github](https://github.com/sslab-gatech/Rudra)." %} for finding memory safety bugs in code written with the [Rust programming language](https://www.rust-lang.org/). Rust is used for many purposes, although it is particularly popular for lower level systems programming - the language's approach to memory management allows the compiler to eliminate many common types of memory management issues, in turn improving security. As a result, Rust is used across many high-profile open source projects where security matters, including the Mozilla [Servo engine](https://github.com/servo/servo/), the open-source [Firecracker MicroVM technology](https://firecracker-microvm.github.io/) used in AWS Lambda/Fargate{% sidenote 'firecracker' "Firecracker is also used in many other open source projects - see my [previous paper review](/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html) on Firecracker for more details."%}, and the [Fuschia operating system](https://fuchsia.dev/fuchsia-src/get-started/learn). 
- 
- Unfortunately, it is not possible to implement every functionality with code that obeys the language's rules around memory management. To address this gap, Rust includes an `unsafe` tag that allows code to suspend some of the rules, albeit within well defined blocks of code. While `unsafe` sections of Rust code are generally reviewed closely, the language construct can lead to subtle bugs that compromise the security Rust code. 
+This week's paper is about _Rudra_, a system{% sidenote 'os' "The Rudra code itself is [open source on Github](https://github.com/sslab-gatech/Rudra)." %} for finding memory safety bugs in code written with the [Rust programming language](https://www.rust-lang.org/). Rust is used for many purposes, although it is particularly popular for lower level systems programming - the language's approach to memory management allows the compiler to eliminate many common types of memory management issues, in turn improving security. As a result, Rust is used across many high-profile open source projects where security matters, including the Mozilla [Servo engine](https://github.com/servo/servo/), the open-source [Firecracker MicroVM technology](https://firecracker-microvm.github.io/) used in AWS Lambda/Fargate{% sidenote 'firecracker' "Firecracker is also used in many other open source projects - see my [previous paper review](/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html) on Firecracker for more details."%}, and the [Fuschia operating system](https://fuchsia.dev/fuchsia-src/get-started/learn).
+
+ Unfortunately, it is not possible to implement every functionality with code that obeys the language's rules around memory management. To address this gap, Rust includes an `unsafe` tag that allows code to suspend some of the rules, albeit within well defined blocks of code. While `unsafe` sections of Rust code are generally reviewed closely, the language construct can lead to subtle bugs that compromise the security Rust code.
 
 The goal of Rudra is automatically evaluating these `unsafe` sections of code to find security issues. Rudra has achieved remarkable success - at the time of the paper's publication, the system had identified 76 CVEs and ~52% of the memory safety bugs in the official Rust security advisory database, [RustSec](https://rustsec.org/).
 
@@ -51,7 +52,7 @@ _Higher order invariant safety_ means that a "Rust function should execute safel
 
 > "passing an uninitialized buffer to a caller-provided Read implementation. Read is commonly expected to read data from one source (e.g., a file) and write into the provided buffer. However, it is perfectly valid to read the buffer under Rust’s type system. This leads to undefined behavior if the buffer contains uninitialized memory."
 
-_Propagating send/sync in generic types_ is related to two traits{% sidenote 'traits' "[Traits](https://doc.rust-lang.org/book/ch10-02-traits.html) in Rust often contain shared functionality that can be mixed into code."%} (`Send` and `Sync`) used for thread safety{% sidenote 'sendsync' "More information and examples of how Send and Sync are used [from the Rust docs](https://doc.rust-lang.org/book/ch16-04-extensible-concurrency-sync-and-send.html) and [StackOverflow](https://stackoverflow.com/questions/59428096/understanding-the-send-trait)." %}. The compiler can automatically determine how a Trait gets assigned Send/Sync - if all of a Trait's properties are Send/Sync, it is safe to conclude that the Trait containing those properties implements Send/Sync itself. For other Traits (like locks), Send/Sync behavior can not be automatically passed on - one example is for a container class (like a list) that contains types that are not Send/Sync themselves. In these situations, the code must implement Send/Sync manually, leading to potential memory safety issues if the implementation uses unsafe code and is incorrect{% sidenote 'incorrect' "The paper notes it is possible for an implementation to be incorrect initially, _or_ for the implementation to become incorrect over time due to ongoing maintenance (made more likely by having the implementation spread out over a codebase)." %} in some way. 
+_Propagating send/sync in generic types_ is related to two traits{% sidenote 'traits' "[Traits](https://doc.rust-lang.org/book/ch10-02-traits.html) in Rust often contain shared functionality that can be mixed into code."%} (`Send` and `Sync`) used for thread safety{% sidenote 'sendsync' "More information and examples of how Send and Sync are used [from the Rust docs](https://doc.rust-lang.org/book/ch16-04-extensible-concurrency-sync-and-send.html) and [StackOverflow](https://stackoverflow.com/questions/59428096/understanding-the-send-trait)." %}. The compiler can automatically determine how a Trait gets assigned Send/Sync - if all of a Trait's properties are Send/Sync, it is safe to conclude that the Trait containing those properties implements Send/Sync itself. For other Traits (like locks), Send/Sync behavior can not be automatically passed on - one example is for a container class (like a list) that contains types that are not Send/Sync themselves. In these situations, the code must implement Send/Sync manually, leading to potential memory safety issues if the implementation uses unsafe code and is incorrect{% sidenote 'incorrect' "The paper notes it is possible for an implementation to be incorrect initially, _or_ for the implementation to become incorrect over time due to ongoing maintenance (made more likely by having the implementation spread out over a codebase)." %} in some way.
 
 ## Design of Rudra
 
@@ -63,7 +64,7 @@ To achieve the goal of finding memory safety issues in `unsafe` Rust code, Rudra
 
 - Consume metadata about Rust typing, not available at lower levels of the compiler (more on what this means later).
 - Analyze the entirety of the Rust ecosystem, using limited resources.
-- Be able to make the tradeoff between using limited resources and the precision of results. More resources can be expended in order to verify results{% sidenote 'resources' "One way to think about this tradeoff is that Rudra aims to find paths in the code that could potentially lead to memory safety issues. Using more resources allows further verification or simulation along those paths to determine whether a code path does in fact lead to a bug." %}, leading to fewer false positives. On the other hand, Rudra aims to analyze the entirety of the Rust ecosystem on an ongoing basis, so the program should also be able to expend fewer resources and run faster, with the potential for more false positives.  
+- Be able to make the tradeoff between using limited resources and the precision of results. More resources can be expended in order to verify results{% sidenote 'resources' "One way to think about this tradeoff is that Rudra aims to find paths in the code that could potentially lead to memory safety issues. Using more resources allows further verification or simulation along those paths to determine whether a code path does in fact lead to a bug." %}, leading to fewer false positives. On the other hand, Rudra aims to analyze the entirety of the Rust ecosystem on an ongoing basis, so the program should also be able to expend fewer resources and run faster, with the potential for more false positives.
 
 ### Rudra components
 
@@ -72,11 +73,11 @@ To achieve its design goals, Rudra implements two algorithms on intermediate rep
 The _unsafe dataflow checker_ finds _panic safety bugs_ (which can occur if a panic happens during an unsafe section and the code is in a temporarily inconsistent state) and _higher order invariant bugs_ (which can happen if a function doesn't, or can't, verify passed arguments to ensure it is safe to operate on them). The algorithm checks for _lifetime bypasses_ in `unsafe` Rust code that perform logic not otherwise permitted by the compiler{% sidenote 'lang' "What is or is not allowed by the compiler is discussed in the 'Language Features' section above." %} - this general category of functionality can contribute to _panic safety bugs_ or _higher order invariant bugs_.
 
 > The algorithm models six classes of lifetime bypasses:
-> - uninitialized: creating uninitialized values 
-> - duplicate: duplicating the lifetime of objects (e.g., with mem::read()) 
-> - write: overwriting the memory of a value 
-> - copy: memcpy()-like buffer copy 
-> - transmute: reinterpreting a type and its lifetime 
+> - uninitialized: creating uninitialized values
+> - duplicate: duplicating the lifetime of objects (e.g., with mem::read())
+> - write: overwriting the memory of a value
+> - copy: memcpy()-like buffer copy
+> - transmute: reinterpreting a type and its lifetime
 > - ptr-to-ref : converting a pointer to a reference
 
 The _send/sync variance checker_ evaluates a set of rules to determine whether a data type meets Send/Sync constraints given the usage of the data type - for example, some data types might require only Send, only Sync, both, or neither. The heuristics for performing this evaluation are described in more detail in the paper (and are also implemented in the [open source project](https://github.com/sslab-gatech/Rudra/blob/7949384a3514fbc1f970e5f309202b6c7a16aa48/src/analysis/send_sync_variance/strict.rs)). Once the variance checker determines whether Send/Sync are needed for a data type, it compares that to the actual implementation, raising an issue if there is a mismatch.
@@ -89,7 +90,7 @@ Rudra is implemented as a custom Rust compiler driver, meaning it hooks into the
 
 {% maincolumn 'assets/rudra/arch.png' '' %}
 
-The two algorithms implemented in Rudra operate on different intermediate representations{% sidenote 'ir' "The Rust [docs](https://rustc-dev-guide.rust-lang.org/part-3-intro.html) on how code is represented and compiled is really great! I highly recommend it for those interested in learning more about the internals."%} (IR) of Rust code. The _unsafe dataflow checker_ runs on the HIR, which has code structure, while the _send/sync variance checker_ operates on the (MIR). 
+The two algorithms implemented in Rudra operate on different intermediate representations{% sidenote 'ir' "The Rust [docs](https://rustc-dev-guide.rust-lang.org/part-3-intro.html) on how code is represented and compiled is really great! I highly recommend it for those interested in learning more about the internals."%} (IR) of Rust code. The _unsafe dataflow checker_ runs on the HIR, which has code structure, while the _send/sync variance checker_ operates on the (MIR).
 
 ## Evaluation
 
@@ -97,7 +98,7 @@ At the time of publication, Rudra had found 264 memory safety bugs in open sourc
 
 {% maincolumn 'assets/rudra/eval.png' '' %}
 
-While the project had significant success finding bugs, it als has false positive rate of around 50%, although the precision is adjustable). On the other hand, most of the false positives could be quickly resolved by visual inspection according to the authors. 
+While the project had significant success finding bugs, it als has false positive rate of around 50%, although the precision is adjustable). On the other hand, most of the false positives could be quickly resolved by visual inspection according to the authors.
 
 The authors compare Rudra to other tools for finding bugs in Rust code. Rudra ran faster than commonly used fuzzers, while also finding more bugs. When applied to the same codebases as another Rust-focused tool, [Miri](https://github.com/rust-lang/miri), the issues found by the two tools partially overlap (although Miri found unique bugs, indicating the approach is complementary).
 
