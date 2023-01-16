@@ -838,3 +838,7 @@ section > p.discussion {
 .hn-image {
   max-width: 18px;
 }
+
+h1 .publication-name {
+  display: none;
+}
