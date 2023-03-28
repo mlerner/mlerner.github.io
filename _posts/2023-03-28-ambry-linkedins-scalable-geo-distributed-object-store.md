@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Ambry: LinkedIn’s Scalable Geo-Distributed Object Store"
+intro: These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!
 categories:
 ---
 
@@ -20,7 +21,7 @@ Ambry's core abstraction is the _blob_, an immutable structure for storing data.
 
 {% maincolumn 'assets/ambry/figure2.png' '' %}
 
-Partitioning data allows Ambry to scale - as users add more data to the system, it can add more partitions. By default, a new partition is _read-write_ (meaning that it accepts both `put`, `get`, and `delete` traffic). As a partition nears capacity, it transitions into _read_, meaning that it is no longer supports storing new blobs via `put` operations. Traffic to the system tends to be targeted at more recent content, placing higher load on read-write partitions.
+Partitioning data allows Ambry to scale - as users add more data to the system, it can add more partitions. By default, a new partition is _read-write_ (meaning that it accepts both `put`, `get`, and `delete` traffic). As a partition nears capacity, it transitions into _read_, meaning that it no longer supports storing new blobs via `put` operations. Traffic to the system tends to be targeted at more recent content, placing higher load on _read-write_ partitions.
 
 ### Architecture
 
