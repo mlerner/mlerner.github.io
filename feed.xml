@@ -57,6 +57,7 @@ collection: posts
   {% assign posts = posts | sort: "date" | reverse %}
   {% assign posts_limit = site.feed.posts_limit | default: 10 %}
   {% for post in posts limit: posts_limit %}
+    {% unless post.draft or post.paid %}
     <entry{% if post.lang %}{{" "}}xml:lang="{{ post.lang }}"{% endif %}>
       {% assign post_title = post.title | smartify | strip_html | normalize_whitespace | xml_escape %}
 
@@ -111,5 +112,6 @@ collection: posts
         <media:content medium="image" url="{{ post_image | xml_escape }}" xmlns:media="http://search.yahoo.com/mrss/" />
       {% endif %}
     </entry>
+    {% endunless %}
   {% endfor %}
 </feed>

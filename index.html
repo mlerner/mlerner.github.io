@@ -72,7 +72,7 @@ layout: default
     <div style="padding-top: 20px">
       <h3>Recent writing</h3>
       <ul style="list-style: none; padding-left: 0px">
-        {% for post in site.posts %} {% unless post.tags contains 'draft' %}
+        {% for post in site.posts %} {% unless post.draft or post.paid %}
         <li>
           <p>
             <a href="{{post.url}}">{{post.title}}</a> - {{ post.date | date: '%B
