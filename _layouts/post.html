@@ -228,13 +228,14 @@ layout: default
   var popupRoot = document.getElementById("popup-root");
 
   subscribeButton.addEventListener("click", function () {
-    popupRoot.classList.toggle("m-fadeIn");
-    popupRoot.style.visibility = "visible";
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
   });
 
   closeButton.addEventListener("click", function () {
-    popupRoot.classList.toggle("m-fadeOut");
-    popupRoot.classList.toggle("m-fadeIn");
-    popupRoot.style.visibility = "hidden";
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
   });
 </script>
