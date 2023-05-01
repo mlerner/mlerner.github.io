@@ -3,6 +3,7 @@ layout: post
 title: "Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems"
 intro: The Perseus paper won a best paper award at FAST (File and Storage Technologies) and is one in a series I will be writing about from that conference. These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!
 categories:
+hn: https://news.ycombinator.com/item?id=35765100
 ---
 
 [Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems](https://www.usenix.org/conference/fast23/presentation/lu)
