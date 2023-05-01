@@ -3,6 +3,7 @@ layout: post
 title: "Ambry: LinkedIn’s Scalable Geo-Distributed Object Store"
 intro: These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!
 categories:
+hn: https://news.ycombinator.com/item?id=35505778
 ---
 
 [Ambry: LinkedIn’s Scalable Geo-Distributed Object Store](/assets/pdf/ambry.pdf)

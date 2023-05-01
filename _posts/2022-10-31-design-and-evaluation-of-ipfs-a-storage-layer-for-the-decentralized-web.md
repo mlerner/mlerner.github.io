@@ -2,6 +2,7 @@
 layout: post
 title: "Design and Evaluation of IPFS: A Storage Layer for the Decentralized Web"
 categories:
+hn: https://news.ycombinator.com/item?id=33419680
 ---
 
 [Design and Evaluation of IPFS: A Storage Layer for the Decentralized Web](https://research.protocol.ai/publications/design-and-evaluation-of-ipfs-a-storage-layer-for-the-decentralized-web/trautwein2022.pdf)
