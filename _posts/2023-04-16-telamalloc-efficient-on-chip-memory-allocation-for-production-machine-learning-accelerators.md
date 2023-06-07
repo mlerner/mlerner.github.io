@@ -2,6 +2,7 @@
 layout: post
 title: "TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators"
 categories:
+hn: https://news.ycombinator.com/item?id=36221010
 ---
 
 _This is one in a series of papers I'm reading from ASPLOS. These paper reviews can be [delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!_
@@ -12,7 +13,7 @@ A common pattern for integrating machine learning models with applications is de
 
 To effectively run on a user's device, the software must efficiently use local resources, including memory. The problem of allocating memory has been studied extensively{% sidenote 'alloc' "See [Dynamic Storage Allocation: A Survey and Critical Review]( https://www.cs.hmc.edu/~oneill/gc-library/Wilson-Alloc-Survey-1995.pdf)."%}, but ML models pose novel challenges. Specifically, memory allocation for ML models is a 2D bin-packing problem{% sidenote '2dbin' "There is a large amount of research on solving this problem - see [Survey on two-dimensional packing](https://www.csc.liv.ac.uk/~epa/surveyhtml.html) and the [Wikipedia reference](https://en.wikipedia.org/wiki/Bin_packing_problem)."%} - unlike programs which grow and shrink their memory usage over time, ML models have strict requirements for memory allocations because certain parts of the model depend on others.
 
-Existing solutions{% sidenote 'heuristics' "The paper cites [XLA](https://www.tensorflow.org/xla), [TFLite](https://www.tensorflow.org/lite) (optimized for mobile devices), and [Apache TVM](https://tvm.apache.org/)."%} for ML model memory allocation rely on heuristics or solvers (which can produce a closer to optimal output, but often take longer to run). The Telamalloc paper proposes a solution balancing a combination of heuristics and solver. As a result, the research is able to tackle the challenge posed by wide variance in hardware capabilities, significantly reducing the time that it takes the model to allocate memory and run.
+Existing solutions{% sidenote 'heuristics' "The paper cites [XLA](https://www.tensorflow.org/xla), [TFLite](https://www.tensorflow.org/lite) (optimized for mobile devices), and [Apache TVM](https://tvm.apache.org/)."%} for ML model memory allocation rely on heuristics or solvers (which can produce a closer to optimal output, but often take longer to run). The Telamalloc paper proposes a solution balancing a combination of heuristics and solvers. As a result, the research is able to tackle the challenge posed by wide variance in hardware capabilities, significantly reducing the time that it takes the model to allocate memory and run.
 
 ## What are the paper's contributions?
 
