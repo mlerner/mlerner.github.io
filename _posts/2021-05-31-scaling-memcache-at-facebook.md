@@ -2,7 +2,10 @@
 layout: post
 title: "Scaling Memcache at Facebook"
 categories:
+hn: https://news.ycombinator.com/item?id=36397485
 ---
+
+_These paper reviews can be [delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!_
 
 [Scaling Memcache at Facebook](https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf) Nishtala, et al. NSDI 2013
 
@@ -10,9 +13,9 @@ After reading about [Noria](https://www.micahlerner.com/2021/03/28/noria-dynamic
 
 ## What are the paper's contributions?
 
-The paper discusses how Facebook built a distributed key value {% sidenote 'dkv' 'A distributed key value store often allows for gettting, setting, and deleting values from a datastore with multiple copies (although specifics of how many and when data is copied are use-case specific, as the paper talks about!).'%} store on top of [memcached](https://www.memcached.org/){% sidenote 'perl' 'In the process of writing this, I learned that memcached was originally written in Perl!'%} in order to cache a wide variety of data, including database query results and data for backend services. 
+The paper discusses how Facebook built a distributed key value {% sidenote 'dkv' 'A distributed key value store often allows for gettting, setting, and deleting values from a datastore with multiple copies (although specifics of how many and when data is copied are use-case specific, as the paper talks about!).'%} store on top of [memcached](https://www.memcached.org/){% sidenote 'perl' 'In the process of writing this, I learned that memcached was originally written in Perl!'%} in order to cache a wide variety of data, including database query results and data for backend services.
 
-On its own, memcached is a basic key value store, yet Facebook viewed memcached's simplicity as a positive rather than a negative. The system's simplicity meant that Facebook was able to easily tailor the application to its use case of serving millions of user requests every second, as well as adding more advanced functionality as needed. 
+On its own, memcached is a basic key value store, yet Facebook viewed memcached's simplicity as a positive rather than a negative. The system's simplicity meant that Facebook was able to easily tailor the application to its use case of serving millions of user requests every second, as well as adding more advanced functionality as needed.
 
 {% maincolumn 'assets/fbmc/memcache.png' 'Memcache usage' %}
 
@@ -20,7 +23,7 @@ Of this paper's contributions, the "how?" of scaling such a system is significan
 
 ## So, how did Facebook approach scaling memcache?
 
-In order to understand how Facebook scaled memcache, it is helpful to frame the scaling in three areas: within a cluster, within a region (a region may have many clusters), and between many regions (where each region has many clusters). 
+In order to understand how Facebook scaled memcache, it is helpful to frame the scaling in three areas: within a cluster, within a region (a region may have many clusters), and between many regions (where each region has many clusters).
 
 {% maincolumn 'assets/fbmc/architecture.png' '' %}
 
@@ -32,7 +35,7 @@ The primary concern for scaling memcache within a cluster was reducing _latency_
 
 To reduce _latency_, Facebook engineers implemented three main features: request parallelization, the _mcrouter_, and _congestion control_ measures.
 
-First, they noticed that memcache requests were being performed serially, so they modified their web server code to increase request parallelization. This improvement meant that unrelated data could be fetched in parallel.{% sidenote 'DAG' 'The paper does not go into great depth into how the client determines which memcache requests can be parallelized, only adding that a DAG of request dependencies is used.' %}. 
+First, they noticed that memcache requests were being performed serially, so they modified their web server code to increase request parallelization. This improvement meant that unrelated data could be fetched in parallel.{% sidenote 'DAG' 'The paper does not go into great depth into how the client determines which memcache requests can be parallelized, only adding that a DAG of request dependencies is used.' %}.
 
 An additional measure to reduce latency was the addition of a proxy (_mcrouter_) in between the web servers and the actual backing memcache servers in order to distribute load and route requests. This _mcrouter_ exposes the same interface as the memcache server and maintains TCP connections with threads on the web server. The web server sends memcache requests that mutate state (_set_, _delete_) to the mcrouter over TCP (given the built-in reliability of TCP), but sends all other memcache requests (like _get_ requests) directly to the backing memcache servers over UDP. This decision to use TCP versus UDP is based on the fact that maintaining TCP connections from all web server threads to all memcached servers (of which there are many) would incur significant cost. {% sidenote 'networking' 'For a quick refresher on this, Computer Networking: A Top-Down Approach is very good.'%}
 
@@ -40,7 +43,7 @@ To limit congestion on the network (more congestion = more latency), memcache cl
 
 **Reducing Load**
 
-To reduce _load_ on the backing data store, three features were added: _leases_, _memcache pools_, and _replication within pools_. 
+To reduce _load_ on the backing data store, three features were added: _leases_, _memcache pools_, and _replication within pools_.
 
 Leases were implemented to address two main problems, _stale sets_ and _thundering herds_{% sidenote 'stalesets' 'A stale set is when a client sets a value with an old value, and a thundering herd is when a specific key undergoes heavy read or write volume.' %}, and are values given out to clients for a specific key. To solve stale sets, the backend server checks what is the most recent lease given out for a specific key, and will block writes from an old copy of the key. To solve thundering herds (for example, many clients trying to fetch data for the same key, but the key is not in the cache), leases are given out at a constant rate. If a client requests data for a key, but a lease for the key has already been given out, the lease request will fail and the client will need to retry. Meanwhile, the owner of the lease will cause the key to be filled from cache, and the client will succeed on retry. Crisis avoided.
 
@@ -72,7 +75,7 @@ Facebook uses many regions around the world to get computers closer to their cus
 
 At the time of the paper's publication, Facebook relied on MySQL's replication to keep databases up to date between regions. One region would be the master, while the rest would be the slaves {% sidenote 'terms' 'I use the terms master/slave from the literature, rather than choosing them myself.' %}. Given the huge amount of data that Facebook has, they were willing to settle for eventual consistency (the system will tolerate out of sync data if the slave regions fall behind the master region).
 
-Tolerating replication lag means that there are a few situations that need to be thought through. 
+Tolerating replication lag means that there are a few situations that need to be thought through.
 
 **What happens if a MySQL delete happens in a master region?**
 
@@ -84,8 +87,8 @@ Because the system is eventually consistent, data in the slave regions will be o
 
 ### Takeaways
 
-This paper contains an incredible amount of detail on how Facebook scaled their memcache infrastructure, although the paper was published in 2013 and 8 years is a long time. I would be willing to bet that their infrastructure has changed significantly since the paper was originally published. 
+This paper contains an incredible amount of detail on how Facebook scaled their memcache infrastructure, although the paper was published in 2013 and 8 years is a long time. I would be willing to bet that their infrastructure has changed significantly since the paper was originally published.
 
-Even with the knowledge that the underlying infrastructure has likely changed, this paper provides useful insights into how the engineering org made many tradeoffs in the design based on data from the production system (and with the ultimate goal of a maintaining as simple of a design as possible. 
+Even with the knowledge that the underlying infrastructure has likely changed, this paper provides useful insights into how the engineering org made many tradeoffs in the design based on data from the production system (and with the ultimate goal of a maintaining as simple of a design as possible.
 
 Since 2013, a number of other companies have built key value stores and published research on their architectures - in the future I hope to read those papers and contrast their approaches with Facebook's!
