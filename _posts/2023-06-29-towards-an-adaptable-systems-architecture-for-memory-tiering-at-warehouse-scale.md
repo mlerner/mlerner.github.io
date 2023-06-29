@@ -2,6 +2,7 @@
 layout: post
 title: "Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale"
 categories:
+hn: https://news.ycombinator.com/item?id=36523762
 ---
 
 _This is one in a series of papers I'm reading from ASPLOS. These paper reviews can be [delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!_
