@@ -1,0 +1,29 @@
+- OSDI
+    - [Triangulating Python Performance Issues with SCALENE](https://www.usenix.org/conference/osdi23/presentation/berger)
+    - [ExoFlow: A Universal Workflow System for Exactly-Once DAGs](https://www.usenix.org/conference/osdi23/presentation/zhuang)
+        - Anyscale has a system called Ray
+            - [https://www.micahlerner.com/2021/06/27/ray-a-distributed-framework-for-emerging-ai-applications.html](https://www.micahlerner.com/2021/06/27/ray-a-distributed-framework-for-emerging-ai-applications.html)
+    - [Hyrax: Fail-in-Place Server Operation in Cloud Platforms](https://www.usenix.org/system/files/osdi23-lyu.pdf)
+    - [Conveyor: One-Tool-Fits-All Continuous Software Deployment at Meta](https://www.usenix.org/conference/osdi23/presentation/grubic)
+    - [x]  [Global Capacity Management With Flux](https://www.usenix.org/conference/osdi23/presentation/eriksen)
+        - [[Global Capacity Management With Flux]]
+    -  [x] [Defcon: Preventing Overload with Graceful Feature Degradation](https://www.usenix.org/conference/osdi23/presentation/meza)
+        - [[Defcon: Preventing Overload with Graceful Feature Degradation]]
+    - [Flor: An Open High Performance RDMA Framework Over Heterogeneous RNICs](https://www.usenix.org/conference/osdi23/presentation/li-qiang)
+    - [ServiceRouter: Hyperscale and Minimal Cost Service Mesh at Meta](https://www.usenix.org/conference/osdi23/presentation/saokar)
+    - [Ensō: A Streaming Interface for NIC-Application Communication](https://www.usenix.org/conference/osdi23/presentation/sadok)
+        - Best paper award
+- ATC
+    - Ceph
+        - [TiDedup: A New Distributed Deduplication Architecture for Ceph](https://www.usenix.org/conference/atc23/presentation/oh)
+    - [On-demand Container Loading in AWS Lambda](https://www.usenix.org/conference/atc23/presentation/brooker)
+    - [Lifting the veil on Meta’s microservice architecture: Analyses of topology and request workflows](https://www.usenix.org/conference/atc23/presentation/huye)
+    - [Tectonic-Shift: A Composite Storage Fabric for Large-Scale ML Training](https://www.usenix.org/conference/atc23/presentation/zhao)
+        - Extension of Tectonic
+        - [https://engineering.fb.com/2021/06/21/data-infrastructure/tectonic-file-system/](https://engineering.fb.com/2021/06/21/data-infrastructure/tectonic-file-system/)
+    - [x]  [Distributed Transactions at Scale in Amazon DynamoDB](https://www.usenix.org/conference/atc23/presentation/idziorek)
+        - [[Distributed Transactions at Scale in Amazon DynamoDB]]
+    - [EPF: Evil Packet Filter](https://www.usenix.org/conference/atc23/presentation/jin)
+        - This talks about BPF
+    - [LLFree: Scalable and Optionally-Persistent Page-Frame Allocation](https://www.usenix.org/conference/atc23/presentation/wrenger)
+        - This one a distinguished artifact award

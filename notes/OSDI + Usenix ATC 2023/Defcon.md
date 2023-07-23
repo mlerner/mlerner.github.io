@@ -1,0 +1,117 @@
+Defcon: Preventing Overload with Graceful Feature Degradation
+
+- Outline
+    - What is the research and why does it matter?
+    - How does it work?
+    - How is the research evaluated?
+    - Conclusion
+- Overview
+    - [[The Five C's]]
+        - [ ] **Category**: What type of paper is this? A measurement paper? An analysis of an existing system? A description of a research prototype?
+        - [ ] **Context**: Which other papers is it related to? Which theoretical bases were used to analyze the problem?
+        - [ ] **Correctness**: Do the assumptions appear to be valid?
+        - [ ] **Contributions**: What are the paper’s main contributions?
+        - [ ] **Clarity**: Is the paper well written?
+    - Notes
+        - Introduction
+            - interesting that they focus on availability, not latency (when latency is arguably similarly important)
+                - Latency matters!
+                    - [https://www.thinkwithgoogle.com/future-of-marketing/digital-transformation/the-google-gospel-of-speed-urs-hoelzle/](https://www.thinkwithgoogle.com/future-of-marketing/digital-transformation/the-google-gospel-of-speed-urs-hoelzle/)
+                - TODO real surge of traffic, figure 1
+                - Fail-slow
+                    - [https://www.micahlerner.com/2023/04/16/perseus-a-fail-slow-detection-framework-for-cloud-storage-systems.html](https://www.micahlerner.com/2023/04/16/perseus-a-fail-slow-detection-framework-for-cloud-storage-systems.html)
+                - Metastable failures
+                    - [https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html](https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html)
+        - Background
+            - Datacenter capacity management
+                - There is a clear connection to Flux here
+                - Standard resources called RRUs
+            - The overload problem
+                - They have a table of what to do when there is overload
+                - Table 1
+                - They reference metastable failures explicitly!
+                - Challenges can occur, for example COVID made projections for capacity growth totally wrong
+                    - TODO figure 2
+                - Reasoning: reduce user impact, actually potentially get some pros out of it, but there is engineering effort
+            - Related work
+                - They talk about a variety of related work, but probably the most closely related is the "availability knob"
+            - Graceful feature degradation
+        - Defcon
+            - Overview
+                - TODO figure 3
+            - Knob Definition Framework
+                - Framework that runs without restart, reading state of the flag
+                    - [https://12factor.net/config](https://12factor.net/config)
+                - Two types of knobs
+                    - Server-side: adjust knobs in seconds, without propagation delays
+                    - Client-side: actually implemented on device
+                        - Push change to client
+                        - Mobile Configuration Pull (client pull states from server on a recurring basis), in an emergency there is a backup
+                - Knob definiton
+                    - TODO listing 1
+                    - Represents things about the knob in code (for example oncallers, namespacing, knob is enabled)
+                - Usage of the knob
+                    - If statements based on whether the knob is on or not
+                    - TODO listing 2
+                - This also integrates with other common Meta systems for launching features
+            - Knob Actuator Service
+                - Service for storing knobs (maybe an index on the knobs)
+                - MySQL database
+                    - "Knob metadata includes: (1) The engineering oncall responsible for the knob’s definition, (2) the engineering team responsible for the knob’s usage, and (3) a cache of recent resource and user experience test results (discussed later in this section)."
+                - Oncallers can also make changes that the actuator service carries out
+            - Knob Testing Framework
+                - Gather data about what manipulating knobs does
+                - Two types of tests
+                    - Small scale tests - different groups have the knobs turned off in different permutations (different defcon levels)
+                    - Quarterly 100% of user tests
+                        - Individual and across Meta tests
+            - Degradation Policy
+                - Different levels of degradation
+                    - L1 - L4 (L1 is the most serious)
+                - Emergency responders can decide which policy to apply
+        - Evaluation
+            - Measurement methodology
+                - Different datasources
+                    - Realtime monitoring - apparently what the hardware thinks is happening
+                    - Resource Utilizaiton - have this dataset based on loadtests (seems similar to Flux)
+                    - Transitive Resource utilization - they used distributed tracing (which again seems similar to Flux)
+                    - User Behavior Measurement - they look to see how users behave during a tests
+                - They have a forecast and backcast to improve the model over time / capture error
+                    - [https://facebook.github.io/prophet/](https://facebook.github.io/prophet/)
+                    - TODO figure 5
+                    - TODO figure 7
+                    - They can calculate what the savings is
+            - Individual product tests
+                - For different product areas, higher levels of degradation save more resources
+                - TODO figure 8
+                - Summary: small impact to user interactions, but there are big wins in not having the site overloaded
+                - TODO table 2
+            - Combined product tests
+                - there are shared services that they want to performance of (they reference memcache)
+                    - Scaling memcache at FB paper
+                - TODO figure 9
+                - they also have user reports that correspond to using the knobs
+                - figure 10
+            - Transitive resource savings
+                - Downstream services with no knobs, can still benefit
+                - For example, TAO doesn't get overloaded as well
+                - TODO figure 12
+                - TODO figure 13
+                - Get breakdowns of why a downstream service is receiving traffic
+                    - Could some of this be done with the tracing framework?
+                - There are also interdependence between products (for example, Instagram -> Facebook)
+            - Outage simulation testing
+                - The pattern of trying to force failure is common among SRE teams
+                - They test by redirecting traffic, forcing overload, and then using knobs. They claim this type of testing is general
+                - TODO figure 17-20
+            - Real world large scale outage
+                - Incident manager will decide what degradation policy to apply
+                - In the incident, they used L3 knobs, instead of L2
+        - Lessons Learned
+            - Focus on user impact to define knobs
+            - Graceful gradation doesn't come for free, you need to train people on how to use it
+            - There needs to be buy in from product teams
+            - Knobs once built, need regular maintenance
+            - Independent system prevents failures
+            - Developer experience is key
+        - Conclusion
