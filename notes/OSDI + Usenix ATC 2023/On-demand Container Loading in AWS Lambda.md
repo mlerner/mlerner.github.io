@@ -1,0 +1,117 @@
+- Link to the paper: https://www.usenix.org/system/files/atc23-brooker.pdf
+- Outline
+    - What is the research and why does it matter?
+    - How does it work?
+    - How is the research evaluated?
+    - Conclusion
+- Overview
+    - [[The Five C's]]
+        - [ ]  **Category**: What type of paper is this? A measurement paper? An analysis of an existing system? A description of a research prototype?
+        - [ ] **Context**: Which other papers is it related to? Which theoretical bases were used to analyze the problem?
+        - [ ] **Correctness**: Do the assumptions appear to be valid?
+        - [ ] **Contributions**: What are the paper’s main contributions
+        - [ ] **Clarity**: Is the paper well written?
+    - Notes
+	    - Support new features, but also don't impact cold-start
+		    - Data movement is a critical thing that impacts cold-start...
+			    - Cacheability - many images are used many times
+			    - Commonality - many image use the same layers
+			    - Sparsity - you don't need all of the data in an image to startup
+				    - TODO how do you decide what you need at startup
+			- Their solution combines caching, deduplication, erasure coding, sparse loading
+			- In the first gen, starting a new MicroVM required downloading a complete archive, which may not all have been used
+		- Block-level loading
+			- TODO figure 3 - block level system arch
+			- They reference other systems that think about sparsity but they're different because they focus on different types of things (containers)
+				- For security reasons, they want to keep the abstraction very simple (block level, rather than file level)
+			- Flattening
+				- The container is built deterministically and integrated with a filesystem
+				- After flattening happens the chunks on the filesystem are uploaded to S3
+					- Content addressed storage 
+				- Chunk size change might change over time 
+					- I like this description of tradeoffs between different chunk sizes
+					- What can they actually learn from different customers?
+			- Per-MicroVM snapshot loading
+				- There is some daemon on the worker that decides to go get the data or not from remote storage, this must happen when the code wants specific data
+		- Deduplication without trust
+			- Deduplication of chunks saves a lot on storage
+			- Convergent encryption
+				- There is a balance between encryption and deploying this deduplication approach
+				- Shared keys have their cons - TODO describe what those cons are
+				- Convergent encryption uses data about a block to generate a key that can be used to encrypt the block
+					- TODO what is the additional metadata
+				- Use the chunk to generate a key
+				- Encrypt the block
+				- Talk about why this is safe
+				- They create a manifest
+					- Offset
+					- Unique key
+					- SHA256 hash each chunk
+				- The customer knows what chunks make up THEIR manifests, and they encrypt it
+				- The chunks are uniquely identified by their contents, and that allows them to be deduplicated
+				- The manifests that big
+			- Compression
+				- They don't compress because there is low expected benefit
+				- Side channels 
+					- https://www.sjoerdlangkemper.nl/2016/08/23/compression-side-channel-attacks/
+			- Limiting Blast Radius
+				- If a bunch of chunks are reading the same data, bad things can happen
+				- There is a contrast with other systems that try to limit hotspotting, like Shard Manager
+					- https://www.micahlerner.com/2022/01/08/shard-manager-a-generic-shard-management-framework-for-geo-distributed-applications.html
+			- Garbage Collection
+				- Problem: no central registry of data and deleting data is kind of dangerous because you're deleting customer data
+				- Solution: the idea of roots
+				- There are four states:
+					- active
+					- retired
+					- expired
+					- deleted
+				- There are some reliability concerns about roots, like limiting blast radius of mistakes deleting customer data
+		- Tiered Caching
+			- They talk about consistent hashing
+				- TODO reference consistent hashing
+			- They talk about LRU-k which seems interesting 
+				- TODO look into this
+			- Having multiple levels of cache is effective
+				- TODO Figure 7
+			- Optimizing for Tail Latency
+				- Replication doesn't work as well for them because it increases cost
+				- TODO look into EC-Cache
+				- Instead, they use erasure-coding
+					- TODO reference erasure-coding
+						- https://www.youtube.com/watch?v=Q5kVuM7zEUI
+					- Colm MacCárthaigh. Reliability, constant work, and a good cup of coffee, 2020. URL: https://aws.amaz on.com/builders-library/reliability-and-constant-work/.
+			- Stability and Metastability
+				- https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html
+				- "When container starts slow down and the number of concurrent tasks exceeds this limit, new starts are rejected until in-flight ones complete."
+			- Cache Eviction and Sizing
+				- Scan resistance?
+					- Basically, messing up the cache by starting a lot of new VMs or customer functions
+					- LRU-k 
+					- How to size the cache?
+		- Implementation and Production Experience
+			- Latency and Multimodality
+			- Production experience with FUSE
+		- Related work
+- Questions
+    - [[What is the motivation for the paper?]]
+	    - Lambda was constrained by speed and storage tradeoffs, they wanted to fix those constraints while also operating at large scale and not sacrificing the other properties of the system
+	    - Cold start time really matters to customers - how do you reduce it?
+    - [[What are the paper's contributions?]]
+    - [[How does the paper relate to existing solutions?]]
+	    - https://www.micahlerner.com/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html
+	    - https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html
+    - [[How does the paper evaluate it's solution?]]
+- Worklog
+- Checklist
+    - [ ] First pass <15 minutes>
+        - [ ] Carefully read the title, abstract, and introduction
+        - [ ] Read the section and sub-section headings, but ignore everything else
+        - [ ]  Read the conclusions
+        - [ ] Glance over the references, mentally ticking off the ones you’ve already read
+        - [ ] Answer [[The Five C's]]
+    - [ ] Second pass <60 minutes>
+        - Read the paper with greater care, but ignore details such as proofs
+            - [ ]  Look carefully at the figures, diagrams and other illustrations in the paper. Pay special attention to graphs. Are the axes properly labeled? Are results shown with error bars, so that conclusions are statistically significant? Common mistakes like these will separate rushed, shoddy work from the truly excellent
+            - [ ] Remember to mark relevant unread references for further reading (this is a good way to learn more about the background of the paper).
+    -  [ ] Third pass - 4 hours <optional>

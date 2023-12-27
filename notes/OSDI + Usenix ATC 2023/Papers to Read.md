@@ -11,6 +11,7 @@
         - [[Defcon: Preventing Overload with Graceful Feature Degradation]]
     - [Flor: An Open High Performance RDMA Framework Over Heterogeneous RNICs](https://www.usenix.org/conference/osdi23/presentation/li-qiang)
     - [ServiceRouter: Hyperscale and Minimal Cost Service Mesh at Meta](https://www.usenix.org/conference/osdi23/presentation/saokar)
+	    - [[ServiceRouter]]
     - [Ensō: A Streaming Interface for NIC-Application Communication](https://www.usenix.org/conference/osdi23/presentation/sadok)
         - Best paper award
 - ATC

@@ -1,0 +1,134 @@
+- Link to the paper
+- Outline
+    - What is the research and why does it matter?
+    - How does it work?
+    - How is the research evaluated?
+    - Conclusion
+- Overview
+    - [[The Five C's]]
+        - [ ]  **Category**: What type of paper is this? A measurement paper? An analysis of an existing system? A description of a research prototype?
+        - [ ] **Context**: Which other papers is it related to? Which theoretical bases were used to analyze the problem?
+        - [ ] **Correctness**: Do the assumptions appear to be valid?
+        - [ ] **Contributions**: What are the paper’s main contributions
+        - [ ] **Clarity**: Is the paper well written?
+    - Notes
+	    - Notes
+		    - Intro
+			    - It supports two types of deployments
+				    - Fully automated continuous deployment
+			    - Front-FaaS is a big internal function as a service (like Lambda)
+				    - Interesting that 10k's of thousands of developers are making changes to the core platform?
+			- Answering three main questions
+				- What is the adoption rate of deployment automation, and what is important in driving the adoption?
+					- They've managed to get most services to use it.
+					- And the introduciton of automated tests prevents higher rates of rollback
+				- What is special about deployment safety at hyperscale?
+					- Rather than keeping old deployments around, they update the tasks on the machines, and they've changed the cluster manager to accomodate this idea.
+					- Health checks on "moving targets"
+					- Being able to mark deployments that are "known bad" as not deployable is good
+				- What distinguishes the deployment of ML models from traditional service executables?
+			- What are the advanced safety features?
+		- Overview of Software Deployment at Meta
+			- Mandate for software deployments
+				- frequent releases enhance developer productivity (faster feedback on the changes, e.g. A/B test results)
+				- Releases have fewer changes, making it easier to debug any problems
+				- Timely deployment 
+			- Deployment ecosystem
+				- TODO figure 1
+				- DAG of:
+					- Inputs (artifacts)
+					- actions to take
+				- Staged rollouts by deploying phases, limits the blast radius
+				- Twine and the service are health-checked based on CPU utilization and user engagement metrics
+				- Services can have their own task controller if they want 
+					- They talk about a KVStore which has tasks that could be a replica of the same data
+					- There is some communication between the cluster manager and the task controller to negotiate which tasks are actually updated
+				- Separation of concerns is a key principle
+					- Separating out the idea of "it is safe to update these tasks" from the actual updating of the tasks
+		- Deployment Scenarios and Solutions
+			- Enabling in-place updates, versus mirroring approach. Mirroring approach uses more resources
+			- In each phase, they update small numbers of tasks with really basic checks, and then the health checks are more comprehensive
+			- "This is because Kubernetes disallows partial-job updates. This simplistic approach is not suitable for in-place updates, because, when the comprehensive health checks detect a bug, it is likely that all tasks of the job have already been updated."
+			- Hardware failure and planned maintenance.
+				- Twine won't update so many tasks in order to prevent insufficient live tasks
+			- Zero downtime hotswap
+				- "It first starts a new task on the same machine, which binds to the same TCP ports as the old task. Then the new task and the old task cooperate with each other to hand over the live connections from the old task to the new task with the help of eBPF"
+			- Summary of all of the in-place updates: existing cluster managers don't provide these functions because there needs to be tight control between cluster manager and deployment tool
+			- Deployment Safety
+				- Moving target health checks
+					- Multiple types of metrics, and multiple types of thresholds can be set
+					- Health checking service is capable of differentiating between tasks with new and old identifiers and comparing them
+			- Bad Page Detector stops rollouts if they are of a code version with some bad changes
+				- 14% of to-be-deployed executables are invalidated by the BPD.
+			- Testing
+				- Checks performance
+				- Tests interactions between services
+			- ML Model deployment
+				- Deploy configuration separately from the model binary, saves on startup cost (e.g. loading up data from memory)
+				- TODO learn about Owl
+				- They've concerned about incompabilities between different parts of the model serving infrastructure
+				- Models depend on each other, so there is a system for coordinating model deployments (and also randomizing the deployment if it is possible, in order to not overload the system)
+			- Advanced features for universal adoption
+				- More advanced conditions in the DAG
+				- Mutable artifacts - for example, automating the deployment of binaries that use feedback driven optimization.
+			- CLI and daemon that are deployed everywhere are able to take advantage of async updates
+			- Software backward compability
+				- introduce a new API, and gradually move to it
+				- For DB migrations, perform double writes
+		- Case Study of FrontFaaS
+		- Design and Implementation of Conveyor
+			- TODO figure 4
+			- Stateless services that share a database
+			- There is a balance speed and safety
+			- Custom deployment types allow users to configure how deployments happen
+			- Availability, Reliability, and Recoverability
+				- In a failure scenario where Conveyor or Twine fails, systems can not update
+				- Independent instances of Twine can update the other components of Twine, and they have the ability to add more of those independent "top-level" instances
+			- Lessons
+				- v1
+					- Very simple, but 12% of services adopted it
+				- v2: long running service with scheduled rollouts. Added extensibility
+				- v3: complete rewrite from Python to Rust, more advanced features for universal adoption
+					- There are still some constraints, including that there was delay in the rollouts. This is now solved by immediate triggering of the next step
+		- Evaluation in Production
+			- 1. Has Conveyor achieved universal coverage? 
+				- Looking at 195 of the largest services, Conveyor has 100% coverage
+			- Do developers trust fully automated deployments?
+				- Most services are using automated deployments, but the ones that aren't have manual checks because the health checks are complicated.
+				- It doesn't make sense to deploy every service continuously (e.g. Zookeeper, or services that wouldn't have incident response.)
+			- Are Conveyor’s deployment-safety mechanisms effective?
+				- Task updating rate: Not overloading tasks seems to work - looking at FaaS system, more task updates at trough because you wouldn't overload the tasks.
+				- Executable canceled by the bad packet detector
+			- How often do deployments fail and why do they fail?
+				- Release failures are caught early, at build or deploy steps (even before rolling out)
+				- Of the failures for tasks, there are different checks that different servers are failing checks.
+					- Rate of false positives is 41%, even with stringent health checks
+				- Deploy actions fail either at small numbers of tasks, or at large numbers of tasks
+			- What are the observed patterns in pipeline setup, and what are the best-practice recommendations for pipeline setup?
+				- Larger services have more intricate pipelines as expected
+					- Large services are more likely to have canary/perf/integration tests, and also manual decisions
+				- How long does it take to actually deploy?
+					- Depends on the strategy, and the strategy varies by service type
+					- And also the time spent in deploy actions, isn't updating the tasks
+		- Related work
+- Questions
+    - [[What is the motivation for the paper?]]
+    - [[What are the paper's contributions?]]
+	    - Learning from production experience
+	    - Data on why aggressive deployment strategies are okay
+	    - Some advanced safety features
+    - [[How does the paper relate to existing solutions?]]
+    - [[How does the paper evaluate it's solution?]]
+- Worklog
+- Checklist
+    - [ ] First pass <15 minutes>
+        - [ ] Carefully read the title, abstract, and introduction
+        - [ ] Read the section and sub-section headings, but ignore everything else
+        - [ ]  Read the conclusions
+        - [ ] Glance over the references, mentally ticking off the ones you’ve already read
+        - [ ] Answer [[The Five C's]]
+    - [ ] Second pass <60 minutes>
+        - Read the paper with greater care, but ignore details such as proofs
+            - [ ]  Look carefully at the figures, diagrams and other illustrations in the paper. Pay special attention to graphs. Are the axes properly labeled? Are results shown with error bars, so that conclusions are statistically significant? Common mistakes like these will separate rushed, shoddy work from the truly excellent
+            - [ ] Remember to mark relevant unread references for further reading (this is a good way to learn more about the background of the paper).
+    -  [ ] Third pass - 4 hours <optional>

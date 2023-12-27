@@ -1,0 +1,106 @@
+- Link to the paper
+- Outline
+    - What is the research and why does it matter?
+	    - They have a generic workflow engine that allows users to configure the system to make tradeoffs between performance and recovery
+    - How does it work?
+    - How is the research evaluated?
+    - Conclusion
+- Overview
+    - [[The Five C's]]
+        - [ ]  **Category**: What type of paper is this? A measurement paper? An analysis of an existing system? A description of a research prototype?
+        - [ ] **Context**: Which other papers is it related to? Which theoretical bases were used to analyze the problem?
+        - [ ] **Correctness**: Do the assumptions appear to be valid?
+        - [ ] **Contributions**: What are the paper’s main contributions
+	        - [ ] Decoupling execution from recovery, provides flexibility
+	        - [ ] Workflow system provides exactly-once DAG execution 
+	        - [ ] They use ExoFlow for a variety of appllications
+        - [ ] **Clarity**: Is the paper well written?
+    - Notes
+	    - Introduction
+		    - TODO reference Apache Spark lineage-based logging, Apache Flink uses checkpointing
+		    - People combine batch with streaming,  but building a recovery system for both is difficult
+		    - However, if you represent the problem as a DAG (something that Ray can do?)
+			    - There are relationships between tasks (which is the data the tasks output)
+			    - What is the relationship between ExoFlow and existing workflow systems?
+				    - E.g. Dagster, Airflow, etc
+					    - Example: each task must checkpoint its outputs before they can be made visible to any downstream task
+					    - This is a lost opportunity because you can't parallelize - often times this assumption about checkpointing being required doesn't hold
+			- Decoupling execution from recovery has several advantages
+				- run different recovery strategies
+				- augment existing distributed execution framework so they're exactly once
+				- execution and recovery can be scaled independently
+			- Two things ExoFlow does
+				- Instead of not knowing about what the application is doing, ExoFlow gives control over recovery via some APIs
+				- Allows annotations of a task
+		- Motivation
+			- Overview of recovery strategies
+				- Output visibility
+				- Determinism
+				- Nondeterministic outputs are handled by:
+					- global checkpointing and rollback
+					- logging and deterministc replay
+			- Applications
+				- ETL pipelines
+					- jobs have to reload the data in between steps
+				- ML pipeline: having to perform operation in different steps is bad for performance
+				- Serverless workflows: there are frameworks for running distributed serverless applications, however they also have their own recovery mechanisms that are custom
+		- API
+			- Overview and requirements
+				- DAG interface 
+					- Table 1
+				- There's a way of setting up the DAG, annotating the tasks with whether they are deterministic and whether they need to be checkpointed, whether they can be rolled back
+				- Refs allow execution backends to store outputs
+			- Model
+			- Guaranteeing exactly-once execution
+			- References
+				- Basically they are constraints on refs that could could change (like you can't write to a ref that is being read by another task)
+		- Architecture
+			- TODO figure 5
+			- Workflow execution
+				- Reference to Ray and distributed futures paper
+				- There is background checkpointing, the controller monitors the checkpoint being done
+			- Workflow recovery
+				- If things fail, you can run a graph algorithm to figure out what needs to be re-run
+			- Execution backends
+		- Implementation
+			- They reference other actor systems that they could use, but they would have to implement Refs on them
+		- Evaluation
+			- Main questions to answer
+				- What overheads does ExoFlow add to at-least-once or at-most-once execution backends?
+				- How can applications leverage first-class references and task annotations to have greater flexibility in recovery?
+				- How does this flexibility in recovery strategy affect performance during execution and recovery?
+			- ML training pipelines
+				- Different options for checkpointing can impact performance
+					- SyncCkpt, NoCkpt, AsyncCkpt
+				- TODO figure 6
+				- In normal conditions, checkpointing impacts performance. However if you look at the failure conditions, the differences between different checkpoint approaches and time to execute get smaller
+			- Stateful serverless workflows
+				- ExoFlow is better than the existing frameworks for running stateful serverless functions
+				- TODO 7a/7b
+			- Online-offline graph processing
+				- When implementing a graph processing algorithm, different checkpointing approaches impact the time to data availability
+				- TODO 7c
+			- Microbenchmarks
+				- Latency - "With equivalent backends, ExoFlow matches or reduces execution overheads of existing workflow systems while enabling more flexible inter-task communication."
+				- Data sharing - it can do it, and you can see when compared to spark jobs that don't share memory "Meanwhile, ExoFlow scales well even with synchronous checkpointing because consumers share data via Spark’s native cache."
+				- Throughput and Scalability. - exoflow has some overhead relative to Ray
+		- Related works
+		- Discussion
+- Questions
+    - [[What is the motivation for the paper?]]
+    - [[What are the paper's contributions?]]
+    - [[How does the paper relate to existing solutions?]]
+    - [[How does the paper evaluate it's solution?]]
+- Worklog
+- Checklist
+    - [ ] First pass <15 minutes>
+        - [ ] Carefully read the title, abstract, and introduction
+        - [ ] Read the section and sub-section headings, but ignore everything else
+        - [ ]  Read the conclusions
+        - [ ] Glance over the references, mentally ticking off the ones you’ve already read
+        - [ ] Answer [[The Five C's]]
+    - [ ] Second pass <60 minutes>
+        - Read the paper with greater care, but ignore details such as proofs
+            - [ ]  Look carefully at the figures, diagrams and other illustrations in the paper. Pay special attention to graphs. Are the axes properly labeled? Are results shown with error bars, so that conclusions are statistically significant? Common mistakes like these will separate rushed, shoddy work from the truly excellent
+            - [ ] Remember to mark relevant unread references for further reading (this is a good way to learn more about the background of the paper).
+    -  [ ] Third pass - 4 hours <optional>
