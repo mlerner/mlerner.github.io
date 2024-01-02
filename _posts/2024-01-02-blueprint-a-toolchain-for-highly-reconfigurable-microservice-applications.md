@@ -8,7 +8,7 @@ categories:
 
 ## What is the research?
 
-The Blueprint paper talks about a new framework for configuring, building, and deploying application code. This framework aims to simplify iteration on system design, application development, and configuration.
+The Blueprint paper talks about a new [open source framework](https://gitlab.mpi-sws.org/cld/blueprint/blueprint-compiler) for configuring, building, and deploying application code. This framework aims to simplify iteration on system design, application development, and configuration.
 
 The authors argue that these tasks are currently difficult to accomplish because many services have tight coupling between application code, framework-level components (like RPC libraries and their behavior), and the actual deployment of the service (e.g. with Docker, Kubernetes, or other systems like Ansible).
 
@@ -20,7 +20,7 @@ Blueprint's approach divides a system into three types of components:
 
 - Application level workflows: business logic that a developer writes to perform a specific function.
 - Scaffolding: underlying framework-level components like RPC functionality, distributed tracing libraries, and storage backends (like caches and databases).
-- Instantations: specific configuration for framework-level components (e.g. using a specific RPC library with deadlines set or with novel functionality like [circuit-breakers](https://martinfowler.com/bliki/CircuitBreaker.html) enabled.
+- Instantiations: specific configuration for framework-level components (e.g. using a specific RPC library with deadlines set or with novel functionality like [circuit-breakers](https://martinfowler.com/bliki/CircuitBreaker.html) enabled.
 
 A system is described in a programmatic configuration called a _workflow spec_ which contains application logic and its external interface.
 
