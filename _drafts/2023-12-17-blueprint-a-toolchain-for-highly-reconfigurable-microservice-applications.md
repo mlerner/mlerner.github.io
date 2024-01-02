@@ -4,13 +4,15 @@ title: "Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applicatio
 categories:
 ---
 
+[Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications](https://dl.acm.org/doi/10.1145/3600006.3613138)
+
 ## What is the research?
 
-The Blueprint paper talks about a new framework for configuring, building, and depoloying microservices. This framework aims to simplify application development, as well as iterating on system design and configuration.
+The Blueprint paper talks about a new framework for configuring, building, and depolying microservices. This framework aims to simplify iteration on system design, application development, and configuration.
 
 The authors argue that these tasks are currently difficult to accomplish because many services have tight coupling between application code, framework-level components (like RPC libraries and their behavior), and the actual deployment of the service (e.g. with Docker, Kubernetes, or other systems like Ansible).
 
-By explicitly separating concerns of an application, and explicitly defining their interactions in a programmatic configuration, the authors are able to produce systems on which they can iterate faster - for example, being able to compare the performance of monoliths vs seperately deployed microservices.
+By explicitly separating concerns of an application, and explicitly defining their interactions in a programmatic configuration, the authors are able to test out new configurations of a system - for example, quickly reconfiguring a set of independently deployed microservices into a single monolithic binary, then measuring the performance impact of the change.
 
 ## How does the system work?
 
@@ -18,32 +20,45 @@ Blueprint's approach divides a system into three types of components:
 
 - Application level workflows: business logic that a developer writes to perform a specific function.
 - Scaffolding: underlying framework-level components like RPC functionality, distributed tracing libraries, and storage backends (like caches and databases).
-- Instantations: specific configuration for framework-level components (e.g. using a specific RPC library with deadlines set or with novel functionality like circuit-breakers enabled (TODO reference circuit-breakers)).
+- Instantations: specific configuration for framework-level components (e.g. using a specific RPC library with deadlines set or with novel functionality like [circuit-breakers](https://martinfowler.com/bliki/CircuitBreaker.html) enabled.
 
-A system is described in a programmatic configuration called a _workflow spec_ that contains application logic and its external interface.
+A system is described in a programmatic configuration called a _workflow spec_ which contains application logic and its external interface.
 
-TODO fig1
-TODO fig2
+{% maincolumn 'assets/blueprint/figure1.png' '' %}
+{% maincolumn 'assets/blueprint/figure2.png' '' %}
 
-Next, a user of blueprint creates a _wiring spec_ that encode the relationship between pieces of application code and framework-level components. In one example, the authors recreate a simple microservice for posting on a social network, including connection to external caches and databases.
+Next, a user of Blueprint creates a _wiring spec_ that encode the relationship between pieces of application code and framework-level components. In one example, the authors recreate a simple microservice for posting on a social network, including connection to external caches and databases.
 
-TODO fig3
+{% maincolumn 'assets/blueprint/figure3.png' '' %}
 
-Blueprint then uses the _wiring spec_ to create an _intermediate representation_ (TODO note that the idea of IR is common to compiled systems) of the system. The intermediate representation is effectively a graph with nodes describing code and edges describing dependencies (e.g. service A calls service B).
+Blueprint then uses the _wiring spec_ to compile an _intermediate representation_ (an idea [common to many compilers](https://cs.lmu.edu/~ray/notes/ir/)) of the system. The intermediate representation is effectively a graph with nodes describing code and edges describing dependencies (e.g. service A calls service B).
 
-TODO figure 4
+{% maincolumn 'assets/blueprint/figure4.png' '' %}
 
-The intermediate representation is then turned into concrete artifacts representing the components of the system - for example, if a service written in Go relies on a gRPC library, and the application should be wrapped with a Doccker image, the a build system will compile the Go code and create a correponding Docker image that can later be pushed to production.
+Lastly, the intermediate representation is used to build concrete artifacts representing the components of the system - for example, the build system can compile the code for a service written in Go and wrap it with a Docker image, enabling later deployments to production.
 
 ## How is the research evaluated?
 
-The authors evaluate the six main research claims about the implementation:
+The authors evaluate several research claims about the implementation, but three themes stood out to me:
 
 - Does Blueprint make it easier for developers to try new configurations of an system's _existing_ components and libraries?
 - Can Blueprint be used to create system configurations that reproduce reliability issues?
-- Does Blueprint make it easier to adopt system-wide improvements?
-- How closely do the systems that Blueprint generates reproduce existing reference systems?
-- What is the difficulty of extending Blueprint's implementation?
 - What are the costs of the abstractions that Blueprint provides?
 
+To evaluate the first them of whether Blueprint makes it easier to try new configurations for a system's existing components, the authors considered the lines of code required to enable/disable tracing and to convert a microservice deployment into a monolith.
+
+They were able to perform the first task of making changes to tracing with 5 lines of code. Similarly, by changing ~10 lines of code in the Blueprint configuration, they were able to generate a monolithic version of an application previously deployed as microservices, then quantify the performance impact of this change.
+
+{% maincolumn 'assets/blueprint/figure5.png' '' %}
+
+The authors also used Blueprint to reproduce or create reliability issues in a service - in particular they focused on [Metastable failures](https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html) described in a previous paper review. While creating specific configurations of a system to enable reliability testing is not a unique feature of Blueprint, the ease with which the authors performed this analysis is exciting.
+
+Lastly, the authors analyzed how long it takes for Blueprint to generate systems of different sizes. While many of the examples are based on prototype systems, the authors also ran Blueprint on a system derived from a [microservice dataset published by Alibaba](https://dl.acm.org/doi/10.1145/3472883.3487003).
+
+{% maincolumn 'assets/blueprint/table5.png' '' %}
+
 ## Conclusion
+
+Blueprint's idea of separating the concerns involved in an application seems like a promising approach with the potential to dramatically increase the velocity of the software development lifecycle (at least for microservices). One area that seems particularly exciting about Blueprint is the ability to simplify testing different service configurations across infrastructure - for example, rather than rewriting a large body of application code to test out a new tracing library, a developer can simply swap out the code in the Blueprint definition.
+
+From reading the paper, there are several areas of further research for Blueprint, particularly around production readiness. For example, Blueprint's compliation time for a system of ~3000 microservces described in a paper from Alibaba ran for 12 minutes. For organizations that would have many components in their configuration, the cost to run Blueprint would certainly be non-negligible. To speedup compliation of Blueprint, perhaps it would only recompute parts of the system touched by a developer's changes. Onboarding new systems to Blueprint also seems like a challenge, as developers would need to perform some implementation in order to create the definition of their system - perhaps the team behind Blueprint will create tooling that automates this process by reading traces for a running system.
