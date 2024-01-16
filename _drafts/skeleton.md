@@ -1,5 +1,7 @@
 
-## What is the research?
+## Background
+
+## What is the research and why does it matter?
 
 ## What are the paper's contributions?
 
