@@ -18,7 +18,7 @@ This paper describes Meta's internal system for serverless, called XFaaS, which 
 
 {% maincolumn 'assets/xfaas/figure3.png' '' %}
 
-Besides characterization of this unique at-scale serverless system, the paper dives deeper on several challenges that they authors addressed before reaching the current state of the infrastructure:
+Besides characterization of this unique at-scale serverless system, the paper dives deeper on several challenges that the authors addressed before reaching the current state of the infrastructure:
 
 - Handling load spikes from Meta-internal systems scheduling large numbers of function executions.
 - Ensuring fast function startup and execution, which can impact the developer experience and decrease resource utilization.
@@ -99,6 +99,6 @@ Lastly, the paper presents how XFaaS execution behaves in response to issues wit
 
 The XFaaS paper is unique in characterizing a serverless system running at immmense scale. While previous research has touched on this topic, none have provided specific numbers of utilization, likely omitted due to privacy or business concerns (although [Serverless in the Wild](https://www.usenix.org/conference/atc20/presentation/shahrad) comes close).
 
-At the same time, the data on XFaaS comes with caveats, as the system is able to make design choices under a different set of constraints than serverless platforms from public cloud providers. For example, public clouds must guarantee isolation between customers and prioritize security considerations. While XFaaS doesn't wholly neglect these concerns (e.g. some jobs must run on separate machines and there are some levels of isolation between jobs with these considerations), it otherwise relaxes this constraint. Furthermore, XFaaS explicitly does not handle functions and the path of a user-interaction (even though the paper discusses executing latency-sensitive functions) - this is in contrast with services like Lambda which use Serverless functions to respond to HTTP requests.
+At the same time, the data on XFaaS comes with caveats, as the system is able to make design choices under a different set of constraints than serverless platforms from public cloud providers. For example, public clouds must guarantee isolation between customers and prioritize security considerations. While XFaaS doesn't wholly neglect these concerns (e.g. some jobs must run on separate machines and there are some levels of isolation between jobs with these considerations), it otherwise relaxes this constraint. Furthermore, XFaaS explicitly does not handle functions on the path of a user-interaction (even though the paper discusses executing latency-sensitive functions) - this is in contrast with services like Lambda which use Serverless functions to respond to HTTP requests.
 
 While XFaaS is a fascinating system, the paper left me with several questions including whether many of the functions the system executes would actually be better served with a batch job. Furthermore, the authors allude to XFaaS utilization being significantly higher based on "anecdotal knowledge" - while this might be true, it would be useful to know the source of this data to judge whether any differences are in fact meaningful.
