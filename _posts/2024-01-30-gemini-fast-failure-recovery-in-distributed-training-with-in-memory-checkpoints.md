@@ -4,7 +4,7 @@ title: "Gemini: Fast Failure Recovery in Distributed Training with In-Memory Che
 categories:
 ---
 
-_This week’s paper is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). Enjoy!_
+_This is one of several papers I'll be reading from 2023's Symposium on Operating Systems Principles (SOSP). If you'd like to receive regular updates as soon as they're published, check out my [newsletter](https://newsletter.micahlerner.com/) or follow me on the site formerly known as [Twitter](https://twitter.com/micahlerner). Enjoy!_
 
 [Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints](https://www.micahlerner.com/assets/papers/gemini.pdf)
 
@@ -23,7 +23,7 @@ A key idea in Gemini is "checkpointing" progress so that when a failure happens,
 The paper lays out three factors to "wasted time" in existing checkpoint-based systems:
 
 - _Checkpoint time_: how long a model takes to build an intermediate checkpoint.
-- _Checkpoint frequency_: how often a training systemb builds intermediate states.
+- _Checkpoint frequency_: how often a training system builds intermediate states.
 - _Retrieval time_: how long it takes to fetch a checkpoint.
 
 {% maincolumn 'assets/gemini/figure1.png' '' %}

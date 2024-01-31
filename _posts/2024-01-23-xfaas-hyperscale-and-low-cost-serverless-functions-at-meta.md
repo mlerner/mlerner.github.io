@@ -4,7 +4,7 @@ title: "XFaaS: Hyperscale and Low Cost Serverless Functions at Meta"
 categories:
 ---
 
-_This is one of several papers I'll be reading from 2023's Symposium on Operating Systems Principles (SOSP). Enjoy!_
+_This is one of several papers I'll be reading from 2023's Symposium on Operating Systems Principles (SOSP). If you'd like to receive regular updates as soon as they're published, check out my [newsletter](https://newsletter.micahlerner.com/) or follow me on the site formerly known as [Twitter](https://twitter.com/micahlerner). Enjoy!_
 
 ["XFaaS: Hyperscale and Low Cost Serverless Functions at Meta"](https://www.micahlerner.com/assets/papers/xfaas.pdf)
 
