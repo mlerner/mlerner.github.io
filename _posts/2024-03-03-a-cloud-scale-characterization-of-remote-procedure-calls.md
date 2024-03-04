@@ -22,11 +22,11 @@ An analysis of these datasets exposes five insights about Google-internal RPCs.
 
 - RPC performance is growing over time
 - Some RPCs take microseconds, while many take milliseconds
-- The RPC call graph mostly involve fan out, rather than deep call trees.
+- The RPC call graph mostly involves fan out, rather than deep call trees.
 - Many RPCs response/request sizes are small, but some are quite large.
 - A significant portion of RPC traffic is associated with access to storage.
 
-First, the authors measure RPC performance improvement over time using "RPCs per CPU cycle". This effect is because of factors like optimizing the RPC library (which reduces the cost of sending RPCs, allowing more RPCs to be sent with fewer resources). In turn, these performance improvements are posing a greater load on other resources, like the network.
+First, the authors measure RPC performance improvement over time using "RPCs per CPU cycle". This effect is because of factors like optimizing the RPC library (which reduces the cost of sending RPCs, allowing more RPCs to be sent with fewer resources). In turn, these performance improvements are posing a greater load on _other_ resources, like the network.
 
 {% maincolumn 'assets/rpc/figure1.png' '' %}
 
@@ -86,6 +86,8 @@ The paper also evalutes the CPU cycle usage from unsuccessful RPCs - the single 
 
 I enjoyed this paper because of its focus on providing data on the potential impact of several opens areas of academic research - without this thorough characterization, it would be difficult to understand their expected value.
 
-While many proposals are focused on [Attack of the killer microseconds](https://research.google/pubs/attack-of-the-killer-microseconds/), these improvements aren't required for many RPCs. The reserach also highlights challenges with solutions to known problems like tail latency - approaches like request hedging have their own downsides in wasted CPU resources. Rather than trying to globally optimize RPCs, focusing on specific operations is likely to the highest impact  - "the 10 most popular RPC methods account for 58% of all calls and the top-100 account for 91% of all calls." On the hardware front, accelerators (some of which have already been discussed in research) could yield significant benefits - for example, previous papers evaluated a [hardware accelerator for protocol buffers](https://dl.acm.org/doi/abs/10.1145/3466752.3480051).
+While many proposals are focused on [Attack of the killer microseconds](https://research.google/pubs/attack-of-the-killer-microseconds/), these improvements aren't required for many RPCs. The research also highlights challenges with solutions to known problems like tail latency - approaches like request hedging have their own downsides in wasted CPU resources. Rather than trying to globally optimize RPCs, focusing on specific operations is likely to the highest impact  - "the 10 most popular RPC methods account for 58% of all calls and the top-100 account for 91% of all calls." On the hardware front, accelerators (some of which have already been discussed in research) could yield significant benefits - for example, previous papers evaluated a [hardware accelerator for protocol buffers](https://dl.acm.org/doi/abs/10.1145/3466752.3480051).
 
-With the insights from this paper, I'm looking forward to seeing how the authors follow up with future improvements. Additionally, the research cites a number of other industry studies about microservices architectures and their costs (particularly from Meta) that I'll dive into in future paper reviews.
+With the insights from this paper, I'm looking forward to seeing how the authors follow up with future improvements and to see how other groups respond in adjusting the direction of their research (or not).
+
+Lastly, the research cited a number of other industry studies about microservices architectures and their costs that I'm hoping to dive into with future paper reviews - specifically [ServiceRouter](https://www.usenix.org/conference/osdi23/presentation/saokar).
