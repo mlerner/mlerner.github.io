@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Scaling Large Production Clusters with Partitioned Synchronization</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Scaling Large Production Clusters with Partitioned Synchronization</h1>
+  
+  <h4>Published October 10, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-10-10-scaling-large-production-clusters-with-partitioned-synchronization.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=28819518'> Hacker News</a></p>   <p><em>This is one of the last papers we will be reading from <a href="https://www.usenix.org/conference/atc21">Usenix ATC</a> and <a href="https://www.usenix.org/conference/osdi21">OSDI</a>. There are several great conferences coming up over the next few months that I’m excited to read through together. Next week we will be moving on to VLDB (Very Large Data Bases), and SOSP (Symposium on Operating Systems Principles) is coming up later this month. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="https://www.usenix.org/system/files/atc21-feng-yihui.pdf">Scaling Large Production Clusters with Partitioned Synchronization</a></p>
+
+<p>This week’s paper review won a best paper award at Usenix ATC, and discusses Alibaba’s approach to scaling their production environment. In particular, the paper focuses on the evolution of the scheduling architecture used in Alibaba datacenters in response to growth in workloads and resources<label for="scale" class="margin-toggle sidenote-number"></label><input type="checkbox" id="scale" class="margin-toggle" /><span class="sidenote">An increase in resources or workloads impacted the load on the existing scheduler architecture. The former translates into more options for the scheduler to choose from when scheduling, and the latter means more computation that needs to be performed by the scheduler. </span>. Beyond discussing Alibaba’s specific challenges and solutions, the paper also touches on the landscape of existing scheduler architectures (like Mesos, YARN, and Omega).</p>
+
+<h2 id="scheduler-architectures">Scheduler architectures</h2>
+
+<p>The paper first aims to decide whether any existing scheduling architectures meet the neeeds of Alibaba’s production environment - any solution to the scaling problem’s encountered by Alibaba’s system needed to not only scale, but also simultaneously provide backward compatibility for existing users of the cluster (who have invested significant engineering effort to ensure their workloads are compatible with existing infrastructure).</p>
+
+<p>To evaluate future scheduler implementations, the authors considered several requirements:</p>
+
+<ul>
+  <li><em>Low scheduling delay</em>: the selected scheduler should be capable of making decisions quickly.</li>
+  <li><em>High scheduling quality</em>: if a task specifies preferences for resources, like running on “machines where its data are stored” or “machines with larger memory or faster CPUs”, those preferences should be fulfilled as much as possible.</li>
+  <li><em>Fairness</em>: tasks should be allocated resources according to their needs (without being allowed to hog them)<label for="fairness" class="margin-toggle sidenote-number"></label><input type="checkbox" id="fairness" class="margin-toggle" /><span class="sidenote">There are a number of interesting papers on fairness, like <a href="https://cs.stanford.edu/~matei/papers/2011/nsdi_drf.pdf">Dominant Resource Fairness: Fair Allocation of Multiple Resource Types</a> (authored by founders of Spark and Mesos). </span></li>
+  <li><em>Resource utilization</em>: the scheduler should aim to use as much of the cluster’s resources as possible.</li>
+</ul>
+
+<p>These requirements are then applied to four existing scheduler architectures<label for="omega" class="margin-toggle sidenote-number"></label><input type="checkbox" id="omega" class="margin-toggle" /><span class="sidenote">The <a href="https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41684.pdf">Omega paper</a> is also an excellent resource on this topic, and the figure below is sourced from there </span>:</p>
+
+<ul>
+  <li><em>Monolithic</em>: an architecture with a single instance that lacks parallelism, common in HPC settings or lower-scale cloud environments.</li>
+  <li><em>Statically partitioned</em>: generally used for fixed-size clusters that run dedicated jobs or workloads (like Hadoop).</li>
+  <li><em>Two-level</em>: a scheduling strategy where a central cordinator assigns resources to sub-schedulers. This is implemented by <a href="https://people.eecs.berkeley.edu/~alig/papers/mesos.pdf">Mesos</a>, which uses “frameworks” to schedule tasks on resources offered by the central scheduler. <a href="http://mesos.apache.org/documentation/latest/frameworks/">Examples of frameworks</a> are batch schedulers, big data processing systems (like Spark), and service schedulers. A Mesos-like implementation is labeled “pessimistic concurrency control” because it aims to ensure that there will few (or no) conflicts between schedulers.</li>
+  <li><em>Shared-state</em>: one or more schedulers read shared cluster metadata about resources, then use that metadata to make scheduling decisions.  To schedule tasks, the independent schedulers try to modify the shared state. Because multiple schedulers are reading from and attempting to write to the same state, modifications may conflict. In the event of a conflict, one scheduler succeeds and others fail (then re-evaluate their scheduling decisions). <a href="https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41684.pdf">Omega</a> is a shared-state scheduler cited by the authors. An Omega-like implementation utilizes “optimistic concurrency control” because the design assumes that there will be few conflicts between schedulers (and only performs additional work to resolve conflicts when they actually happen).</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/parsync/schedulerarch.png" /><figcaption class="maincolumn-figure">Scheduler architecture diagram sourced from the <a href="https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41684.pdf">Omega paper</a></figcaption></figure>
+
+<p>The authors decide, after applying their requirements to existing scheduler architectures, to extend the design of <em>Omega</em>.</p>
+
+<p>After making this decision, the paper notes that a potential issue with an <em>Omega</em>-based architecture at scale is <em>contention</em>. <em>Contention</em> occurs when multiple schedulers attempt to schedule tasks with the same resources - in this situation, one of the scheduling decisions succeeds, and all others could be rejected (meaning that the schedulers who issued the now-failed requests need to re-calculate scheduling decisions.</p>
+
+<p>The authors spend the majority of the paper evaluating how contention can be reduced, as it could pose a limit to the scalability of the future scheduler. In the process, the paper performs multiple simulations to evaluate the impact of adjusting critical scheduling-related variables.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three contributions. After outlining existing scheduler architectures, it evaluates (using simulation techniques) how the selected approach would handle possible contention if adopted in Alibaba’s production environment. Using these results, the paper suggests an extension to the shared-state scheduling architecture. Lastly, the paper characterizes the performance of this solution, and provides a framework for simulating its performance under a variety of loads.</p>
+
+<h2 id="modeling-scheduling-conflicts">Modeling scheduling conflicts</h2>
+
+<p>As mentioned above, more tasks competing for the same set of resources means <em>contention</em> - jobs will try to schedule tasks to the same slots (“slots” in this context correspond to resources). Given the optimistic concurrency control approach taken in an <em>Omega</em>-influenced shared-state scheduler, the paper argues that there will be latency introduced by scheduling conflicts.</p>
+
+<p>To evaluate potential factors that impact in a cluster under high load, the paper considers the effect of additional schedulers. Adding extra schedulers (while keeping load constant) spreads the load over more instances. Lower per-scheduler loads corresponds to lower delay in the event of contention<label for="contention" class="margin-toggle sidenote-number"></label><input type="checkbox" id="contention" class="margin-toggle" /><span class="sidenote">If a scheduling decision fails, the failed request doesn’t compete with a long queue of other requests. </span>, although there are diminishing returns to flooding the cluster with schedulers<label for="cost" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cost" class="margin-toggle" /><span class="sidenote">Not to mention the cost of adding more schedulers - each scheduler likely has multiple backup schedulers running, ready to take over if the primary fails. </span>.</p>
+
+<p>For each number of schedulers, the simulation varies:</p>
+
+<ul>
+  <li><em>Task Submission Rate</em>: the number of decisions the cluster needs to make per unit time.</li>
+  <li><em>Synchronization Gap</em>: how long a scheduler has in between refreshing its state of the cluster.</li>
+  <li><em>Variance of slot scores</em>: the number of “high-quality” slots available in the system. This is a proxy for the fact that certain resource types in the cluster are generally more preferred in the cluster, leading to hotspots.</li>
+  <li><em>The number of partitions of the master state</em>: how many subdivisions of the master state there are (each part of the cluster’s resources would be assigned to a partition).</li>
+</ul>
+
+<p>To evaluate the performance of different configurations, the experiment records the number of extra slots required to maintain a given scheduling delay. The count of additional slots is a proxy for actual performance. For example, if the task submission rate increases, one would expect that the number of extra slots required to maintain low scheduling delay would also increase. On the other hand, changing experimental variables (like the number of partitions of the master state) may not require more slots or schedulers.</p>
+
+<figure><img class="maincolumn-img" src="/assets/parsync/sim.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The experimental results indicate that flexibility in the system lies in the quality of the scheduling (<em>Variance of slot scores</em>) and in the staleness of the local states (<em>Synchronization Gap</em>).</p>
+
+<p>In other words, scheduling can scale by:</p>
+
+<ul>
+  <li><em>Relaxing constraints on scheduling decisions</em>, possibly scheduling tasks to resources that are slower or don’t exactly fit the job’s needs).</li>
+  <li><em>Communicating more with nodes</em> in order to get updated state about their resources: A scheduler that updates its state more frequently would have a more up-to-date view of the cluster (meaning that it would make fewer scheduling decisions that collide with recent operations by the other schedulers in the cluster). State syncing from cluster nodes to a centralized store is costly and grows with the number of nodes.</li>
+</ul>
+
+<h2 id="partitioned-synchronization">Partitioned Synchronization</h2>
+
+<p>Up to date scheduler state leads to lower contention, but syncing the required state from nodes to achieve this goal is costly (both in networking traffic and space). To address this cost, the authors suggest an approach called <em>partitioned synchronization</em> (a.k.a <em>ParSync</em>) with the goal, “to reduce the staleness of the local states and to find a good balance between resource quality (i.e., slot score) and scheduling efficiency”. <em>ParSync</em> works by syncing partitions of a cluster’s state to one of the many<label for="parsync" class="margin-toggle sidenote-number"></label><input type="checkbox" id="parsync" class="margin-toggle" /><span class="sidenote">The previous section notes that there are significant performance benefits to adding schedulers in a shared-state architecture, up to a point. </span> schedulers in a cluster. Then, the scheduling algorithm weights the recency (or <em>staleness</em>) of a partition’s state in scheduling decisions.</p>
+
+<p>The authors argue that short-lived low latency tasks, as well as long-running batch jobs benefit from <em>ParSync</em>. For example, if a task is short lived, it should be quickly scheduled - a non-ideal scheduler would take more time making decisions than the task takes to actually run. In this situation, <em>ParSync</em>-based scheduling can assign the task to a recently updated partition, with high likelihood that the scheduling decision will succeed - other schedulers will not update the partition’s state at the same time, instead preferring their own recently updated partitions. On the other side of the spectrum, a long running job might prefer certain resources, trading off more time spent making a scheduling decision for running with preferred resources.</p>
+
+<p><em>ParSync</em> is coupled with three scheduling strategies:</p>
+
+<ul>
+  <li><em>Quality-first</em>: optimize for use of preferred resources.</li>
+  <li><em>Latency-first</em>: optimize for faster scheduling decisions (even if they are non-optimal).</li>
+  <li><em>Adaptive</em>: use the Quality-first or Latency-first strategy depending on whether scheduling delay is high or not. If there is low scheduling delay, the scheduler will prefer quality-first. If there is high scheduling delay, the scheduler prefers latency-first.</li>
+</ul>
+
+<p>The next section discusses the performance of the three different strategies.</p>
+
+<h2 id="evaluation">Evaluation</h2>
+
+<p>The paper results indicate that both quality-first and latency-first scheduling strategies don’t adapt to conditions they are not optimized for. Quality-first scheduling experiences latency at high load (when the scheduler should make decisions quickly), while latency-first scheduling generally makes worse scheduling decisions under low load (when the scheduler could take more time and choose ideal resources). In contrast, the adaptive strategy is able to switch between the aforementioned strategies, while achieving high resource utilization.</p>
+
+<figure><img class="maincolumn-img" src="/assets/parsync/eval.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This paper discusses a number of interesting scheduler architectures, as well as touching on the body of work covering scheduler internals<label for="firmament" class="margin-toggle sidenote-number"></label><input type="checkbox" id="firmament" class="margin-toggle" /><span class="sidenote">See <a href="https://cs.stanford.edu/~matei/papers/2011/nsdi_drf.pdf">Dominant Resource Fairness: Fair Allocation of Multiple Resource Types</a> and <a href="https://www.usenix.org/system/files/conference/osdi16/osdi16-gog.pdf">Firmament: Fast, Centralized Cluster Scheduling at Scale</a> </span> (which I would love to read in the future). While the content of this paper leans heavily on simulation, there is a discussion of performance evaluation using internal Alibaba tools - I’m hopeful that we will be able to learn more about the real world performance of the team’s scheduler in future research (as we often see with industry papers).</p>
+
+<p>As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with any feedback or paper suggestions. Until next time!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-10-10-scaling-large-production-clusters-with-partitioned-synchronization.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

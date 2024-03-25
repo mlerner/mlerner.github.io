@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>A Cloud-Scale Characterization of Remote Procedure Calls</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>A Cloud-Scale Characterization of Remote Procedure Calls</h1>
+  
+  <h4>Published March 03, 2024</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-03-03-a-cloud-scale-characterization-of-remote-procedure-calls.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><em>This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my <a href="https://newsletter.micahlerner.com/">newsletter</a> or follow me on the site formerly known as <a href="https://twitter.com/micahlerner">Twitter</a>. Enjoy!</em></p>
+
+<p><a href="https://dl.acm.org/doi/abs/10.1145/3600006.3613156">“A Cloud-Scale Characterization of Remote Procedure Calls”</a></p>
+
+<h2 id="what-is-the-research-and-why-does-it-matter">What is the research and why does it matter?</h2>
+
+<p>This paper is slightly different from others I’ve written about recently - rather than a novel system design, it contains a characterization of a production system, with the goals of sharing data with the research community.</p>
+
+<p>Specifically, the research dives deep on contributors to RPC latency and performance in Google’s hyper-scale systems, including Google Search, Google Maps, Gmail, and YouTube. In some areas, this data matches existing research and points towards the benefits that further investment could provide. Other datapoints don’t match up with previous thinking, indicating the possibility of new research threads or focused interest in existing ideas!</p>
+
+<h2 id="characteristics-of-rpcs-at-hyperscale">Characteristics of RPCs at Hyperscale</h2>
+
+<p>The paper focuses on production traffic that uses Google’s internal RPC library, <a href="https://sre.google/sre-book/production-environment/">Stubby</a>. This traffic powers first-party services and their accesses to other internal systems and databases. The authors use data from Monarch (<a href="https://www.micahlerner.com/2022/04/24/monarch-googles-planet-scale-in-memory-time-series-database.html">the subject of a previous paper review!</a>), Dapper (<a href="https://research.google/pubs/dapper-a-large-scale-distributed-systems-tracing-infrastructure/">a library for distributed tracing</a>) and Google Wide Profiling (<a href="https://research.google/pubs/google-wide-profiling-a-continuous-profiling-infrastructure-for-data-centers/">which continuously gathers performance data</a> from services deployed in Google datacenters).</p>
+
+<p>An analysis of these datasets exposes five insights about Google-internal RPCs.</p>
+
+<ul>
+  <li>RPC performance is growing over time</li>
+  <li>Some RPCs take microseconds, while many take milliseconds</li>
+  <li>The RPC call graph mostly involves fan out, rather than deep call trees.</li>
+  <li>Many RPCs response/request sizes are small, but some are quite large.</li>
+  <li>A significant portion of RPC traffic is associated with access to storage.</li>
+</ul>
+
+<p>First, the authors measure RPC performance improvement over time using “RPCs per CPU cycle”. This effect is because of factors like optimizing the RPC library (which reduces the cost of sending RPCs, allowing more RPCs to be sent with fewer resources). In turn, these performance improvements are posing a greater load on <em>other</em> resources, like the network.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Second, “not all RPCs are the same” in terms of their latency - some take microseconds, while others take milliseconds. Furthermore, a small number of RPC calls make up a majority of traffic, meaning that optimizing them could have outsized impact. Other calls are infrequent, but take up significant computation - “the slowest 1000 RPC methods account for only 1.1% of all calls, but they take 89% of the total RPC time.” The authors share data on per-method RPC latency and frequency to demonstrate these trends.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/rpc/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Third, “RPCs are Wider than Deep” - RPCs have significant fan out into other systems Google infrastructure, but don’t normally result in many services calling each other far down into the stack. The authors note this behavior matches with existing studies from <a href="https://dl.acm.org/doi/abs/10.1145/3472883.3487003">Alibaba</a> and <a href="https://www.usenix.org/conference/atc23/presentation/huye">Meta</a>. The paper visualizes this insight with CDFs of “descendants” and “ancestors” in the RPC call graph - “looking at the number of descendants shows the scale of distributed computation performed by an RPC, and the number of ancestors provides insights into how the properties of RPCs change as they get deeper into the call graph of a root RPC.”</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/rpc/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Fourth, there is an “elephant and mice distribution” of RPC sizes - “most RPCs are small with the smallest a single cache line (64 B)”. Others are significantly larger - “P99 requests and responses are 196 KB and 563 KB”. This data shows that projects like hardware accelerators would be able to optimize significant parts of the RPC workload, but would not be able to handle others (specifically, the authors reference <a href="https://dl.acm.org/doi/10.1145/3458336.3465283">“Zerializer: Towards zero-copy serialization”</a>). The authors present this data using CDFs that show percentiles of request sizes and the ratio between response/request.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, a significant portion of RPC traffic is associated with accesses to storage - “these findings motivate application-specific optimizations, especially on storage systems, as storage is by far the largest distributed application in the fleet.”</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="rpc-latency">RPC Latency</h2>
+
+<p>The papers dive into the sources of RPC latency in a client-server interaction - at a high level, the components boil down to client/server send and receive queues, server processing logic, the networking stack, and networking infrastructure.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To describe the cost of sending an RPC to an external service, minus server processing time, the paper uses the term <em>RPC latency tax</em> - the paper focuses on this because while “application-processing time dominates…[the] RPC tax can be significant.” This tax applies no matter how good a server gets at returning a response - for many RPC calls this tax makes up the bulk of their time.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>This tax also varies across different types of services. For example, RPCs to an SSD cache would benefit the most from reducing the time an RPC spends in the server send queue, while RPC calls to the F1 database would benefit the most from reducing time in the client recv queue.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure14.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/rpc/figure15.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The RPC latency tax also varies across clusters - in other words, a service can respond faster to RPCs when it is deployed in cluster A instead of cluster B. This happens because of characteristics of the cluster, like CPU utilization and memory bandwidth - the paper calls these <em>exogenous variables</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/table2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<blockquote>
+  <p>Each application category reacts differently towards these exogenous variables. Bigtable is a server-processing-heavy workload, and its performance is highly dependent on CPU utilization, memory bandwidth, wake-up time, and cycles per instruction. Video Metadata is queuing heavy, which follows a similar trend.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure16.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/rpc/figure17.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="resource-utilization-of-rpcs">Resource Utilization of RPCs</h2>
+
+<p>There is also another cost for RPCs, the CPU cost, which the paper calls the <em>cycle tax</em>. Multiple components of the RPC flow contribute, however compression dominates.</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure20.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also evalutes the CPU cycle usage from unsuccessful RPCs - the single largest contributor are cancelled requests (likely sent because of <a href="https://blog.acolyer.org/2015/01/15/the-tail-at-scale/">request hedging</a>). Other types of potentially avoidable errors consume a suprising amount of CPU resources (e.g. “entity not found” response codes).</p>
+
+<figure><img class="maincolumn-img" src="/assets/rpc/figure23.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>I enjoyed this paper because of its focus on providing data on the potential impact of several opens areas of academic research - without this thorough characterization, it would be difficult to understand their expected value.</p>
+
+<p>While many proposals are focused on <a href="https://research.google/pubs/attack-of-the-killer-microseconds/">Attack of the killer microseconds</a>, these improvements aren’t required for many RPCs. The research also highlights challenges with solutions to known problems like tail latency - approaches like request hedging have their own downsides in wasted CPU resources. Rather than trying to globally optimize RPCs, focusing on specific operations is likely to the highest impact  - “the 10 most popular RPC methods account for 58% of all calls and the top-100 account for 91% of all calls.” On the hardware front, accelerators (some of which have already been discussed in research) could yield significant benefits - for example, previous papers evaluated a <a href="https://dl.acm.org/doi/abs/10.1145/3466752.3480051">hardware accelerator for protocol buffers</a>.</p>
+
+<p>With the insights from this paper, I’m looking forward to seeing how the authors follow up with future improvements and to see how other groups respond in adjusting the direction of their research (or not).</p>
+
+<p>Lastly, the research cited a number of other industry studies about microservices architectures and their costs that I’m hoping to dive into with future paper reviews - specifically <a href="https://www.usenix.org/conference/osdi23/presentation/saokar">ServiceRouter</a>.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-03-03-a-cloud-scale-characterization-of-remote-procedure-calls.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints</h1>
+  
+  <h4>Published January 30, 2024</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-30-gemini-fast-failure-recovery-in-distributed-training-with-in-memory-checkpoints.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><em>This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my <a href="https://newsletter.micahlerner.com/">newsletter</a> or follow me on the site formerly known as <a href="https://twitter.com/micahlerner">Twitter</a>. Enjoy!</em></p>
+
+<p><a href="https://www.micahlerner.com/assets/papers/gemini.pdf">Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints</a></p>
+
+<h2 id="what-is-the-research-and-why-does-it-matter">What is the research and why does it matter?</h2>
+
+<p>Training AI models requires a large amount of compute resources, in particular GPUs. Many large companies purchase their own GPUs, leading to both up front costs of acquisition, as well as ongoing spend to power the clusters where the GPUs are hosted. Furthermore, at an organization with many projects requiring these resources, there is contention for compute time.</p>
+
+<p>While the first two sources of cost are difficult to minimize, effective usage of compute time is a growing area of research. One way that teams are making gains is by improving the reliability of model training - if a machine involved in training fails, in-progress work may be lost. Motivated by data that existing solutions don’t handle this case well, the authors propose a framework for limiting the amount of wasted resources - “According to the report from OPT-175B training…about 178,000 GPU hours were wasted due to various training failures.”</p>
+
+<p>The Gemini paper aims to solves this problem by providing a failure recovery system for training runs. Rather than solely relying on far remote storage which is costly to read/write to, Gemini builds a multi-level cache comprising GPU memory, local and remote CPU memory, with persistent storage as a last resort. This new design and implementation is able to successfully achieve 13x faster failure recovery without significantly impacting training.</p>
+
+<h2 id="motivation">Motivation</h2>
+
+<p>A key idea in Gemini is “checkpointing” progress so that when a failure happens, the system doesn’t need to recompute results.</p>
+
+<p>The paper lays out three factors to “wasted time” in existing checkpoint-based systems:</p>
+
+<ul>
+  <li><em>Checkpoint time</em>: how long a model takes to build an intermediate checkpoint.</li>
+  <li><em>Checkpoint frequency</em>: how often a training system builds intermediate states.</li>
+  <li><em>Retrieval time</em>: how long it takes to fetch a checkpoint.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>These factors manifest in existing systems where checkpoints are resource-intensive to create, limiting how often the system produces them. In turn, this impacts the freshness of checkpoints and increases “wasted time” - a system resuming from an old checkpoint will redo more computation.</p>
+
+<p>Beyond creating the checkpoints, the system must store them and make them available with low-latency - to drive down wasted time, Gemini proposes a system that aims to “maximize the probability of failure recovery from checkpoints stored in CPU memory”.</p>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>There are two parts of the Gemini system: the <em>checkpoint creation module</em> and the <em>failure recovery module</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>checkpoint creation module</em> creates checkpoints and figures out where to store them. It implements a distributed multi-level distributed cache of checkpoints stored in CPU Memory, GPU Memory, and Remote Storage.</p>
+
+<p>The <em>failure recovery module</em> is responsible for evaluating whether a component of the system has failed and needs replacement - it contains contains four components:</p>
+
+<ul>
+  <li><em>Gemini worker agents</em>: each node participating in training has a process that reports on machine health and provides state updates.</li>
+  <li><em>Root agent</em>: worker agent promoted to leader via distributed consensus algorithm (e.g. <a href="https://www.micahlerner.com/2020/05/08/understanding-raft-consensus.html">Raft</a>) and provides commands to workers (e.g. recover from failure).</li>
+  <li><em>Distributed KV Store</em>: stores state on the machines in the network and assists in electing new root agents on failure.</li>
+  <li><em>Cloud Operator</em>: the root agent communicates with a hosting provider (e.g. a central schedular) to perform actions like requesting more resources (e.g. more machines with GPUs).</li>
+</ul>
+
+<h3 id="technical-challenges">Technical Challenges</h3>
+
+<p>The system aims to minimize “wasted time” by limiting the impact of machine failure. Key to the system’s approach is distributing checkpoints across machines in the network - the paper investigates different configurations of where to place the checkpoints - it calls them <em>group</em>, <em>ring, and _mixed</em>. The paper also includes pseudocode of the <em>group</em> algorithm.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/gemini/algo1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Distributing checkpoints is not without its cost, particuarly to networking resources - as model training also uses the network, competing traffic could impact performance.  To address this the authors implement <em>traffic interleaving</em>, which attempts to send the checkpoints over the network in a way that doesn’t interfere with other network traffic associated with training.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>After creating a checkpoint, Gemini transfers it to remote GPU memory on another machine in the network, then that machine transfers it to CPU memory (which is relatively cheaper and more abundant).</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>A simple implementation following this approach transfer the whole checkpoint at once across the network to remote GPU memory. As checkpoints can be quite large, this implementation requires the destination machine to set aside a large amount of GPU memory just for receiving checkpoints (or risk hitting out of memory errors). Instead, the paper proposes splitting up a checkpoint into partitions, then incrementally transferring them over the network.</p>
+
+<p>The authors also describe an approach to <em>online profiling</em> where the dynamics of network traffic are learned over time and then eventually feed into the decision making for sending traffic over the network. By combining this idea with checkpoint partitioning, Gemini is able to make decisions about when to send buffers over the network.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/algo2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="resuming-from-failure">Resuming from failure</h3>
+
+<p>The authors describe two different failure types: software failure (e.g. the code running training has a bug) and hardware failure (e.g. the machine loses network connectivity or a hard drive breaks). Critically, GEMINI treats the two types differently because of the impact they have on the in-memory data used to restore from checkpoint - a software failure can likely recover from checkpoint stored in memory, while a hardware failures often requires a combination of machine replacement and fetching checkpoints from a different computer in the network.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The research evaluates GEMINI’s impact on training efficiency, and effectiveness in traffic interleaving. Additionally, the authors make projections around the system’s scalability and impact it could have in training large language models.</p>
+
+<p>For training efficiency, the paper measures whether GEMINI changes training time, wasted time, and checkpoint time. When training three large models, the paper finds that GEMINI doesn’t increase iteration time (time where the model is doing work before it must pause to communicate) while significantly reducing wasted time in the presence of machine failures. Checkpoint time also goes down when compared to existing checkpoint-based training solutions.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/gemini/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also measures the effectiveness of traffic interleaving (specifically by tracking iteration time), comparing the Gemini approach against existing baselines and other approaches  (e.g. the naive implementation without checkpoint partitioning) - the Gemini solution doesn’t result in out of memory issues while keeping the iteration time the same and being able to recover from failure.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure16.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, the research contains projections about Gemini’s ability to reduce wasted time if the system was applied to training a large language model - while the results of this projection seem promising, it seems like there is more work to gather the effectiveness of Gemini at scale.</p>
+
+<figure><img class="maincolumn-img" src="/assets/gemini/figure15.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Gemini is a system that could potentially dramatically reduce wasted time in training AI models - as models continue to grow and use more resources in a distributed setting, recovering from failure will become even more of a concern than it already is.</p>
+
+<p>One of my main takeaways from the Gemini paper is around the application of systems ideas to AI models and their training. For example, Gemini takes advantage of common patterns like reliance on a distributed key-value store, leader election, and a multi-tier memory system. The idea that adopting well-known patterns could lead to dramatic performance and reliability improvements in this new type of serving system is quite exciting - it means there is a lot of low hanging fruit!</p>
+
+<p>I’m looking forward to further developments in this space, and hope to see a followup paper from the authors soon with more data on training a model at scale (or alternatively a reference to using Gemini-like techniques from other organizations).</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-30-gemini-fast-failure-recovery-in-distributed-training-with-in-memory-checkpoints.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

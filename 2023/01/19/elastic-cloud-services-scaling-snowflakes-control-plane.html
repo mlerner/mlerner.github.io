@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Elastic Cloud Services: Scaling Snowflake’s Control Plane</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Elastic Cloud Services: Scaling Snowflake’s Control Plane</h1>
+  
+  <h4>Published January 19, 2023</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-01-19-elastic-cloud-services-scaling-snowflakes-control-plane.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="https://dl.acm.org/doi/10.1145/3542929.3563483">Elastic Cloud Services: Scaling Snowflake’s Control Plane</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>Snowflake is a company that makes a globally distributed data warehouse<label for="dwh" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dwh" class="margin-toggle" /><span class="sidenote">See <a href="https://www.snowflake.com/data-cloud-glossary/data-warehousing/">Snowflake</a>, <a href="https://cloud.google.com/learn/what-is-a-data-warehouse">Google Cloud</a> or <a href="https://aws.amazon.com/data-warehouse/">AWS description</a> of data warehouses. </span>. Their product must reliably respond to business-critical customer issued queries, while abstracting away scaling challenges associated with rapidly changing load. Behind the scenes, Snowflake must also reduce single points of failures by deploying across multiple cloud providers and the regions within them - an approach becoming more popular due to projects like <a href="https://www.crossplane.io/">Crossplane</a> that simplify <a href="https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s02-stoica.pdf">“sky computing”</a></p>
+
+<p>This paper discusses the design and implementation of <em>Elastic Cloud Services (ECS)</em>, the critical component of the company’s infrastructure that is responsible for orchestrating workloads. ECS enables the platform to process large amounts of data efficiently and with minimal downtime.</p>
+
+<p>Snowflake previously published work<label for="previousresearch" class="margin-toggle sidenote-number"></label><input type="checkbox" id="previousresearch" class="margin-toggle" /><span class="sidenote">See <a href="https://doi.org/10.1145/2882903.2903741">The Snowflake Elastic Data Warehouse</a> and <a href="https://www.usenix.org/conference/nsdi20/presentation/vuppalapati">Building An Elastic Query Engine on Disaggregated Storage</a>. The latter has a great summary on <a href="https://blog.acolyer.org/2020/03/09/snowflake/">The Morning Paper</a>. </span> on their underlying infrastructure, but the most recent paper builds on prior research in three main respects. First, it specifically focuses on the component of Snowflake’s data warehouse responsible for coordination across multiple cloud providers. Second, it discusses designing the system with availability in mind, actively making tradeoffs along the way. Lastly, the paper describes novel techniques for autoscaling capacity at scale.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes two main contributions:</p>
+
+<ul>
+  <li>Design and implementation of <em>Elastic Cloud Services</em>, an at-scale control plane<label for="controlplane" class="margin-toggle sidenote-number"></label><input type="checkbox" id="controlplane" class="margin-toggle" /><span class="sidenote">Control planes have come up in previous paper reviews, like <a href="https://www.micahlerner.com/2022/01/08/shard-manager-a-generic-shard-management-framework-for-geo-distributed-applications.html">Shard Manager: A Generic Shard Management Framework for Geo-distributed Applications</a>. </span> that powers Snowflake</li>
+  <li>Evaluation and charactierization of ECS from production deployment</li>
+</ul>
+
+<h2 id="background">Background</h2>
+
+<p>Snowflake infrastructure is divided into three main layers: <em>Elastic Cloud Services</em> (the focus of the paper), a <em>Query Processing</em> layer responsible for executing user queries over a customer’s dataset, and <em>Object Storage</em> (which holds the database records). The full architecture of Snowflake is not the focus of this paper, and is covered in previous research<label for="prev" class="margin-toggle sidenote-number"></label><input type="checkbox" id="prev" class="margin-toggle" /><span class="sidenote">See the sidebar in the introduction of this paper review for links to the previous research. </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Each Snowflake customer can configure one or more Snowflake warehouses<label for="warehouse" class="margin-toggle sidenote-number"></label><input type="checkbox" id="warehouse" class="margin-toggle" /><span class="sidenote">More information on warehouses <a href="https://docs.snowflake.com/en/user-guide/warehouses.html">here</a>. </span>, providing isolation between different  users of the software. When a customer configures a warehouse, it is assigned a version<label for="releases" class="margin-toggle sidenote-number"></label><input type="checkbox" id="releases" class="margin-toggle" /><span class="sidenote">Snowflake releases new versions on a recurring basis, and publishes info about each release on their <a href="https://docs.snowflake.com/en/user-guide/intro-releases.html">developer-facing documentation</a>. </span> of Snowflake software that determines the software a customer’s queries are executed with. Importantly, this configuration doesn’t result in the creation of backing compute resources - instead, Snowflake dynamically scales up when a customer sends queries<label for="dynamic" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dynamic" class="margin-toggle" /><span class="sidenote">This property of dynamic scaling in response to load is one of Snowflake’s claims to fame. </span>.</p>
+
+<h2 id="how-does-it-work">How does it work?</h2>
+
+<h3 id="elastic-cloud-services-ecs">Elastic Cloud Services (ECS)</h3>
+
+<p>The paper focuses on three main aspects of ECS:</p>
+
+<ul>
+  <li><em>Automatic Code Management</em>: the code powering the product is upgraded on a continuous basis, and ECS is designed to automatically and reliably handle these upgrades.</li>
+  <li><em>Balancing load across availability zones</em>: ECS coordinates load across multiple cloud providers in order to reduce single points of failure.</li>
+  <li><em>Throttling and autoscaling</em>: the number of requests from customers can increase dramatically and ECS must be able to serve these queries (often achieving this by adding more resources).</li>
+</ul>
+
+<p>The ECS <em>Cluster Manager</em> handles these tasks. When a user requests the creation of a new cluster, the <em>Cluster Manager</em> provisions the necessary resources and creates the cluster in specified cloud providers<label for="cloud" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cloud" class="margin-toggle" /><span class="sidenote">More information on the cloud providers that Snowflake supports (and how) is in <a href="https://docs.snowflake.com/en/user-guide/intro-cloud-platforms.html">their docs</a>. </span>. The <em>Cluster Manager</em> also registers the cluster with the control plane, which is responsible for coordinating the activities of the ECS clusters and scheduling user queries on compute resources (represented via <em>warehouses</em>). Once the cluster is registered, it is ready to accept customer queries and perform the necessary processing.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="automatic-code-management">Automatic Code Management</h3>
+
+<h4 id="rollouts">Rollouts</h4>
+
+<p>The code that powers Snowflake’s product is constantly receiving updates<label for="behavior" class="margin-toggle sidenote-number"></label><input type="checkbox" id="behavior" class="margin-toggle" /><span class="sidenote">They also <a href="https://community.snowflake.com/s/article/Pending-Behavior-Change-Log">document pending behavior changes</a> to the system. </span>. ECS is designed to gradually rollout changes to reduce the likelihood of negative customer impact. This process is fully automated to minimize human error and ensure the fast and reliable rollout of new code. It also includes measures to ensure that customer queries are not interrupted, such as allowing VMs to finish executing their queries before they are shut down.</p>
+
+<p>To rollout updates to a cloud services cluster, ECS first prepares new virtual machines (VMs) with the updated software version. Then, ECS prepares the machines by warming their caches<label for="cachewarm" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cachewarm" class="margin-toggle" /><span class="sidenote">The paper doesn’t provide specifics of how the cache is warmed, but I would guess that it could potentially be through a ‘dark rollout’ where currently-executing customer queries are forwarded to the new machines. </span>, and starts directing user queries to the new VMs.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To minimize disruption to ongoing queries, VMs using the previous version continue to operate until their workload is finished. Running VMs with new and old versions of the software simultaneously is more expensive resource-wise, but allows fast rollbacks in the event of customer impact<label for="rollback" class="margin-toggle sidenote-number"></label><input type="checkbox" id="rollback" class="margin-toggle" /><span class="sidenote">This is amazing from a reliability perspective, and is also discussed in the <a href="https://cloud.google.com/blog/products/gcp/reliable-releases-and-rollbacks-cre-life-lessons">SRE book</a>. </span>. Additionally, customers can pin to a specific version of Snowflake’s code if they experience regressions in the new version.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h4 id="pools">Pools</h4>
+
+<p>At scale, machines fail or perform suboptimally for a wide variety of reasons<label for="failslow" class="margin-toggle sidenote-number"></label><input type="checkbox" id="failslow" class="margin-toggle" /><span class="sidenote">This effect is often called fail-slow at scale, and is discussed in more detail in papers like <a href="https://www.usenix.org/system/files/conference/fast18/fast18-gunawi.pdf">Fail-Slow at Scale: Evidence of Hardware
+Performance Faults in Large Production Systems</a>. </span> To combat this, ECS actively manages the cloud resources underlying its computing nodes, keeping track of the health<label for="health" class="margin-toggle sidenote-number"></label><input type="checkbox" id="health" class="margin-toggle" /><span class="sidenote">The paper mentions using health metrics like, “memory management, CPU, concurrency characteristics, JVM failures, hardware failures”. </span> of individual nodes (and deciding when to stop using unhealthy ones).</p>
+
+<p>Based on this monitoring, ECS moves VMs between <em>cluster pools</em>, each containing resources matching one of five distinct stages in a VM’s lifecycle:</p>
+
+<ul>
+  <li><em>Free Pool</em>: contains VMs that are ready to be used.</li>
+  <li><em>Quarantine Pool</em>: contains VMs that need to be removed from their clusters to resolve any pending tasks</li>
+  <li><em>Active Pool</em>: contains healthy VMs that are part of a cluster and actively handling customer workloads.</li>
+  <li><em>Graveyard Pool</em>: includes VMs prepared for termination.</li>
+  <li><em>Holding Pool</em>: for debugging purposes, Snowflake developers and automated systems can remove VMs from active service, but refrain from shutting down the underlying resources.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper discusses two concrete usages of the pools. The first is a set of state transitions that occur when the cluster is upgraded, as the VMs running the old version of the software move from <em>active</em> to <em>quarantine</em>, and then finally to <em>graveyard</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The second example covers an example where a machine shifts from the <em>Free Pool</em> to the <em>Quarantine Pool</em> when it becomes an outlier with respect to processing customer queries.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="balancing-across-availability-zones">Balancing Across Availability Zones</h3>
+
+<p>ECS (Elastic Cloud Service) loadbalances across availability zones in order to ensure minimal customer impact in the event of failure within cloud provider regions<label for="metastable" class="margin-toggle sidenote-number"></label><input type="checkbox" id="metastable" class="margin-toggle" /><span class="sidenote">Cloud provider failures are discussed at length in a previous paper review, <a href="https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html">Metastable Failures in the Wild</a> </span>. By distributing VMs (virtual machines) evenly across different availability zones, ECS can redirect requests to VMs in a different zone if one zone experiences an outage or becomes unavailable for some other reason. This approach helps to ensure that the service remains available and responsive to customers, even in the face of unexpected disruptions. Loadbalancing across availability zones is a common practice in cloud computing, as it helps to improve the resilience and reliability of service.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper describes how ECS implements two types of loadbalancing: <em>cluster-level balancing</em> (which aims to distribute the VMs for a customer’s cluster across multiple zones) and <em>global-level balancing</em> (which aims to distribute total VMs evenly across zones).</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper provides high-level details on how the loadbalancing works:</p>
+
+<blockquote>
+  <p>When scaling a cluster out, ECS picks the least loaded zone globally out of the set of least loaded zones for that cluster. Similarly, when scaling a cluster in, ECS picks the most loaded zone globally out of the set of most loaded zones for that cluster.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>There are times when scaling via these two strategies doesn’t work or when they conflict with each other. For example, if there are no VMs to assign to a cluster in a given zone, it might not be possible to execute cluster-level balancing. Another situation where the balancing can be suboptimal is when “correctly” balancing a cluster across zones results in a global imbalance containing many clusters with VMs in a single zone.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure11.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="throttling-and-autoscaling">Throttling and Autoscaling</h3>
+
+<p>The load that customers send to Snowflake varies over time. ECS uses two main approaches to handle the unpredictably of user traffic:</p>
+
+<ul>
+  <li><em>Throttling</em>: the execution of customer queries should be isolated<label for="noisyneighbor" class="margin-toggle sidenote-number"></label><input type="checkbox" id="noisyneighbor" class="margin-toggle" /><span class="sidenote">If the queries are not isolated well, one would see the <a href="https://learn.microsoft.com/en-us/azure/architecture/antipatterns/noisy-neighbor/noisy-neighbor">Noisy Neighbor problem</a>. </span> and should not consume excessive resources.</li>
+  <li><em>Autoscaling</em>: the load that customers send to Snowflake’s database varies over time, and the underlying infrastructure needs to automatically scale (also known as performing <em>autoscaling</em>) in response.</li>
+</ul>
+
+<p>When designing ECS’s solutions to these problems, the authors balanced five factors:</p>
+
+<ul>
+  <li><em>Responsiveness</em>: queries should start running without user-visible delay</li>
+  <li><em>Cost-efficiency</em>: Snowflake shouldn’t retain unnecessary resources<label for="resources" class="margin-toggle sidenote-number"></label><input type="checkbox" id="resources" class="margin-toggle" /><span class="sidenote">Snowflake’s cost model also allows customers to optimize their spend - see <a href="https://www.snowflake.com/blog/how-usage-based-pricing-delivers-a-budget-friendly-cloud-data-warehouse/">this discussion</a> from their official blog and <a href="https://medium.com/snowflake/snowflake-cost-optimization-part-i-c1147aa9e4fc">posts</a> <a href="https://airbyte.com/blog/snowflake-costs">from external developers</a>. </span>.</li>
+  <li><em>Cluster volatility</em>: Minimize unnecessary changes to cluster configurations, as frequent changes impact performance and cost.</li>
+  <li><em>Throughput</em>: the system should scale to meet demand.</li>
+  <li><em>Latency</em>: queries should complete in a timely manner (and not be impacted by issues like skew<label for="skew" class="margin-toggle sidenote-number"></label><input type="checkbox" id="skew" class="margin-toggle" /><span class="sidenote">In particular, this is a often a problem with joins. See an example discussion <a href="https://medium.com/road-to-data-engineering/spark-performance-optimization-series-1-skew-2762a0f288c">here</a>. </span>)</li>
+</ul>
+
+<p>To implement throttling, Snowflake uses an approach called <em>Dynamic Throttling</em> that makes scaling decisions based on VM usage for customer queries. Instead of using static concurrency limits that do not take into account the specific demands of each workload, dynamic throttling calculates limits based on CPU and memory usage<label for="mempressure" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mempressure" class="margin-toggle" /><span class="sidenote">Memory pressure is also a problem in other systems, like <a href="https://www.elastic.co/blog/found-understanding-memory-pressure-indicator">Elastic Search</a>. </span> of the VMs. When a VM is executing a query and hits these limits, it doesn’t accept new queries until health metrics return to normal. This approach helps to prevent the system from becoming overwhelmed by requests and ensures a consistent service experience for customers<label for="isolation" class="margin-toggle sidenote-number"></label><input type="checkbox" id="isolation" class="margin-toggle" /><span class="sidenote">The paper also mentions that different accounts and users with an account are isolated from one another in order to stop a single entity from causing noisy-neighbor behavior. </span>.</p>
+
+<p>Autoscaling uses load signals similar to those that <em>Dynamic Throttling</em> relies on. The algorithm for autoscaling a cluster also takes into account factors like churn of VMs, and aims to minimize scaling up and scaling down. It is capable of scaling both horizontally (adding more VMs) and vertically (increasing their size).</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The evaluate the system, the paper considers the performance of ECS’s zone balancing, autoscaling, and throttling.</p>
+
+<p>To evaluate load balancing, the authors include information on how ECS reduced <em>skew</em>, a measure of “the difference between the number of VMs in the most loaded zone and the least loaded zone”. ECS’s load balancing reduced average global skew (VM differences from across a deployment) from 45 to 5 and almost eliminated skew within a cluster. By limiting skew, Snowflake deployments are less exposed to an outage in any one cloud region. Furthermore, balanced deployments simplify scaling as there are fewer VM-constrained <em>Free Pools</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure13.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure14.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To evaluate throttling and autoscaling, the paper includes several examples from production. One example usage of autoscaling is in response to noisy neighbor problems - after detecting the issue, ECS automatically mitigated by adding VMs to the impacted cluster. ECS also automatically scales down to reduce cost.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure22.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure18.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Dynamic throttling is similarly beneficial. When a cluster was experiencing high load, ECS throttled requests to the impacted VMs, forwarding queries to VMs capable of servicing them. This smooths customer load by directing user queries to machines that are actually capable of processing them.</p>
+
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure17.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/snowflake/figure20.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The paper on Snowflake’s Elastic Cloud Services provides an overview of the control plane responsible for running the company’s database product. I’m hopeful that several of the interesting topics the authors touch on are the subject of future publications, as the research is unique in several respects. First, its focus is unlike many papers covering distributed databases - prior art often centers on database internals or underlying consensus algorithms. The paper is also novel in that it discusses an at-scale approach to running across multiple cloud providers, a solution that is becoming more prevalent in the era of <a href="https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s02-stoica.pdf">“sky computing”</a>. While Snowflake’s implementation of cross-cloud deployment is custom to their system, the growth of products like <a href="https://www.crossplane.io/">Crossplane</a> may generalize this design, making the path easier for future implementers.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-01-19-elastic-cloud-services-scaling-snowflakes-control-plane.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

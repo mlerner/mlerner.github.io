@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Ambry: LinkedIn’s Scalable Geo-Distributed Object Store</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Ambry: LinkedIn’s Scalable Geo-Distributed Object Store</h1>
+  
+  <h4>Published March 28, 2023</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-03-28-ambry-linkedins-scalable-geo-distributed-object-store.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=35505778'> Hacker News</a></p>  
+    <p>
+      <em>
+        These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!
+
+        
+      </em>
+    </p>
+
+     <p><a href="/assets/pdf/ambry.pdf">Ambry: LinkedIn’s Scalable Geo-Distributed Object Store</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>Blob stores are used by companies across industry (including <a href="https://www.usenix.org/system/files/conference/osdi14/osdi14-paper-muralidhar.pdf">Meta’s f4</a>, <a href="https://blog.twitter.com/engineering/en_us/a/2012/blobstore-twitter-s-in-house-photo-storage-system">Twitter</a>, and <a href="https://assets.amazon.science/77/5e/4a7c238f4ce890efdc325df83263/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3-2.pdf">Amazon</a>) to store large objects, like photos and videos. This paper focuses on Ambry from LinkedIn which, unlike other implementations, is <a href="https://github.com/linkedin/ambry">open source</a>.</p>
+
+<p>Ambry aims to provide low latency blob store operations, with high throughput, using globally distributed storage and compute resources. At the time of the paper’s publication in 2016, LinkedIn had hundreds of millions of users, and served more than 120 TB every day<label for="5tb" class="margin-toggle sidenote-number"></label><input type="checkbox" id="5tb" class="margin-toggle" /><span class="sidenote">Sharing the required <a href="https://www.youtube.com/watch?v=3t6L-FlfeaI">I only want to serve 5TBs</a> reference. </span>. To reach this scale, the team had to solve several challenges including wide variance in object sizes, rapid growth, and unpredictable read workloads.</p>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<h3 id="blobs-and-partitions">Blobs and Partitions</h3>
+
+<p>Ambry’s core abstraction is the <em>blob</em>, an immutable structure for storing data. Each blob is assigned to a <em>partition</em> on disk and is referenced via a <em>blob ID</em>. Users of the system interact with blobs by performing <code class="language-plaintext highlighter-rouge">put</code>, <code class="language-plaintext highlighter-rouge">get</code>, and <code class="language-plaintext highlighter-rouge">delete</code> operations. Ambry represents <code class="language-plaintext highlighter-rouge">put</code> and <code class="language-plaintext highlighter-rouge">delete</code> operations to blobs as entries in an append-only log for their assigned partition.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Partitioning data allows Ambry to scale - as users add more data to the system, it can add more partitions. By default, a new partition is <em>read-write</em> (meaning that it accepts both <code class="language-plaintext highlighter-rouge">put</code>, <code class="language-plaintext highlighter-rouge">get</code>, and <code class="language-plaintext highlighter-rouge">delete</code> traffic). As a partition nears capacity, it transitions into <em>read</em>, meaning that it no longer supports storing new blobs via <code class="language-plaintext highlighter-rouge">put</code> operations. Traffic to the system tends to be targeted at more recent content, placing higher load on <em>read-write</em> partitions.</p>
+
+<h3 id="architecture">Architecture</h3>
+
+<p>To provide scalable read and write access to blobs, Ambry uses three high-level components: <em>Cluster Managers</em>, the <em>Frontend Layer</em>, and <em>Datanodes</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h4 id="cluster-managers">Cluster Managers</h4>
+
+<p><em>Cluster managers</em> make decisions about how data is stored in the system across geo-distributed data centers, as well as storing the state of the cluster<label for="zk" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zk" class="margin-toggle" /><span class="sidenote">The paper mentions that state is mostly stored in <a href="https://zookeeper.apache.org/">Zookeeper</a>. </span>. For example, they store the <em>logical layout</em> of an Ambry deployment, covering whether a partition is read-write or read-only, as well as the partition placement on disks in data centers.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/table2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h4 id="the-frontend-layer">The Frontend Layer</h4>
+
+<p>The <em>Frontend Layer</em> is made up of stateless servers, each pulling configuration from <em>Cluster Managers</em>. These servers primarily respond to user requests, and their stateless nature simplifies scaling - arbitrary numbers of new servers can be added to the frontend layer in response to increasing load. Beyond handling requests, the <em>Frontend Layer</em> also performs security checks and logs data to LinkedIn’s change-data capture system<label for="cdc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cdc" class="margin-toggle" /><span class="sidenote"><a href="https://www.oreilly.com/library/view/streaming-change-data/9781492032526/ch01.html">Change data capture</a> or <a href="https://martinfowler.com/eaaDev/EventSourcing.html">event sourcing</a> is a way of logging state changes for consumption/replay by downstream services for arbitrary purposes, like replicating to a secondary data source. </span>.</p>
+
+<p>The <em>Frontend Layer</em> routes requests to <em>Datanodes</em> by combining the state supplied by <em>Cluster Managers</em> with a routing library that handles advanced features like:</p>
+
+<ul>
+  <li>Fetching large “chunked” files from multiple partitions and combining the results (each chunk is assigned an ID, and mapped to a uniquely identified blob stored in a partition).</li>
+  <li>Detecting failures when fetching certain partitions from <em>datanodes</em>.</li>
+  <li>Following a retry policy to fetch data on failure.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/ambry/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h4 id="datanodes">Datanodes</h4>
+
+<p><em>Datanodes</em> enable low-latency access to content stored in memory (or on disk) by using several performance enhancements. To enable fast access to blobs, datanodes store an index mapping blob IDs to their offset in the storage medium. As new operations update the state of a blob (potentially deleting it), datanodes update this index. When responding to incoming queries, the <em>datanode</em> references the index to find the state of a blob.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To maximize the number of blobs stored in disk cache, Ambry also optimizes how the index itself is stored, paging out older entries in the index to disk<label for="sstables" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sstables" class="margin-toggle" /><span class="sidenote">The paper also references SSTables, used by systems like <a href="https://cassandra.apache.org/doc/latest/cassandra/architecture/storage_engine.html">Cassandra</a> to store and compact indexes. </span>. Datanodes also rely on other tricks, like zero copy operations<label for="zc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zc" class="margin-toggle" /><span class="sidenote">Which limit unnecessary memory operations, as discussed in a previous paper review of <a href="https://www.micahlerner.com/2021/07/07/breakfast-of-champions-towards-zero-copy-serialization-with-nic-scatter-gather.html">Breakfast of Champions: Towards Zero-Copy Serialization with NIC Scatter-Gather</a>. </span> and batching writes to disk<label for="batch" class="margin-toggle sidenote-number"></label><input type="checkbox" id="batch" class="margin-toggle" /><span class="sidenote">Discussed in the paper review of <a href="https://www.micahlerner.com/2021/12/11/kangaroo-caching-billions-of-tiny-objects-on-flash.html">Kangaroo: Caching Billions of Tiny Objects on Flash</a>. </span>.</p>
+
+<h3 id="operations">Operations</h3>
+
+<p>When the <em>Frontend Layer</em> receives an operation from a client, the server’s <em>routing library</em> helps with contacting the correct partitions:</p>
+
+<blockquote>
+  <p>In the put operation, the partition is chosen randomly (for data balancing purposes), and in the get/delete operation the partition is extracted from the blob id.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>For <code class="language-plaintext highlighter-rouge">put</code> operations, Ambry can be configured to replicate synchronously (which makes sure that the blob appears on multiple datanodes before returning), or asynchronously - synchronous replication safeguards against data loss, but introduces higher latency on the write path.</p>
+
+<p>If set up in an asynchronous configuration, replicas of a partition exchange <em>journals</em> storing blobs and their offsets in storage. After reconciling these journals, they transfer blobs between one another. As far as I understand, the implementation seems like a gossip protocol<label for="gossip" class="margin-toggle sidenote-number"></label><input type="checkbox" id="gossip" class="margin-toggle" /><span class="sidenote">Gossip protocols are discussed in more depth <a href="http://highscalability.com/blog/2011/11/14/using-gossip-protocols-for-failure-detection-monitoring-mess.html">here</a>. There is also an interesting paper from Werner Vogels (CTO of Amazon) on the topic <a href="https://dl.acm.org/doi/10.1145/774763.774784">here</a>. </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper evaluates the research in two main areas<label for="lb" class="margin-toggle sidenote-number"></label><input type="checkbox" id="lb" class="margin-toggle" /><span class="sidenote">The paper also includes an evaluation of load-balancing not from production data, which I didn’t find to be particularly useful - it would be great if there was updated data on this topic from the project! </span>: <em>throughput and latency</em>, and <em>geo-distributed operations</em>.</p>
+
+<p>To test the system’s throughput and latency (critical to low-cost serving of user-facing traffic at scale), the authors send read and write traffic of differently sized objects to an Ambry deployment. The system is able to provide near-equivalent performance to reads/writes of larger objects, but tops out at a lower performance limit with many small reads/writes. The paper notes that this is likely due to large numbers of disk seeks (and a similarly shaped workload is unlikely to happen in a real deployment).</p>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/ambry/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To evaluate geo-distributed operations and replication, the paper measures the bandwidth and time it requires, finding that both are near-negligble:</p>
+
+<ul>
+  <li>In 85% of cases, replication lag was non-existent.</li>
+  <li>Bandwidth for replicating blobs was small (10MB/s), but higher for inter-datacenter communication.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/ambry/figure14-15.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Unlike other blobstores<label for="meta" class="margin-toggle sidenote-number"></label><input type="checkbox" id="meta" class="margin-toggle" /><span class="sidenote">I haven’t written about the other blob storage systems from Meta and Twitter, but would like to soon! </span>, Ambry is unique in existing as an open source implementation. The system also effectively makes tradeoffs at scale around replication using a gossip-like protocol. The paper also documents some of the challenges with load balancing its workload, a problem area that other teams<label for="shard" class="margin-toggle sidenote-number"></label><input type="checkbox" id="shard" class="margin-toggle" /><span class="sidenote">See my previous paper review on <a href="https://www.micahlerner.com/2022/01/08/shard-manager-a-generic-shard-management-framework-for-geo-distributed-applications.html">Shard Manager</a>. </span> tackled since the original publish date of 2016. Lastly, it was useful to reflect on what Ambry <em>doesn’t</em> have - it’s key-value based approach to interacting with blobs doesn’t support file-system like capabilities, posing more of a burden on the user of the system (who must manage metadata and relationships between entities themselves).</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-03-28-ambry-linkedins-scalable-geo-distributed-object-store.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

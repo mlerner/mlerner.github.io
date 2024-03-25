@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Jupiter Rising: A Decade of Clos Topologies and Centralized Control in Google’s Datacenter Network</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Jupiter Rising: A Decade of Clos Topologies and Centralized Control in Google’s Datacenter Network</h1>
+  
+  <h4>Published December 13, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-12-13-jupiter-rising-a-decade-of-clos-topologies-and-centralized-control-in-googles-datacenter-network.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="https://dl.acm.org/doi/10.1145/2829988.2787508">Jupiter Rising: A Decade of Clos Topologies and Centralized Control in Google’s Datacenter Network</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>The paper, <em>Jupiter Rising: A Decade of Clos Topologies and Centralized Control in Google’s Datacenter Network</em>, discusses the design and evolution of Google’s datacenter network. In particular, the paper focuses on how the network scaled to provide high-speed connectivity and efficient resource allocation under increasing demand.</p>
+
+<p>At the time that the authors initially started their work, the network structure of many data centers relied on large, expensive switches with limited routes between machines. Many machines sharing few routes constrained network bandwidth, and communication between machines could quickly overload the networking equipment. As a result, resource intensive applications were often co-located inside of a datacenter, leading to pockets of underutilized resources.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/before.png" /><figcaption class="maincolumn-figure">Before the fabric, the data center network had diminishing bandwidth the farther away a machine was trying to reach.</figcaption></figure>
+
+<p>Scaling the network came down to two factors: reshaping the structure of the network using Clos topologies<label for="clos" class="margin-toggle sidenote-number"></label><input type="checkbox" id="clos" class="margin-toggle" /><span class="sidenote">There is a great deep dive on the inner workings of <em>Clos topologies</em> <a href="https://archive.ph/jS9ko">here</a>. </span> and configuring switches using centralized control. While both of these techniques were previously described in research, this paper covered their implementation and use at scale.</p>
+
+<p>The paper also discusses the challenges and limitations of the design and how Google has addressed them over the past decade. Beyond the scale of their deployment<label for="scale" class="margin-toggle sidenote-number"></label><input type="checkbox" id="scale" class="margin-toggle" /><span class="sidenote">The authors note that the, “datacenter networks described in this paper represent some of the largest in the world, are in deployment at dozens of sites across the planet, and support thousands of internal and external services, including external use through Google Cloud Platform.” </span>, the networks described by the paper continue to influence the design of many modern data center networks<label for="atscale" class="margin-toggle sidenote-number"></label><input type="checkbox" id="atscale" class="margin-toggle" /><span class="sidenote">See <a href="https://engineering.fb.com/2014/11/14/production-engineering/introducing-data-center-fabric-the-next-generation-facebook-data-center-network/">Meta</a>, <a href="https://engineering.linkedin.com/blog/2016/03/project-altair--the-evolution-of-linkedins-data-center-network">LinkedIn</a>, and <a href="https://dropbox.tech/infrastructure/the-scalable-fabric-behind-our-growing-data-center-network">Dropbox</a> descriptions of their fabrics. </span>.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions to the field of datacenter network design and management:</p>
+
+<ul>
+  <li>A detailed description of the design and evolution of Google’s datacenter network, including the use of Clos topologies and centralized control.</li>
+  <li>An analysis of the challenges and limitations of this network design, and how Google has addressed them over the past decade.</li>
+  <li>An evaluation of the approach based on production outages and other experiences.</li>
+</ul>
+
+<h2 id="design-principles">Design Principles</h2>
+
+<p>Spurred on by growing cost and operational challenges of running large data center networks, the authors of the paper explored alternative designs.</p>
+
+<p>In creating these designs, they drew on three main principles: <em>basing their design on Clos topologies</em>, <em>relying on merchant silicon</em><label for="merchant" class="margin-toggle sidenote-number"></label><input type="checkbox" id="merchant" class="margin-toggle" /><span class="sidenote">The paper describes merchant silicon as, “general purpose commodity priced, off the shelf switching components”. See article on <a href="https://www.datacenterknowledge.com/networks/why-merchant-silicon-taking-over-data-center-network-market">Why Merchant Silicon Is Taking Over the Data Center Network Market</a>. </span>, and <em>using centralized control protocols</em>.</p>
+
+<p><em>Clos topologies</em> are a network design<label for="sigcomm" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sigcomm" class="margin-toggle" /><span class="sidenote">Laid out in <a href="https://cseweb.ucsd.edu/~vahdat/papers/sigcomm08.pdf">A Scalable, Commodity Data Center Network Architecture</a>. </span> that consists of multiple layers of switches, with each layer connected to the other layers. This approach increased network scalability and reliability by introducing more routes to a given machine, increasing bandwidth while reducing the impact of any individual link’s failure on reachability.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/trad.png" /><figcaption class="maincolumn-figure">From <a href="http://ccr.sigcomm.org/online/files/p63-alfares.pdf">A Scalable, Commodity Data Center Network Architecture</a></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/jupiter/fattree.png" /><figcaption class="maincolumn-figure">From <a href="http://ccr.sigcomm.org/online/files/p63-alfares.pdf">A Scalable, Commodity Data Center Network Architecture</a></figcaption></figure>
+
+<p>A design based on <em>Clos topologies</em> threatened to dramatically increase cost, as they contained more hardware than previous designs - at the time, many networks relied on a small number of expensive, high-powered, and central switches. To tackle this issue, the system chose to <em>rely on merchant silicon</em> tailored in-house to address the unique needs of Google infrastructure. Investing in custom in-house designs paid off<label for="offset" class="margin-toggle sidenote-number"></label><input type="checkbox" id="offset" class="margin-toggle" /><span class="sidenote">This investment was also offset by not spending resources on expensive switches. </span> in the long term via a higher pace of network hardware upgrades.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/figure2.png" /><figcaption class="maincolumn-figure">Traditional four-post network, not based on Clos topologies</figcaption></figure>
+
+<p>Lastly, the network design pivoted towards <em>centralized control</em> over switches, as growing numbers of paths through the network increased the complexity and difficulty of effective traffic routing. This approach is now commonly known as <em>Software Defined Networking</em>, and is covered by further papers on Google networking<label for="orion" class="margin-toggle sidenote-number"></label><input type="checkbox" id="orion" class="margin-toggle" /><span class="sidenote">For example, <a href="https://www.usenix.org/conference/nsdi21/presentation/ferguson">Orion: Google’s Software-Defined Networking Control Plane</a>. </span>.</p>
+
+<h2 id="network-evolution">Network Evolution</h2>
+
+<p>The paper describes five main iterations of networks developed using the principles above: <em>Firehose 1.0</em>,  <em>Firehose 1.1</em>, <em>Watchtower</em>, <em>Saturn</em>, and <em>Jupiter</em>.</p>
+
+<p><em>Firehose 1.0</em> was the first iteration of the project and introduced a multi-tiered network aimed at delivering 1G speeds between hosts. The tiers were made up of:</p>
+
+<ul>
+  <li><em>Spine blocks</em>: groups of switches used to connect the different layers of the network, typically making up the core.</li>
+  <li><em>Edge aggregation blocks</em>: groups of switches used to connect a group of servers or other devices to the network, typically located near servers.</li>
+  <li><em>Top-of-rack switches</em>: switches directly connected to a group of machines physically in the same rack (hence the name).</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Firehose 1.0</em> never reached production for several reasons, one of which being that the design placed the networking cards alongside servers. As a result, server crashes disrupted connectivity.</p>
+
+<p><em>Firehose 1.1</em>  improved on the original design by moving the networking cards originally installed alongside servers into separate enclosures. The racks were then connected using copper cables.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/jupiter/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Firehose 1.1</em> was the first production Clos topology deployed at Google. To limit the risk of deployment, it was configured as a “bag on the side” alongside the existing network. This configuration allowed servers and batch jobs to take advantage of relatively fast intra-network speeds for internal communication<label for="mr" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mr" class="margin-toggle" /><span class="sidenote">For example, in running <a href="https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf">MapReduce</a>, a seminal paper that laid the path for modern ‘big data’ frameworks. </span>, while using the relatively slower existing network for communication with the outside world. The system also successfully delivered 1G intranetwork speeds between hosts, a significant improvement on the pre-Clos network.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper describes two versions (<em>Watchtower</em> and <em>Saturn</em>) of the network between <em>Firehose</em> and <em>Jupiter</em> (the incarnation of the system at the paper’s publication). <em>Watchtower</em> (2008) was capable of 82Tbp bisection bandwidth<label for="bisection" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bisection" class="margin-toggle" /><span class="sidenote">Bisection bandwidth represents the bandwidth between a network between two partitions in a network, and represents what the bottlenecks would be for networking performance. See description of bisection bandwidth <a href="https://en.wikipedia.org/wiki/Bisection_bandwidth">here</a>. </span> due to faster networking chips and reduced cabling complexity (and cost) between and among switches. <em>Saturn</em> arrived in 2009 with newer merchant silicon and was capable of 207 Tbps bisection bandwidth.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/table3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Jupiter</em> aimed to support significantly more underlying machines with a larger network fabric. Unlike previous iterations running on a smaller scale, the networking components of the fabric would be too costly (and potentially impossible) to upgrade all-at-once. As such, the newest generation of the fabric was explictly designed to support networking hardware with varying capabilities - upgrades to the infrastructure would introduce newer, faster hardware. The building block of the network was the <em>Centauri</em> chassis, combined in bigger and bigger groups to build <em>aggregation blocks</em> and <em>spine blocks</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/figure13.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="centralized-control">Centralized Control</h2>
+
+<p>The paper also discusses the decision of implementing traffic routing in the Clos topology via centralized control. Traditionally, networks had used decentralized routing protocols to route traffic<label for="isis" class="margin-toggle sidenote-number"></label><input type="checkbox" id="isis" class="margin-toggle" /><span class="sidenote">In particular, the paper cites IS-IS and OSPF. The protocols are <a href="https://nsrc.org/workshops/2017/ubuntunet-bgp-nrens/networking/nren/en/presentations/08-ISIS-vs-OSPF.pdf">fairly similar</a>, but I found <a href="https://packetpushers.net/podcast/show-89-ospf-vs-is-is-smackdown-where-you-can-watch-their-eyes-reload/">this podcast</a> on the differences between the two to be useful. </span>. In these protocols, switches independently learn about state and make their own decision about how to route traffic<label for="linkstate" class="margin-toggle sidenote-number"></label><input type="checkbox" id="linkstate" class="margin-toggle" /><span class="sidenote">See <a href="https://www.computer-networking.info/principles/linkstate.html">this site</a> on link-state routing for more information. </span>.</p>
+
+<p>For several reasons, the authors chose not to use these protocols:</p>
+
+<ul>
+  <li>Insufficient support for <a href="https://en.wikipedia.org/wiki/Equal-cost_multi-path_routing">equal-cost multipath</a> (ECMP) forwarding, a technology that allows individual packets to take several paths through the network, and was critical for taking advantage of Clos topologies.</li>
+  <li>No high-quality, open source projects to build on (which now exist via projects from the <a href="https://opennetworking.org/onf-sdn-projects/">OpenNetworkingFoundation</a>)</li>
+  <li>Existing approaches<label for="ospfareas" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ospfareas" class="margin-toggle" /><span class="sidenote">In particular, the paper talks about <a href="http://www.rfc-editor.org/rfc/rfc2328.txt">OSPF Areas</a>, a design for splitting up a network into different <em>areas</em>, running OSPF in each, and routing traffic between the areas. The paper also references a rebuttal to the <a href="https://datatracker.ietf.org/doc/html/draft-thorup-ospf-harmful-00">idea</a>, called <em>OSPF Areas Considered Harmful</em>, that demonstrates several situations in which the routing protocol would result in worse routes. </span> were difficult to scale and configure.</li>
+</ul>
+
+<p>Instead, the paper describes Jupiter’s implementation of configuring switch routing, called <em>Firepath</em>. <em>Firepath</em> controls routing in the network by implementing two main components: <em>clients</em> and <em>masters</em>. <em>Clients</em> run on individual switches in the network. On startup, each switch loads a hardcoded configuration of the connections in the network, and begins recording its view based on traffic it sends and receives.</p>
+
+<figure><img class="maincolumn-img" src="/assets/jupiter/figure18.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>clients</em> periodically sync their local state of the network to the <em>masters</em>, which build a <em>link state database</em> representing the global view. <em>Masters</em> then periodically sync this view down to <em>clients</em>, who update their networking configuration in response.</p>
+
+<h2 id="experiences">Experiences</h2>
+
+<p>The paper also describes real world experiences and describes outages from building <em>Jupiter</em> and its predecessors.</p>
+
+<p>The experiences described by the paper mainly focus on network congestion, which occurred because of:</p>
+
+<ul>
+  <li>Bursty traffic</li>
+  <li>Limited buffers<label for="apnic" class="margin-toggle sidenote-number"></label><input type="checkbox" id="apnic" class="margin-toggle" /><span class="sidenote">APNIC has a great description of buffers <a href="https://blog.apnic.net/2019/12/12/sizing-the-buffer/">here</a>. </span> in the switches, meaning that they couldn’t store significant data.</li>
+  <li>The network being “oversubscribed”, meaning that all machines that could use capacity wouldn’t actually be using it at the same time.</li>
+  <li>Imperfect routing during network failures and traffic bursts</li>
+</ul>
+
+<p>To solve these problems, the team implemented network <a href="https://study-ccna.com/quality-of-service-qos/">Quality of Service</a>, allowing it to drop low-priority traffic in congestion situations. The paper also discusses using <a href="https://www.rfc-editor.org/rfc/rfc3168">Explicit Congestion Notification</a>, a technique for switches to signal that they are getting close to a point at which they will not be able to accept additional packets. The authors also cite <a href="https://people.csail.mit.edu/alizadeh/papers/dctcp-sigcomm10.pdf">Data Center TCP</a>, an approach to providing feedback built on top of ECN. By combining the two approaches, the fabric was able to achieve a 100x improvement in network congestion<label for="aggregate" class="margin-toggle sidenote-number"></label><input type="checkbox" id="aggregate" class="margin-toggle" /><span class="sidenote">This is mentioned in the author’s <a href="https://vimeo.com/175248736">talk</a>. From the talk, it isn’t clear if they also used other techniques alongside these two. </span>.</p>
+
+<p>The paper describes several outages grouped into themes.</p>
+
+<p>The first is related to <em>control software problems at scale</em>, where a power event restarted the switches in the network at the same time, forcing the control software into a previously untested state from which it was incapable of functioning properly (without direct interaction).</p>
+
+<p>A second category is <em>aging hardware exposing previously unhandled failure modes</em>, where the software was vulnerable to failures in the core network links<label for="failslow" class="margin-toggle sidenote-number"></label><input type="checkbox" id="failslow" class="margin-toggle" /><span class="sidenote">This reminds me of the paper <a href="https://www.usenix.org/conference/fast18/presentation/gunawi">Fail-Slow at Scale: Evidence of Hardware Performance Faults in Large Production Systems</a>! </span>. Failed hardware impacted the ability of components to interact with the <em>Firepath</em> masters, causing switches to route traffic based on out of date network state (potentially forwarding it on a route that no longer existed).</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The original Jupiter paper discusses several evolutions of Google’s networking infrastructure, documenting the false starts, failures, and successes of one of the biggest production networks in the world. The paper also provides an interesting historical persective on adapting ideas from research in order to scale a real production system<label for="scalable" class="margin-toggle sidenote-number"></label><input type="checkbox" id="scalable" class="margin-toggle" /><span class="sidenote">For example, <a href="https://dl.acm.org/doi/10.1145/1402946.1402967">A scalable, commodity data center network architecture</a>. </span>. I particularly enjoyed<label for="outages" class="margin-toggle sidenote-number"></label><input type="checkbox" id="outages" class="margin-toggle" /><span class="sidenote">As always! </span> the papers descriptions of outages and the efforts to reduce congestion using (at the time) novel technologies like DCTCP<label for="homa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="homa" class="margin-toggle" /><span class="sidenote">Which is somewhat similar to a previous paper review on <a href="https://www.micahlerner.com/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html">Homa</a>. </span>.</p>
+
+<p>More recentely (at SIGCOMM 2022) the team published research expanding on the original design. This new paper covers further evolutions beyond Clos topologies<label for="sigcomm" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sigcomm" class="margin-toggle" /><span class="sidenote">See the blog <a href="https://cloud.google.com/blog/topics/systems/the-evolution-of-googles-jupiter-data-center-network">here</a> and the paper <a href="https://dl.acm.org/doi/10.1145/3544216.3544265">here</a>. </span> - I hope to read this in a future paper review!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-12-13-jupiter-rising-a-decade-of-clos-topologies-and-centralized-control-in-googles-datacenter-network.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

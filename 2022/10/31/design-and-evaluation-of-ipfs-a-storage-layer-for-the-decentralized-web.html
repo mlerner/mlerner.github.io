@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Design and Evaluation of IPFS: A Storage Layer for the Decentralized Web</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Design and Evaluation of IPFS: A Storage Layer for the Decentralized Web</h1>
+  
+  <h4>Published October 31, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-10-31-design-and-evaluation-of-ipfs-a-storage-layer-for-the-decentralized-web.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=33419680'> Hacker News</a></p>   <p><a href="https://research.protocol.ai/publications/design-and-evaluation-of-ipfs-a-storage-layer-for-the-decentralized-web/trautwein2022.pdf">Design and Evaluation of IPFS: A Storage Layer for the Decentralized Web</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>This paper discusses the open source <a href="https://github.com/ipfs/ipfs">IPFS</a><label for="ipfs" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ipfs" class="margin-toggle" /><span class="sidenote">IPFS is an acronym that stands for InterPlanetary File System. </span> project, an implementation of a distributed file store. IPFS aims to support the “decentralized web”<label for="coin" class="margin-toggle sidenote-number"></label><input type="checkbox" id="coin" class="margin-toggle" /><span class="sidenote">While many associate the idea of the decentralized web with cryptocurrencies, IPFS does not natively support (nor require) a cryptocurrency token. I haven’t covered cryptocurrency related technologies in this blog, but I know giving them even a slight acknowledgement can be a divisive topic :) That said, one of the main organizations involved in IPFS is also involved with FileCoin. </span>, a growing ecosystem of distributed applications - for example, Elon Musk’s acquisition of Twitter has created a flock of new users to <a href="https://joinmastodon.org/">Mastodon</a><label for="flock" class="margin-toggle sidenote-number"></label><input type="checkbox" id="flock" class="margin-toggle" /><span class="sidenote">Related <a href="https://news.ycombinator.com/item?id=33397677">tools discussed here</a> for migrating. </span>, a federated alternative. The authors argue that to reduce single points of failure and reliance on centralized cloud providers, applications need a distributed storage layer<label for="hypergiants" class="margin-toggle sidenote-number"></label><input type="checkbox" id="hypergiants" class="margin-toggle" /><span class="sidenote">The growth of these types of providers is covered in a previous paper review, <a href="https://www.micahlerner.com/2022/09/03/seven-years-in-the-life-of-hypergiants-off-nets.html">Seven years in the life of Hypergiants’ off-nets</a>! </span>.</p>
+
+<p>Originally released in 2015, IPFS is far from a research prototype - the system is deployed at scale, running on hundreds of thousands of machines around the world in order to serve a broad userbase. The project is technologically interesting because its implementation combines adaptations of core peer-to-peer network technologies with novel approaches to the unique challenges faced by the IPFS distributed storage system. For example, <a href="https://docs.ipfs.tech/concepts/dht/">IPFS adapts</a> the Kademlia <em>distributed hash table (DHT)</em><label for="kademlia" class="margin-toggle sidenote-number"></label><input type="checkbox" id="kademlia" class="margin-toggle" /><span class="sidenote"><a href="https://en.wikipedia.org/wiki/Distributed_hash_table">Distributed hash tables</a> are a used for key value storage over a network of nodes. <a href="https://en.wikipedia.org/wiki/Kademlia">Kademlia</a> is one specific design (notably used by <a href="https://en.wikipedia.org/wiki/Mainline_DHT">Bittorrent</a>. There is an excellent tutorial on distributed hash tables and Kademlia <a href="https://codethechange.stanford.edu/guides/guide_kademlia.html">here</a>. </span>, implementing significant performance improvements and successfully deploying the approach to one of its widest known scales.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions:</p>
+
+<ul>
+  <li>Design and implementation of IPFS</li>
+  <li>Creation and verification of measurement techniques to understand the network</li>
+  <li>Evaluation of the distributed network structure and per-node performance</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>The goal of IPFS is providing reliable data storage and retrieval across a distributed network of nodes.</p>
+
+<p>To accomplish this goal, the network relies on three core functionalities:</p>
+
+<ul>
+  <li><em>Content addressing</em>: IPFS uniquely identifies immutable content stored on the network<label for="content" class="margin-toggle sidenote-number"></label><input type="checkbox" id="content" class="margin-toggle" /><span class="sidenote">The idea of content-addressable storage is not necessarily new (the paper cites the <a href="https://dl.acm.org/doi/10.1145/1658939.1658941">Network Named Content</a> paper from 2009), but has recently grown in popularity among distributed/decentralized applications (for example, the <a href="https://ssbc.github.io/scuttlebutt-protocol-guide/">Secure Scuttlebutt Protocol</a> also relies on it). Side note: the Secure Scuttlebutt docs do an amazing job of describing the protocol! </span>. This approach simplifies storage and reference to the underlying data, as a node can use a unique key to unambiguously fetch content from its peers.</li>
+  <li><em>Peer addressing</em>: nodes in the network need to find and connect to one another.</li>
+  <li><em>Content indexing</em>: to simplify fast search and retrieval of data, nodes index the content stored by their peers. Peers advertise which content they store by sharing unique identifiers that address data).</li>
+</ul>
+
+<h3 id="content-addressing">Content Addressing</h3>
+
+<p>Content on the network is represented with two components: <em>content identifiers</em> and <em>chunks</em>.</p>
+
+<p>To simplify storing and fetching data from the network, IPFS nodes create multi-part <em>content identifiers</em> for items. Each <em>content identifier</em> contains a version, encoding of the data (for example, JSON or protobuf), and a hash of the data<label for="hash" class="margin-toggle sidenote-number"></label><input type="checkbox" id="hash" class="margin-toggle" /><span class="sidenote">The authors note that the IPFS protocol proactively integrated support for arbitrary hashing algorithms to defend against the possibility that any individual algorithm experiences a vulnerability (see <a href="https://people.csail.mit.edu/yiqun/SHA1AttackProceedingVersion.pdf">Finding Collisions in the Full SHA-1</a>). Many systems integrating hashing algorithms (including <a href="https://bitcoin.stackexchange.com/questions/1380/what-will-happen-when-sha-256-needs-to-be-replaced">Bitcoin</a>) do not have this level of support. </span>. The hash of the data is particularly useful for checking the results of future fetches (as one can hash the resulting data, then compare it to the expected hash).</p>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Each file in the network is divided into ~256kb <em>chunks</em>, and each <em>chunk</em> is referenced using one of the aforementioned <em>content identifiers</em>. Each file is made up of many chunks (most files are larger than 256kb), and IPFS represents the relationship between file chunks with a <em><a href="https://proto.school/merkle-dags">Merkle Directed Acyclic Graph</a> (Merkle DAG)</em><label for="merkledag" class="margin-toggle sidenote-number"></label><input type="checkbox" id="merkledag" class="margin-toggle" /><span class="sidenote">A Merkle-DAG is a data structure similar to a Merkle-tree but without balance requirements. Merkle tree-like datastructures show up in a <a href="https://en.wikipedia.org/wiki/Merkle_tree">number of places in computer science</a>. </span>. IPFS chose a DAG structure (instead of the more common Merkle Tree) to represent more complex relationships between chunks - for example, a chunk could show up several times within the same file. A tree-like structure would handle the duplicate chunk case by storing multiple copies of the chunk. In contrast, the DAG structure can add a new edge to the graph, making for a lighter weight approach (edges would be on the order of bytes, while chunks are ~256kb).</p>
+
+<h3 id="peer-addressing">Peer Addressing</h3>
+
+<p>Connecting with and communication between nodes in the network allows the distributed nature of IPFS. To that end, nodes in IPFS identify themselves using a <em>multiaddress</em> containing multiple layers of information required to reach each node. The top layer includes IPFS-specific peer-to-peer data - in particular, a <em>Peer ID</em> corresponding to a node’s hashed public key<label for="pkc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="pkc" class="margin-toggle" /><span class="sidenote">Like many decentralized systems, IPFS relies on <a href="https://www.youtube.com/watch?v=GSIDS_lvRv4">public-key cryptography</a> to establish identity/ownership. The implementation that the project is based on is described <a href="https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md">here</a>. </span>. The other layers represent more familiar networking information (protocol, address, and IP).</p>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="content-indexing">Content Indexing</h3>
+
+<p>Nodes in the network store a datastructure containing mappings between <em>content identifiers</em> and peers storing the object. Each node stores and updates a partition of a decentralized global structure called a <em>distributed hash table (DHT)</em> (so called because it represents a mapping of which nodes have which data, spread throughout the network). Other peer-to-peer networks (most notably BitTorrent) rely on the <em>DHT</em> datastructure<label for="bittorrent" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bittorrent" class="margin-toggle" /><span class="sidenote">The Bittorrent implementation is called the <a href="https://en.wikipedia.org/wiki/Mainline_DHT">Mainline DHT</a>. There are several interesting characterizations of the system, including <a href="https://www.cl.cam.ac.uk/~lw525/MLDHT/#">Measuring Large-Scale Distributed Systems: Case of BitTorrent Mainline DHT</a>. </span>, but IPFS adapts its implementation to improve performance.</p>
+
+<p>The main differentiated aspect of IPFS’ DHT implementation is representing two types of peering to the <em>DHT</em>: <em>clients</em> and <em>servers</em>.</p>
+
+<p><em>Clients</em> have limited capabilites, while <em>servers</em> do not - clients can “only request records or content from the network but do not store or provide any of them”. The purpose of clients is allowing nodes to access data in the network without other nodes coming to rely on them.</p>
+
+<p>One of IPFS’ main insights is that the, “DHT client/server distinction prevents unreachable peers from becoming part of other peers’ routing tables, thus speeding up the publication and retrieval processes.” In contrast, Bittorrent neither differentiates between different types of clients, nor effectively prunes dead nodes - leading to median lookup latency of over a minute.</p>
+
+<h3 id="ipfs-in-action">IPFS in Action</h3>
+
+<p>There is a multistep process for a node to publish data, for that data to be reachable by other nodes, and for other nodes to retrieve it.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>First, a node imports data locally and gets a <em>content identifier</em> that uniquely identifies the data. Then, the node publishes a <em>provider record</em><label for="provider" class="margin-toggle sidenote-number"></label><input type="checkbox" id="provider" class="margin-toggle" /><span class="sidenote">Source for the provider functionality is <a href="https://github.com/ipfs/go-ipfs-provider">here</a>. </span> to nearby neighbors in the DHT, effectively announcing that the new data is available on the network.</p>
+
+<p>Freshness is an important property of these records, as out-of-date state increases client latency (as the client must go through multiple roundtrips to find a valid record, if any node has the data at all). To limit staleness of these records, IPFS nodes implement two parameters: a <em>republish interval</em> (which ensures that there is a minimum number of nodes aware of the content), and an <em>expiry interval</em> (which requires a provider of the data to continously refresh the record).</p>
+
+<p>Once another node wants to retrieve a specific piece of content from the network, it connects to peers and performs the <em>BitSwap protocol</em><label for="bitswap" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bitswap" class="margin-toggle" /><span class="sidenote">The protocol is a novel component of IPFS, and both <a href="https://github.com/ipfs/specs/blob/main/BITSWAP.md#-bitswap">specification</a> and <a href="https://github.com/ipfs/go-bitswap">implementation</a> are fully open source. The authors also published a separate paper on the protocol, <a href="https://research.protocol.ai/publications/accelerating-content-routing-with-bitswap-a-multi-path-file-transfer-protocol-in-ipfs-and-filecoin/">Accelerating content routing with Bitswap: A multi-path file transfer protocol in IPFS and Filecoin</a>. </span>, a process for propagating and receiving information on the data that a node hosts.  If all chunks are not found at this stage, the requester walks the DHT<label for="kademlia" class="margin-toggle sidenote-number"></label><input type="checkbox" id="kademlia" class="margin-toggle" /><span class="sidenote">For a great overview of more DHT internals, I highly recommend <a href="https://codethechange.stanford.edu/guides/guide_kademlia.html">this guide</a>. </span> in order to find peers that have it stored. If the requester contacts a node that doesn’t have the data stored (and only has the <em>provider record</em>, indicating that the data exists somewhere in the network), the node redirects to the actual location of the data.</p>
+
+<p>The paper also touches on the idea of <a href="https://docs.ipfs.tech/concepts/ipfs-gateway/">IPFS Gateways</a>, which serve as user-friendly entrypoints based on HTTP (which limits the need for someone to run an IPFS node to access the network). Gateways also host data for long periods of time (an operation called “pinning”) to speed up retrieval and increase availability. The paper references a list of publically available gateways <a href="https://ipfs.github.io/public-gateway-checker/">here</a>.</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>To understand user distribution and usage patterns, the paper first characterizes the structure of the IPFS network using data gathered via a custom scraper node extended to record metadata about the network, including peers and their uptime<label for="ipfs" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ipfs" class="margin-toggle" /><span class="sidenote">The authors also <a href="https://docs.ipfs.tech/concepts/ipfs-gateway/">store the data for the study</a> on IPFS itself! </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper then uses this dataset to quantify the distribution of nodes around the world and their presence in Autonomous Systems<label for="hyper" class="margin-toggle sidenote-number"></label><input type="checkbox" id="hyper" class="margin-toggle" /><span class="sidenote">A previous paper review, <a href="https://www.micahlerner.com/2022/09/03/seven-years-in-the-life-of-hypergiants-off-nets.html">Seven years in the life of Hypergiants’ off-nets</a> discusses similar topics. </span>. Grouping by peer count per country - “The US (28.5%) and China (24.2%) dominate the share of peers, followed by France (8.3%), Taiwan (7.2%), and South Korea (6.7%).” After mapping peer IDs to Autonomous zones, a surprisingly low share of nodes are hosted on cloud providers.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also measures the churn of nodes in order to track the health of the network. Over time, many nodes go offline or become unavailable.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also considers single node performance of the core tasks that a node performs: <em>publication</em>, and <em>retrieval</em> of data. Timely execution of these functionalities are critical for ensuring that the IPFS network remains healthy. There are several key takeaways from this section - first, the paper notes that publication of data to the network (via inserting entries into the <em>DHT</em>) does not depend on the size of the data associated with the <em>content identifier</em>. Second, retrieval is generally faster than publication, and walking the DHT (to find nearby peers) is the most time consuming components of this operation.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/table4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<figure><img class="maincolumn-img" src="/assets/ipfs/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The IPFS paper represents a new infrastructure component capable of supporting the burgeoning ecosystem of decentralized applications. The implementation builds on several ideas from other distributed networks (including BitTorrent), and I enjoyed reading about the production-informed optimizations to core technologies, like the Kademlia DHT. Going forward, it will be interesting to see if IPFS is capable of providing high-quality p2p storage while maintaining its goal of decentralization - throughout the paper, the authors note the growth of gateways aimed at improving the user experience. Furthermore, IPFS is primarily developed by members or alumni of one organization, <a href="https://protocol.ai/">Protocol Labs</a>. For the IPFS ecosystem to thrive, extending beyond this structure will be critical.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-10-31-design-and-evaluation-of-ipfs-a-storage-layer-for-the-decentralized-web.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

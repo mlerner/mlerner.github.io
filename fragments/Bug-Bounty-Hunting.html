@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Getting started in Bug Bounty Hunting</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Getting started in Bug Bounty Hunting</h1>
+  
+  <h4>Published December 17, 2019</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_fragments/2019-12-17-Bug-Bounty-Hunting.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p>Last week my first vulnerability was resolved and disclosed on HackerOne! The adrenaline I felt when I found my first vulnerability has been hard to replicate, and I have kept searching for new issues in my free time. Before I moved past that initial excitement, I wanted to stop and write a bit about my journey into bug hunting so far, what it is, and advice on diving deeper into it (if the reader was so inclined).</p>
+
+<p>For context, over the past couple of weeks I have been participating in a few bug bounty programs for fun and profit. These programs are started by companies large and small on platforms like <a href="https://www.hackerone.com">HackerOne</a> or <a href="https://www.bugcrowd.com">BugCrowd</a> (these two are the big games in town). Companies like Google, Facebook, and others do this to incentivize “ethical hackers” (hackers who use their powers for good, not evil) to find vulnerabilities in their software. Many of these programs focus on a company’s web presence, but a few also cover their API, mobile, and desktop apps.</p>
+
+<p>I initially decided to start hunting after learning more about web vulnerabilities while playing and practicing for CTFs. I realized I was fairly good at solving this category of challenges given my background in building web applications and “cloud” infrastructure (an area where some of the more complex challenges head).</p>
+
+<p>I am still far from the top of the bug bounty leaderboard, but a few resources along the way have been important in helping me grow my skills:</p>
+
+<ul>
+  <li>If you are new to bug bounty hunting and learning about web vulnerabilities, I highly advise the <a href="https://www.hacker101.com/videos">Hacker 101 content</a> and <a href="https://ctf.hacker101.com/">accompanying CTF</a>. You’ll learn about a few of the more common vulnerabilities that you may have heard about in passing, like cross site scripting or SQL injection, but also a smattering of the more complex ones. Unlike a traditional CTF environment, you can take as much time as you want solving the accompanying Hacker101 challenges, which come in a variety of difficulties. A nice side effect of hacking on their CTF is that you will earn points towards an invite for a private program on HackerOne (this naming is somewhat straightforward - a “private” program is one where you need to be invited before you can submit bugs. Private programs generally have fewer hackers, so the odds of finding a vulnerability with high impact are tilted more in your favor).</li>
+  <li>There are more than a few books about finding web vulnerabilities. I read two: <a href="https://www.amazon.com/Web-Application-Hackers-Handbook-Exploiting/dp/1118026470">The Web Application Hacker’s Handbook</a> and <a href="https://nostarch.com/bughunting">Real-World Bug Hunting: A Field Guide to Web Hacking</a>. The first is a classic that almost everyone recommends, but the content is somewhat dated - unsurprising given that the books was released in 2011. On the other hand, the second book, <em>Real-World Bug Hunting: A Field Guide to Web Hacking</em>, is a great introduction to many different classes of bugs, complete with summaries of real bug bounty reports from HackerOne, as well as tips for how to find bugs in each subsection.</li>
+</ul>
+
+<p>Once you’ve trained your skills up to a certain level and are aware of the different classes of bugs, I would suggest jumping right into searching for your first issue, along with your trusty friend Burp Suite. I decided to start my search by looking for bugs in an unpaid “Vulnerability Disclosure Program”. The private programs you should have been invited to as a result of playing the Hacker101 CTF could also be a good place to start. While some in the security community advise against bug hunting in programs without cash rewards (they argue it devalues security work), I found my first few bugs there. Often times the fruit is lower-hanging, given that more experienced bug bounty hunters are poking at applications with large cash rewards.</p>
+
+<p>After finding my first bug on HackerOne, the snowball of invites seems to have kept rolling.</p>
+
+<p>On that note, I have thought a bit more about how to continue to sharpen my skills. In particular, I have been watching the livestreams of a few successful bug bounty hunters, including <a href="https://twitter.com/NahamSec">@NahamSec</a> and <a href="https://twitter.com/Jhaddix">Jason Haddix</a>. They stream their “recon” process for discovering web assets that a company owns as well as the tools they use to perform common tasks. Their interactions with viewers have also been quite useful to see, in particular when someone asks “why didn’t you try it this other way?”. Another way I’ve been enjoying my new hobby is by reading new reports on HackerOne. When a company fixes an issue that a bug hunter finds, they will often agree to disclose the report so that others in the community can learn from the findings. I’m actively looking for new ways to learn more about the space, and I think the importance of continued learning and the friendliness of the community have succeeded in pulling me in.</p>
+
+<p>Until next time, happy hacking!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_fragments/2019-12-17-Bug-Bounty-Hunting.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

@@ -1,117 +1,1320 @@
----
-layout: null
-collection: posts
----
 <?xml version="1.0" encoding="utf-8"?>
-{% if page.xsl %}
-  <?xml-stylesheet type="text/xml" href="{{ '/feed.xslt.xml' | absolute_url }}"?>
-{% endif %}
-<feed xmlns="http://www.w3.org/2005/Atom" {% if site.lang %}xml:lang="{{ site.lang }}"{% endif %}>
-  <generator uri="https://jekyllrb.com/" version="{{ jekyll.version }}">Jekyll</generator>
-  <link href="{{ page.url | absolute_url }}" rel="self" type="application/atom+xml" />
-  <link href="{{ '/' | absolute_url }}" rel="alternate" type="text/html" {% if site.lang %}hreflang="{{ site.lang }}" {% endif %}/>
-  <updated>{{ site.time | date_to_xmlschema }}</updated>
-  <id>{{ page.url | absolute_url | xml_escape }}</id>
 
-  {% assign title = site.title | default: site.name %}
-  {% if page.collection != "posts" %}
-    {% assign collection = page.collection | capitalize %}
-    {% assign title = title | append: " | " | append: collection %}
-  {% endif %}
-  {% if page.category %}
-    {% assign category = page.category | capitalize %}
-    {% assign title = title | append: " | " | append: category %}
-  {% endif %}
+<feed xmlns="http://www.w3.org/2005/Atom" >
+  <generator uri="https://jekyllrb.com/" version="4.2.1">Jekyll</generator>
+  <link href="http://www.micahlerner.com/feed.xml" rel="self" type="application/atom+xml" />
+  <link href="http://www.micahlerner.com/" rel="alternate" type="text/html" />
+  <updated>2024-03-24T20:10:00-07:00</updated>
+  <id>http://www.micahlerner.com/feed.xml</id>
 
-  {% if title %}
-    <title type="html">{{ title | smartify | xml_escape }}</title>
-  {% endif %}
+  
+  
+  
 
-  {% if site.description %}
-    <subtitle>{{ site.description | xml_escape }}</subtitle>
-  {% endif %}
+  
+    <title type="html">www.micahlerner.com</title>
+  
 
-  {% if site.author %}
+  
+
+  
     <author>
-        <name>{{ site.author.name | default: site.author | xml_escape }}</name>
-      {% if site.author.email %}
-        <email>{{ site.author.email | xml_escape }}</email>
-      {% endif %}
-      {% if site.author.uri %}
-        <uri>{{ site.author.uri | xml_escape }}</uri>
-      {% endif %}
+        <name>Micah</name>
+      
+      
     </author>
-  {% endif %}
+  
 
-  {% if page.tags %}
-    {% assign posts = site.tags[page.tags] %}
-  {% else %}
-    {% assign posts = site[page.collection] %}
-  {% endif %}
-  {% if page.category %}
-    {% assign posts = posts | where: "category", page.category %}
-  {% endif %}
-  {% unless site.show_drafts %}
-    {% assign posts = posts | where_exp: "post", "post.draft != true" %}
-  {% endunless %}
-  {% assign posts = posts | sort: "date" | reverse %}
-  {% assign posts_limit = site.feed.posts_limit | default: 10 %}
-  {% for post in posts limit: posts_limit %}
-    {% unless post.draft or post.paid %}
-    <entry{% if post.lang %}{{" "}}xml:lang="{{ post.lang }}"{% endif %}>
-      {% assign post_title = post.title | smartify | strip_html | normalize_whitespace | xml_escape %}
+  
+  
+  
+  
+  
+  
+    
+    <entry>
+      
 
-      <title type="html">{{ post_title }}</title>
-      <link href="{{ post.url | absolute_url }}" rel="alternate" type="text/html" title="{{ post_title }}" />
-      <published>{{ post.date | date_to_xmlschema }}</published>
-      <updated>{{ post.last_modified_at | default: post.date | date_to_xmlschema }}</updated>
-      <id>{{ post.id | absolute_url | xml_escape }}</id>
-      {% assign excerpt_only = post.feed.excerpt_only | default: site.feed.excerpt_only %}
-      {% unless excerpt_only %}
-        <content type="html" xml:base="{{ post.url | absolute_url | xml_escape }}">{{ post.content | strip_margin_content | strip | xml_escape }}</content>
-      {% endunless %}
+      <title type="html">A Cloud-Scale Characterization of Remote Procedure Calls</title>
+      <link href="http://www.micahlerner.com/2024/03/03/a-cloud-scale-characterization-of-remote-procedure-calls.html" rel="alternate" type="text/html" title="A Cloud-Scale Characterization of Remote Procedure Calls" />
+      <published>2024-03-03T00:00:00-08:00</published>
+      <updated>2024-03-03T00:00:00-08:00</updated>
+      <id>http://www.micahlerner.com/2024/03/03/a-cloud-scale-characterization-of-remote-procedure-calls</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2024/03/03/a-cloud-scale-characterization-of-remote-procedure-calls.html">&lt;p&gt;&lt;em&gt;This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;newsletter&lt;/a&gt; or follow me on the site formerly known as &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt;. Enjoy!&lt;/em&gt;&lt;/p&gt;
 
-      {% assign post_author = post.author | default: post.authors[0] | default: site.author %}
-      {% assign post_author = site.data.authors[post_author] | default: post_author %}
-      {% assign post_author_email = post_author.email | default: nil %}
-      {% assign post_author_uri = post_author.uri | default: nil %}
-      {% assign post_author_name = post_author.name | default: post_author %}
+&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/abs/10.1145/3600006.3613156&quot;&gt;“A Cloud-Scale Characterization of Remote Procedure Calls”&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-the-research-and-why-does-it-matter&quot;&gt;What is the research and why does it matter?&lt;/h2&gt;
+
+&lt;p&gt;This paper is slightly different from others I’ve written about recently - rather than a novel system design, it contains a characterization of a production system, with the goals of sharing data with the research community.&lt;/p&gt;
+
+&lt;p&gt;Specifically, the research dives deep on contributors to RPC latency and performance in Google’s hyper-scale systems, including Google Search, Google Maps, Gmail, and YouTube. In some areas, this data matches existing research and points towards the benefits that further investment could provide. Other datapoints don’t match up with previous thinking, indicating the possibility of new research threads or focused interest in existing ideas!&lt;/p&gt;
+
+&lt;h2 id=&quot;characteristics-of-rpcs-at-hyperscale&quot;&gt;Characteristics of RPCs at Hyperscale&lt;/h2&gt;
+
+&lt;p&gt;The paper focuses on production traffic that uses Google’s internal RPC library, &lt;a href=&quot;https://sre.google/sre-book/production-environment/&quot;&gt;Stubby&lt;/a&gt;. This traffic powers first-party services and their accesses to other internal systems and databases. The authors use data from Monarch (&lt;a href=&quot;https://www.micahlerner.com/2022/04/24/monarch-googles-planet-scale-in-memory-time-series-database.html&quot;&gt;the subject of a previous paper review!&lt;/a&gt;), Dapper (&lt;a href=&quot;https://research.google/pubs/dapper-a-large-scale-distributed-systems-tracing-infrastructure/&quot;&gt;a library for distributed tracing&lt;/a&gt;) and Google Wide Profiling (&lt;a href=&quot;https://research.google/pubs/google-wide-profiling-a-continuous-profiling-infrastructure-for-data-centers/&quot;&gt;which continuously gathers performance data&lt;/a&gt; from services deployed in Google datacenters).&lt;/p&gt;
+
+&lt;p&gt;An analysis of these datasets exposes five insights about Google-internal RPCs.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;RPC performance is growing over time&lt;/li&gt;
+  &lt;li&gt;Some RPCs take microseconds, while many take milliseconds&lt;/li&gt;
+  &lt;li&gt;The RPC call graph mostly involves fan out, rather than deep call trees.&lt;/li&gt;
+  &lt;li&gt;Many RPCs response/request sizes are small, but some are quite large.&lt;/li&gt;
+  &lt;li&gt;A significant portion of RPC traffic is associated with access to storage.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;First, the authors measure RPC performance improvement over time using “RPCs per CPU cycle”. This effect is because of factors like optimizing the RPC library (which reduces the cost of sending RPCs, allowing more RPCs to be sent with fewer resources). In turn, these performance improvements are posing a greater load on &lt;em&gt;other&lt;/em&gt; resources, like the network.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Second, “not all RPCs are the same” in terms of their latency - some take microseconds, while others take milliseconds. Furthermore, a small number of RPC calls make up a majority of traffic, meaning that optimizing them could have outsized impact. Other calls are infrequent, but take up significant computation - “the slowest 1000 RPC methods account for only 1.1% of all calls, but they take 89% of the total RPC time.” The authors share data on per-method RPC latency and frequency to demonstrate these trends.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Third, “RPCs are Wider than Deep” - RPCs have significant fan out into other systems Google infrastructure, but don’t normally result in many services calling each other far down into the stack. The authors note this behavior matches with existing studies from &lt;a href=&quot;https://dl.acm.org/doi/abs/10.1145/3472883.3487003&quot;&gt;Alibaba&lt;/a&gt; and &lt;a href=&quot;https://www.usenix.org/conference/atc23/presentation/huye&quot;&gt;Meta&lt;/a&gt;. The paper visualizes this insight with CDFs of “descendants” and “ancestors” in the RPC call graph - “looking at the number of descendants shows the scale of distributed computation performed by an RPC, and the number of ancestors provides insights into how the properties of RPCs change as they get deeper into the call graph of a root RPC.”&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Fourth, there is an “elephant and mice distribution” of RPC sizes - “most RPCs are small with the smallest a single cache line (64 B)”. Others are significantly larger - “P99 requests and responses are 196 KB and 563 KB”. This data shows that projects like hardware accelerators would be able to optimize significant parts of the RPC workload, but would not be able to handle others (specifically, the authors reference &lt;a href=&quot;https://dl.acm.org/doi/10.1145/3458336.3465283&quot;&gt;“Zerializer: Towards zero-copy serialization”&lt;/a&gt;). The authors present this data using CDFs that show percentiles of request sizes and the ratio between response/request.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, a significant portion of RPC traffic is associated with accesses to storage - “these findings motivate application-specific optimizations, especially on storage systems, as storage is by far the largest distributed application in the fleet.”&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure8.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;rpc-latency&quot;&gt;RPC Latency&lt;/h2&gt;
+
+&lt;p&gt;The papers dive into the sources of RPC latency in a client-server interaction - at a high level, the components boil down to client/server send and receive queues, server processing logic, the networking stack, and networking infrastructure.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure9.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;To describe the cost of sending an RPC to an external service, minus server processing time, the paper uses the term &lt;em&gt;RPC latency tax&lt;/em&gt; - the paper focuses on this because while “application-processing time dominates…[the] RPC tax can be significant.” This tax applies no matter how good a server gets at returning a response - for many RPC calls this tax makes up the bulk of their time.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure10.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;This tax also varies across different types of services. For example, RPCs to an SSD cache would benefit the most from reducing the time an RPC spends in the server send queue, while RPC calls to the F1 database would benefit the most from reducing time in the client recv queue.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure14.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure15.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The RPC latency tax also varies across clusters - in other words, a service can respond faster to RPCs when it is deployed in cluster A instead of cluster B. This happens because of characteristics of the cluster, like CPU utilization and memory bandwidth - the paper calls these &lt;em&gt;exogenous variables&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/table2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Each application category reacts differently towards these exogenous variables. Bigtable is a server-processing-heavy workload, and its performance is highly dependent on CPU utilization, memory bandwidth, wake-up time, and cycles per instruction. Video Metadata is queuing heavy, which follows a similar trend.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure16.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure17.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;resource-utilization-of-rpcs&quot;&gt;Resource Utilization of RPCs&lt;/h2&gt;
+
+&lt;p&gt;There is also another cost for RPCs, the CPU cost, which the paper calls the &lt;em&gt;cycle tax&lt;/em&gt;. Multiple components of the RPC flow contribute, however compression dominates.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure20.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper also evalutes the CPU cycle usage from unsuccessful RPCs - the single largest contributor are cancelled requests (likely sent because of &lt;a href=&quot;https://blog.acolyer.org/2015/01/15/the-tail-at-scale/&quot;&gt;request hedging&lt;/a&gt;). Other types of potentially avoidable errors consume a suprising amount of CPU resources (e.g. “entity not found” response codes).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/rpc/figure23.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;I enjoyed this paper because of its focus on providing data on the potential impact of several opens areas of academic research - without this thorough characterization, it would be difficult to understand their expected value.&lt;/p&gt;
+
+&lt;p&gt;While many proposals are focused on &lt;a href=&quot;https://research.google/pubs/attack-of-the-killer-microseconds/&quot;&gt;Attack of the killer microseconds&lt;/a&gt;, these improvements aren’t required for many RPCs. The research also highlights challenges with solutions to known problems like tail latency - approaches like request hedging have their own downsides in wasted CPU resources. Rather than trying to globally optimize RPCs, focusing on specific operations is likely to the highest impact  - “the 10 most popular RPC methods account for 58% of all calls and the top-100 account for 91% of all calls.” On the hardware front, accelerators (some of which have already been discussed in research) could yield significant benefits - for example, previous papers evaluated a &lt;a href=&quot;https://dl.acm.org/doi/abs/10.1145/3466752.3480051&quot;&gt;hardware accelerator for protocol buffers&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;With the insights from this paper, I’m looking forward to seeing how the authors follow up with future improvements and to see how other groups respond in adjusting the direction of their research (or not).&lt;/p&gt;
+
+&lt;p&gt;Lastly, the research cited a number of other industry studies about microservices architectures and their costs that I’m hoping to dive into with future paper reviews - specifically &lt;a href=&quot;https://www.usenix.org/conference/osdi23/presentation/saokar&quot;&gt;ServiceRouter&lt;/a&gt;.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
 
       <author>
-          <name>{{ post_author_name | default: "" | xml_escape }}</name>
-        {% if post_author_email %}
-          <email>{{ post_author_email | xml_escape }}</email>
-        {% endif %}
-        {% if post_author_uri %}
-          <uri>{{ post_author_uri | xml_escape }}</uri>
-        {% endif %}
+          <name>Micah</name>
+        
+        
       </author>
 
-      {% if post.category %}
-        <category term="{{ post.category | xml_escape }}" />
-      {% elsif post.categories %}
-        {% for category in post.categories %}
-          <category term="{{ category | xml_escape }}" />
-        {% endfor %}
-      {% endif %}
+      
+        
+      
 
-      {% for tag in post.tags %}
-        <category term="{{ tag | xml_escape }}" />
-      {% endfor %}
+      
 
-      {% if post.excerpt and post.excerpt != empty %}
-        <summary type="html">{{ post.excerpt | strip_html | normalize_whitespace | xml_escape }}</summary>
-      {% endif %}
+      
+        <summary type="html">This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my newsletter or follow me on the site formerly known as Twitter. Enjoy!</summary>
+      
 
-      {% assign post_image = post.image.path | default: post.image %}
-      {% if post_image %}
-        {% unless post_image contains "://" %}
-          {% assign post_image = post_image | absolute_url %}
-        {% endunless %}
-        <media:thumbnail xmlns:media="http://search.yahoo.com/mrss/" url="{{ post_image | xml_escape }}" />
-        <media:content medium="image" url="{{ post_image | xml_escape }}" xmlns:media="http://search.yahoo.com/mrss/" />
-      {% endif %}
+      
+      
     </entry>
-    {% endunless %}
-  {% endfor %}
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints</title>
+      <link href="http://www.micahlerner.com/2024/01/30/gemini-fast-failure-recovery-in-distributed-training-with-in-memory-checkpoints.html" rel="alternate" type="text/html" title="Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints" />
+      <published>2024-01-30T00:00:00-08:00</published>
+      <updated>2024-01-30T00:00:00-08:00</updated>
+      <id>http://www.micahlerner.com/2024/01/30/gemini-fast-failure-recovery-in-distributed-training-with-in-memory-checkpoints</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2024/01/30/gemini-fast-failure-recovery-in-distributed-training-with-in-memory-checkpoints.html">&lt;p&gt;&lt;em&gt;This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;newsletter&lt;/a&gt; or follow me on the site formerly known as &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt;. Enjoy!&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.micahlerner.com/assets/papers/gemini.pdf&quot;&gt;Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-the-research-and-why-does-it-matter&quot;&gt;What is the research and why does it matter?&lt;/h2&gt;
+
+&lt;p&gt;Training AI models requires a large amount of compute resources, in particular GPUs. Many large companies purchase their own GPUs, leading to both up front costs of acquisition, as well as ongoing spend to power the clusters where the GPUs are hosted. Furthermore, at an organization with many projects requiring these resources, there is contention for compute time.&lt;/p&gt;
+
+&lt;p&gt;While the first two sources of cost are difficult to minimize, effective usage of compute time is a growing area of research. One way that teams are making gains is by improving the reliability of model training - if a machine involved in training fails, in-progress work may be lost. Motivated by data that existing solutions don’t handle this case well, the authors propose a framework for limiting the amount of wasted resources - “According to the report from OPT-175B training…about 178,000 GPU hours were wasted due to various training failures.”&lt;/p&gt;
+
+&lt;p&gt;The Gemini paper aims to solves this problem by providing a failure recovery system for training runs. Rather than solely relying on far remote storage which is costly to read/write to, Gemini builds a multi-level cache comprising GPU memory, local and remote CPU memory, with persistent storage as a last resort. This new design and implementation is able to successfully achieve 13x faster failure recovery without significantly impacting training.&lt;/p&gt;
+
+&lt;h2 id=&quot;motivation&quot;&gt;Motivation&lt;/h2&gt;
+
+&lt;p&gt;A key idea in Gemini is “checkpointing” progress so that when a failure happens, the system doesn’t need to recompute results.&lt;/p&gt;
+
+&lt;p&gt;The paper lays out three factors to “wasted time” in existing checkpoint-based systems:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Checkpoint time&lt;/em&gt;: how long a model takes to build an intermediate checkpoint.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Checkpoint frequency&lt;/em&gt;: how often a training system builds intermediate states.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Retrieval time&lt;/em&gt;: how long it takes to fetch a checkpoint.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;These factors manifest in existing systems where checkpoints are resource-intensive to create, limiting how often the system produces them. In turn, this impacts the freshness of checkpoints and increases “wasted time” - a system resuming from an old checkpoint will redo more computation.&lt;/p&gt;
+
+&lt;p&gt;Beyond creating the checkpoints, the system must store them and make them available with low-latency - to drive down wasted time, Gemini proposes a system that aims to “maximize the probability of failure recovery from checkpoints stored in CPU memory”.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;p&gt;There are two parts of the Gemini system: the &lt;em&gt;checkpoint creation module&lt;/em&gt; and the &lt;em&gt;failure recovery module&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The &lt;em&gt;checkpoint creation module&lt;/em&gt; creates checkpoints and figures out where to store them. It implements a distributed multi-level distributed cache of checkpoints stored in CPU Memory, GPU Memory, and Remote Storage.&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;failure recovery module&lt;/em&gt; is responsible for evaluating whether a component of the system has failed and needs replacement - it contains contains four components:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Gemini worker agents&lt;/em&gt;: each node participating in training has a process that reports on machine health and provides state updates.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Root agent&lt;/em&gt;: worker agent promoted to leader via distributed consensus algorithm (e.g. &lt;a href=&quot;https://www.micahlerner.com/2020/05/08/understanding-raft-consensus.html&quot;&gt;Raft&lt;/a&gt;) and provides commands to workers (e.g. recover from failure).&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Distributed KV Store&lt;/em&gt;: stores state on the machines in the network and assists in electing new root agents on failure.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Cloud Operator&lt;/em&gt;: the root agent communicates with a hosting provider (e.g. a central schedular) to perform actions like requesting more resources (e.g. more machines with GPUs).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;technical-challenges&quot;&gt;Technical Challenges&lt;/h3&gt;
+
+&lt;p&gt;The system aims to minimize “wasted time” by limiting the impact of machine failure. Key to the system’s approach is distributing checkpoints across machines in the network - the paper investigates different configurations of where to place the checkpoints - it calls them &lt;em&gt;group&lt;/em&gt;, &lt;em&gt;ring, and _mixed&lt;/em&gt;. The paper also includes pseudocode of the &lt;em&gt;group&lt;/em&gt; algorithm.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/algo1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Distributing checkpoints is not without its cost, particuarly to networking resources - as model training also uses the network, competing traffic could impact performance.  To address this the authors implement &lt;em&gt;traffic interleaving&lt;/em&gt;, which attempts to send the checkpoints over the network in a way that doesn’t interfere with other network traffic associated with training.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;After creating a checkpoint, Gemini transfers it to remote GPU memory on another machine in the network, then that machine transfers it to CPU memory (which is relatively cheaper and more abundant).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;A simple implementation following this approach transfer the whole checkpoint at once across the network to remote GPU memory. As checkpoints can be quite large, this implementation requires the destination machine to set aside a large amount of GPU memory just for receiving checkpoints (or risk hitting out of memory errors). Instead, the paper proposes splitting up a checkpoint into partitions, then incrementally transferring them over the network.&lt;/p&gt;
+
+&lt;p&gt;The authors also describe an approach to &lt;em&gt;online profiling&lt;/em&gt; where the dynamics of network traffic are learned over time and then eventually feed into the decision making for sending traffic over the network. By combining this idea with checkpoint partitioning, Gemini is able to make decisions about when to send buffers over the network.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/algo2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;resuming-from-failure&quot;&gt;Resuming from failure&lt;/h3&gt;
+
+&lt;p&gt;The authors describe two different failure types: software failure (e.g. the code running training has a bug) and hardware failure (e.g. the machine loses network connectivity or a hard drive breaks). Critically, GEMINI treats the two types differently because of the impact they have on the in-memory data used to restore from checkpoint - a software failure can likely recover from checkpoint stored in memory, while a hardware failures often requires a combination of machine replacement and fetching checkpoints from a different computer in the network.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure6.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;p&gt;The research evaluates GEMINI’s impact on training efficiency, and effectiveness in traffic interleaving. Additionally, the authors make projections around the system’s scalability and impact it could have in training large language models.&lt;/p&gt;
+
+&lt;p&gt;For training efficiency, the paper measures whether GEMINI changes training time, wasted time, and checkpoint time. When training three large models, the paper finds that GEMINI doesn’t increase iteration time (time where the model is doing work before it must pause to communicate) while significantly reducing wasted time in the presence of machine failures. Checkpoint time also goes down when compared to existing checkpoint-based training solutions.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure10.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper also measures the effectiveness of traffic interleaving (specifically by tracking iteration time), comparing the Gemini approach against existing baselines and other approaches  (e.g. the naive implementation without checkpoint partitioning) - the Gemini solution doesn’t result in out of memory issues while keeping the iteration time the same and being able to recover from failure.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure16.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, the research contains projections about Gemini’s ability to reduce wasted time if the system was applied to training a large language model - while the results of this projection seem promising, it seems like there is more work to gather the effectiveness of Gemini at scale.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/gemini/figure15.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;Gemini is a system that could potentially dramatically reduce wasted time in training AI models - as models continue to grow and use more resources in a distributed setting, recovering from failure will become even more of a concern than it already is.&lt;/p&gt;
+
+&lt;p&gt;One of my main takeaways from the Gemini paper is around the application of systems ideas to AI models and their training. For example, Gemini takes advantage of common patterns like reliance on a distributed key-value store, leader election, and a multi-tier memory system. The idea that adopting well-known patterns could lead to dramatic performance and reliability improvements in this new type of serving system is quite exciting - it means there is a lot of low hanging fruit!&lt;/p&gt;
+
+&lt;p&gt;I’m looking forward to further developments in this space, and hope to see a followup paper from the authors soon with more data on training a model at scale (or alternatively a reference to using Gemini-like techniques from other organizations).&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my newsletter or follow me on the site formerly known as Twitter. Enjoy!</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">XFaaS: Hyperscale and Low Cost Serverless Functions at Meta</title>
+      <link href="http://www.micahlerner.com/2024/01/23/xfaas-hyperscale-and-low-cost-serverless-functions-at-meta.html" rel="alternate" type="text/html" title="XFaaS: Hyperscale and Low Cost Serverless Functions at Meta" />
+      <published>2024-01-23T00:00:00-08:00</published>
+      <updated>2024-01-23T00:00:00-08:00</updated>
+      <id>http://www.micahlerner.com/2024/01/23/xfaas-hyperscale-and-low-cost-serverless-functions-at-meta</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2024/01/23/xfaas-hyperscale-and-low-cost-serverless-functions-at-meta.html">&lt;p&gt;&lt;em&gt;This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;newsletter&lt;/a&gt; or follow me on the site formerly known as &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt;. Enjoy!&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.micahlerner.com/assets/papers/xfaas.pdf&quot;&gt;“XFaaS: Hyperscale and Low Cost Serverless Functions at Meta”&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;background&quot;&gt;Background&lt;/h2&gt;
+
+&lt;p&gt;Function-as-a-Service systems (a.k.a. FaaS) allow engineers to run code without setting aside servers to a specific function. Instead, users of FaaS systems run their code on generalized infrastructure (like &lt;a href=&quot;https://aws.amazon.com/lambda/&quot;&gt;AWS Lambda&lt;/a&gt;, &lt;a href=&quot;https://azure.microsoft.com/en-us/products/functions&quot;&gt;Azure Functions&lt;/a&gt;, and &lt;a href=&quot;https://cloud.google.com/functions&quot;&gt;GCP’s Cloud Functions&lt;/a&gt;), and only pay for the time that they use.&lt;/p&gt;
+
+&lt;h2 id=&quot;key-takeaways&quot;&gt;Key Takeaways&lt;/h2&gt;
+
+&lt;p&gt;This paper describes Meta’s internal system for serverless, called XFaaS, which runs “trillions of function calls per day on more than 100,000 servers”.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Besides characterization of this unique at-scale serverless system, the paper dives deeper on several challenges that the authors addressed before reaching the current state of the infrastructure:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Handling load spikes from Meta-internal systems scheduling large numbers of function executions.&lt;/li&gt;
+  &lt;li&gt;Ensuring fast function startup and execution, which can impact the developer experience and decrease resource utilization.&lt;/li&gt;
+  &lt;li&gt;Global load balancing across Meta’s distributed private cloud, avoiding datacenter overload.&lt;/li&gt;
+  &lt;li&gt;Ensuring high-utilization of resources to limit cost increases from running the system.&lt;/li&gt;
+  &lt;li&gt;Preventing overload of downstream services, as functions often access or update data via RPC requests when performing computation.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;h3 id=&quot;architecture&quot;&gt;Architecture&lt;/h3&gt;
+
+&lt;p&gt;The multi-region infrastructure of XFaaS contains five main components: &lt;em&gt;Submitter&lt;/em&gt;, &lt;em&gt;load balancers&lt;/em&gt;, &lt;em&gt;DurableQ&lt;/em&gt;, &lt;em&gt;Scheduler&lt;/em&gt;, and &lt;em&gt;Worker Pool&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Clients of the system schedule function execution by communicating with the &lt;em&gt;Submitter&lt;/em&gt;. Functions can take one of three types:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;(1) queue-triggered functions, which are submitted via a queue service; (2) event-triggered functions, which are activated by data-change events in our data warehouse and data-stream systems; and (3) timer-triggered functions, which automatically fire based on a pre-set timing.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/table1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The &lt;em&gt;submitter&lt;/em&gt; is an interesting design choice because it serves as an entry point to downstream parts of the system. Before the pattern was introduced, clients interfaced with downstream components of the system directly, allowing badly behaved services to overload XFaaS - now, clients receive default quota, and the system throttles those that exceed this quota (although there is a process for negotiating higher quota as needed).&lt;/p&gt;
+
+&lt;p&gt;The next stage in the request flow is forwarding the initial function execution request to a load balancer (&lt;em&gt;Queue Load Balancers (QueueLB)&lt;/em&gt;) sitting in front of durable storage (called &lt;em&gt;DurableQ&lt;/em&gt;) that contains metadata about the function. The QueueLB is one usage of XFaaS’ usage of load balancers, and ensures effective utilization of distributed system resources while preventing overload.&lt;/p&gt;
+
+&lt;p&gt;Once the information about a function is stored in a &lt;em&gt;DurableQ&lt;/em&gt;, a &lt;em&gt;scheduler&lt;/em&gt; will eventually attempt to run it - given that there are many clients of XFaaS, the scheduler, “determine(s) the order of function calls based on their criticality, execution deadline, and capacity quota”. This ordering is represented with in-memory datastructures called the &lt;em&gt;FuncBuffer&lt;/em&gt; and the &lt;em&gt;RunQ&lt;/em&gt; - “the inputs to the scheduler are multiple FuncBuffers (function buffers), one for each function, and the output is a single ordered RunQ (run queue) of function calls that will be dispatched for execution.”&lt;/p&gt;
+
+&lt;p&gt;To assist with load-balancing computation, a scheduler can also choose to run functions from a different region if there aren’t enough functions to run in the local-region - this decision is based on a “traffic matrix” that XFaaS computes to represent how much load a region should externally source (e.g. Region A should source functions from Regions B, C, and D because they’re under relatively higher load).&lt;/p&gt;
+
+&lt;p&gt;Once the scheduler determines that there is sufficient capacity to run more functions, it assigns the execution to a &lt;em&gt;WorkerPool&lt;/em&gt; using a load-balancer approach similar to the &lt;em&gt;QueueLB&lt;/em&gt; mentioned earlier.&lt;/p&gt;
+
+&lt;p&gt;Given the large numbers of different functions in the system, one challenge with reaching high worker utilization is reducing the memory and CPU resources that workers spend on loading function data and code. XFaaS addresses this constraint by implementing &lt;em&gt;Locality Groups&lt;/em&gt; that limit a function’s execution to a subset of the larger pool.&lt;/p&gt;
+
+&lt;h3 id=&quot;performance-optimizations&quot;&gt;Performance Optimizations&lt;/h3&gt;
+
+&lt;p&gt;The paper mentions two other optimizations to increase worker utilization: &lt;em&gt;time-shifted computing&lt;/em&gt; and &lt;em&gt;cooperative JIT compilation&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Time-shifted computing&lt;/em&gt; introduces flexibility to when a function executes - for example, rather than specififying “this function must execute immediately”, XFaaS can delay the computation to a time when other functions aren’t executing, smoothing resource utilization. Importantly, users of the system are incentivized to take advantage of this flexibility as functions have two different quotas, &lt;em&gt;reserved&lt;/em&gt; and &lt;em&gt;opportunistic&lt;/em&gt; (mapping to more or less rigid timing where &lt;em&gt;opportunistic&lt;/em&gt; quota is internally treated as “cheaper”).&lt;/p&gt;
+
+&lt;p&gt;Additionally, the code in Meta’s infrastructure takes advantage of &lt;a href=&quot;https://blog.acolyer.org/2018/08/08/hhvm-jit-a-profile-guided-region-based-compiler-for-php-and-hack/&quot;&gt;profiling-guided optimization&lt;/a&gt;, a technique that can dramatically improve performance. XFaaS ensures that these performance optimizations computed on one worker benefit other workers in the fleet by shipping the optimized code across the network.&lt;/p&gt;
+
+&lt;h3 id=&quot;preventing-overload&quot;&gt;Preventing Overload&lt;/h3&gt;
+
+&lt;p&gt;It is critical that accessing downstream services don’t cause or worsen overload - an idea very similar to what was discussed in a previous paper review on &lt;a href=&quot;https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html&quot;&gt;Metastable Failures in the Wild&lt;/a&gt;. XFaaS implements this by borrowing the idea of &lt;a href=&quot;https://medium.com/@jayphelps/backpressure-explained-the-flow-of-data-through-software-2350b3e77ce7&quot;&gt;&lt;em&gt;backpressure&lt;/em&gt;&lt;/a&gt; from TCP (specifically &lt;a href=&quot;https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease&quot;&gt;Additive increase/multiplicative decrease&lt;/a&gt;) and other distributed systems.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;p&gt;The paper evaluates the system’s ability to achieve high utilization, efficiently execute functions while taking advantage of performance improvements, and prevent overload of downstream services.&lt;/p&gt;
+
+&lt;p&gt;To evaluate XFaaS’s ability to maintain high utilization and smooth load, the authors compare the rate of incoming requests to the load of the system - “the peak-to-trough ratio of CPU utilization is only 1.4x, which is a significant improvement over the peak-to-trough ratio of 4.3x depicted…for the &lt;em&gt;Received&lt;/em&gt; curve.”&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;One reason for consistently high load is the incentive to allow flexibility in the execution of their functions, highlighted by usage of the two quota-types described by the paper.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure11.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;To determine the effectiveness of assigning a subset of functions to a worker using &lt;em&gt;Locality Groups&lt;/em&gt;, the authors share time series data on the number of functions executed by workers and memory utiliation across the fleet, finding that both stay relatively constant.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure9.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure10.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Furthermore, XFaaS’ performance optimizations allow it to maintain a relatively high throughput, visible from contrasting requests per-second with and without profile-guided optimizations in place.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure12.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, the paper presents how XFaaS execution behaves in response to issues with downstream systems (specifically, not exacerabating outages). For example, when there were outage in Meta’s graph database (TAO, the subject of a previous paper review), or infrastructure related to it, XFaaS reduced the execution of functions accessing these services.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure13.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/xfaas/figure14.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;The XFaaS paper is unique in characterizing a serverless system running at immmense scale. While previous research has touched on this topic, none have provided specific numbers of utilization, likely omitted due to privacy or business concerns (although &lt;a href=&quot;https://www.usenix.org/conference/atc20/presentation/shahrad&quot;&gt;Serverless in the Wild&lt;/a&gt; comes close).&lt;/p&gt;
+
+&lt;p&gt;At the same time, the data on XFaaS comes with caveats, as the system is able to make design choices under a different set of constraints than serverless platforms from public cloud providers. For example, public clouds must guarantee isolation between customers and prioritize security considerations. While XFaaS doesn’t wholly neglect these concerns (e.g. some jobs must run on separate machines and there are some levels of isolation between jobs with these considerations), it otherwise relaxes this constraint. Furthermore, XFaaS explicitly does not handle functions on the path of a user-interaction (even though the paper discusses executing latency-sensitive functions) - this is in contrast with services like Lambda which use Serverless functions to respond to HTTP requests.&lt;/p&gt;
+
+&lt;p&gt;While XFaaS is a fascinating system, the paper left me with several questions including whether many of the functions the system executes would actually be better served with a batch job. Furthermore, the authors allude to XFaaS utilization being significantly higher based on “anecdotal knowledge” - while this might be true, it would be useful to know the source of this data to judge whether any differences are in fact meaningful.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my newsletter or follow me on the site formerly known as Twitter. Enjoy!</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">Efficient Memory Management for Large Language Model Serving with PagedAttention</title>
+      <link href="http://www.micahlerner.com/2024/01/11/efficient-memory-management-for-large-language-model-serving-with-pagedattention.html" rel="alternate" type="text/html" title="Efficient Memory Management for Large Language Model Serving with PagedAttention" />
+      <published>2024-01-11T00:00:00-08:00</published>
+      <updated>2024-01-11T00:00:00-08:00</updated>
+      <id>http://www.micahlerner.com/2024/01/11/efficient-memory-management-for-large-language-model-serving-with-pagedattention</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2024/01/11/efficient-memory-management-for-large-language-model-serving-with-pagedattention.html">&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/10.1145/3600006.3613165&quot;&gt;Efficient Memory Management for Large Language Model Serving with PagedAttention&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-the-research&quot;&gt;What is the research?&lt;/h2&gt;
+
+&lt;p&gt;Large language models (like OpenAI’s &lt;a href=&quot;https://openai.com/blog/chatgpt&quot;&gt;ChatGPT&lt;/a&gt;, Google’s &lt;a href=&quot;https://bard.google.com&quot;&gt;Bard&lt;/a&gt;, Meta’s &lt;a href=&quot;https://ai.meta.com/llama/&quot;&gt;Llama&lt;/a&gt;, and Mistral’s &lt;a href=&quot;https://mistral.ai/news/mixtral-of-experts/&quot;&gt;Mixtral&lt;/a&gt;) take in a user prompt and respond with generated text (note: for the purposes of this paper, the authors don’t include multi-modal response). Based on public reports, supporting this functionality is &lt;a href=&quot;https://www.businessinsider.com/how-much-chatgpt-costs-openai-to-run-estimate-report-2023-4&quot;&gt;expensive&lt;/a&gt;, and given the relatively new nature of LLMs deployed at scale, there are opportunities for improving performance.&lt;/p&gt;
+
+&lt;p&gt;To that end, this paper focuses on increasing the queries per second (a.k.a throughput) large language models (LLMs) can serve through two innovations, &lt;em&gt;PagedAttention&lt;/em&gt;, and &lt;em&gt;vLLM&lt;/em&gt;, discussed in detail later in this paper review. Improving throughput can significantly decrease the cost of large language model serving by responding to more requests with the same number of GPU resources. The evaluations from the paper show that, “vLLM improves the LLM serving throughput by 2-4× compared to the state-of-the-art systems…without affecting the model accuracy at all.”&lt;/p&gt;
+
+&lt;p&gt;Based on the observation that large language model serving is memory bound, the authors identify several areas of improvement for GPU memory allocation, then design a system that addresses these shortcomings. One of the foremost problems they address is static allocation of memory. Existing LLM serving systems (or at least publically released ones) set aside fixed, contiguous memory to store the data needed to generate a response. If the response to the user is shorter than this fixed size, the resources are inaccessible to use for serving other requests until the original request is complete. Requiring contiguous memory blocks adds additional resource waste by “stranding” memory between the contiguously allocated areas of memory, causing it become unusable for serving other requests.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Borrowing ideas a page from virtual memory, the authors propose a solution, &lt;em&gt;PagedAttention&lt;/em&gt;, that can &lt;em&gt;dynamically&lt;/em&gt; grow the memory used in LLM serving (in addition to incorporating other optimizations). The paper also describes how &lt;em&gt;PagedAttention&lt;/em&gt; is implemented in a new GPU serving library via the open source &lt;a href=&quot;https://github.com/vllm-project/vllm&quot;&gt;vLLM project&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;p&gt;Large language models take in a prompt from a user, then generate a text response.  The paper focuses specifically on improving the performance of serving for transformers, a technology used by predominantly all implementations of large language models to generate the next word in a sequence - for more background, I recommend &lt;a href=&quot;http://jalammar.github.io/illustrated-transformer/&quot;&gt;The Illustrated Transformer&lt;/a&gt; and &lt;a href=&quot;https://osanseviero.github.io/hackerllama/blog/posts/random_transformer/&quot;&gt;Understand how transformers work by demystifying all the math behind them&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Generating these sequences requires information on the users prompt, and about previous tokens in the response - this knowledge takes the form of vectors stored in memory in  a data structure the authors call the Key Value Cache (aka &lt;em&gt;KV cache&lt;/em&gt;). Because the limiting step in the execution of an LLM depends on reading and writing data to/from memory, an LLM process is “memory bound” - as a result, improving memory utilization (specifically, of the &lt;em&gt;KV Cache&lt;/em&gt;) can increase performance of the system.&lt;/p&gt;
+
+&lt;p&gt;The authors identify three main types of waste in the &lt;em&gt;KV Cache&lt;/em&gt;:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;em&gt;reserved slots&lt;/em&gt; for future tokens, &lt;em&gt;internal fragmentation&lt;/em&gt; due to over-provisioning for potential maximum sequence lengths, and &lt;em&gt;external fragmentation&lt;/em&gt; from the memory allocator.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;pagedattention&quot;&gt;PagedAttention&lt;/h3&gt;
+
+&lt;p&gt;One of the paper’s key insights is that allowing a model to &lt;em&gt;dynamically&lt;/em&gt; scale up its usage of non-contiguous memory can drastically improve memory utilization. The authors propose &lt;em&gt;PagedAttention&lt;/em&gt;, which introduces the idea of &lt;em&gt;logical&lt;/em&gt; and &lt;em&gt;physical&lt;/em&gt; memory blocks for storing data in the &lt;em&gt;KV Cache&lt;/em&gt;. This distinction is &lt;a href=&quot;https://stackoverflow.com/a/15851473&quot;&gt;similar to virtual memory&lt;/a&gt; which provides the abstraction of contiguous RAM to a program, even though the data is physically stored in separate areas of RAM.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Blocks contain entries for more than one token, and blocks are allocated on demand based on how the LLM responds to a user query - for example, the prompt “Four score and seven years ago our fathers brought forth” contains ten tokens, causing the allocation of three blocks each with the space for four entries (the last block allocated because of the prompt is partially filled). Gradually allocating blocks primarily addresses &lt;em&gt;internal fragmentation&lt;/em&gt; and &lt;em&gt;reserved&lt;/em&gt; memory.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure6.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;As the large language model generates tokens, it references data on previous tokens using a &lt;em&gt;block table&lt;/em&gt; storing the mapping between logical blocks for a query and physical GPU DRAM. Critically, this approach allows for the GPU to serve multiple requests at the same time while using non-contiguous memory, addressing concerns like &lt;em&gt;external fragmentation&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper also describes how PagedAttention approach is able to reduce memory usage in three other large language model serving request patterns - &lt;em&gt;parallel sampling&lt;/em&gt;, &lt;em&gt;beam search&lt;/em&gt;, and &lt;em&gt;shared prefix&lt;/em&gt; prompting.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Parallel sampling&lt;/em&gt; involves generating multiple results for a single prompt - this can occur by having the LLM choose a different token, leading to a different branch of response. The implementation follows a &lt;a href=&quot;https://stackoverflow.com/questions/628938/what-is-copy-on-write&quot;&gt;“copy-on-write”&lt;/a&gt; pattern that reuse the same data in GPU memory until the branch in output occurs (at which point, the block with the difference is copied to a new location in memory, and execution completes independently for the different branches).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure8.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper also describes PagedAttention in the context of &lt;em&gt;beam search&lt;/em&gt;, an algorithm for generating possible next states and choosing a “top-K” subset to continue with - the paper cites &lt;a href=&quot;https://proceedings.neurips.cc/paper/2014/file/a14ac55a4f27472c5d894ec1c3c743d2-Paper.pdf&quot;&gt;Sequence to Sequence Learning
+with Neural Networks&lt;/a&gt; when referencing beam search, but I think &lt;a href=&quot;https://d2l.ai/chapter_recurrent-modern/beam-search.html#id1&quot;&gt;this explanation&lt;/a&gt; gets the gist across better. A &lt;em&gt;beam search&lt;/em&gt; implemented with &lt;em&gt;PagedAttention&lt;/em&gt; can reuse blocks across multiple search paths, meaning that the process has less memory overhead.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure9.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, the paper discusses PagedAttention’s impact on prompts with a &lt;em&gt;shared prefix&lt;/em&gt; - in many situations, a user of an LLM will provide a separate “system” prompt that applies, no matter the details of the task (this is also discussed in &lt;a href=&quot;https://platform.openai.com/docs/guides/prompt-engineering&quot;&gt;OpenAI’s documentation on prompt engineering&lt;/a&gt;). One example system prompt is, “you are a helpful agent that only speaks JSON”. PagedAttention allows the blocks allocated for this part of the prompt to be reused across multiple tasks, reducing memory usage.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure10.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;vllm&quot;&gt;vLLM&lt;/h3&gt;
+
+&lt;p&gt;To deploy PagedAttention in a distributed environment, the paper proposes the vLLM system, containing a &lt;em&gt;scheduler&lt;/em&gt; (which chooses which work to run where), the &lt;em&gt;KV Cache Manager&lt;/em&gt;, &lt;em&gt;Workers&lt;/em&gt; (computers containing GPU hardware), and &lt;em&gt;Block Allocators&lt;/em&gt;. I elide the details of this section given that vLLM is an &lt;a href=&quot;https://github.com/vllm-project/vllm/tree/d0215a58e78572d91dadafe9d832a2db89b09a13/vllm/core&quot;&gt;open source project&lt;/a&gt;, and the details of the infrastructure are likely to change.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;That said, there were a few interesting design choices that stuck out to me:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;vLLM adopts patterns from &lt;a href=&quot;https://arxiv.org/pdf/1909.08053.pdf&quot;&gt;Megatron-LM&lt;/a&gt;, which details how to run transformers at scale across many GPUs while minimizing communication.&lt;/li&gt;
+  &lt;li&gt;vLLM implements the &lt;a href=&quot;https://docs.vllm.ai/en/latest/getting_started/quickstart.html#openai-compatible-server&quot;&gt;OpenAI API interface&lt;/a&gt;, simplifying developer adoption.&lt;/li&gt;
+  &lt;li&gt;vLLM supports higher-level abstractions (via &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fork&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;append&lt;/code&gt;, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;free&lt;/code&gt; commands) used to implement approaches like &lt;em&gt;beam search&lt;/em&gt;, &lt;em&gt;parallel sampling&lt;/em&gt;, and &lt;em&gt;shared prefix&lt;/em&gt; - luckily &lt;a href=&quot;https://github.com/vllm-project/vllm/blob/937e7b7d7c460c00805ac358a4873ec0653ab2f5/vllm/sequence.py#L212&quot;&gt;the code is open source&lt;/a&gt; which allows for a deeper dive!&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;p&gt;The paper compares performance of models served with vLLM against other serving systems (e.g. a custom implementation of &lt;a href=&quot;https://www.usenix.org/conference/osdi22/presentation/yu&quot;&gt;Orca&lt;/a&gt;, an LLM-serving system described in research from OSDI 2022) emulating workloads sourced based on open source datasets (&lt;a href=&quot;https://sharegpt.com/&quot;&gt;ShareGPT&lt;/a&gt; and &lt;a href=&quot;https://github.com/tatsu-lab/stanford_alpaca&quot;&gt;Stanford Alpaca&lt;/a&gt;).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure11.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper compares three different types of tasks - basic sampling (e.g. normal LLM usage), search-based techniques like &lt;em&gt;parallel sampling&lt;/em&gt; and &lt;em&gt;beam search&lt;/em&gt;, and chatbot-like uses of LLMs (which have longer prompts, along with back and forth between the user and the LLM).&lt;/p&gt;
+
+&lt;p&gt;For &lt;em&gt;basic sampling&lt;/em&gt;, &lt;em&gt;parallel sampling&lt;/em&gt;, &lt;em&gt;beam search&lt;/em&gt;, and chatbot-like workloads, vLLM is able to achieve significantly higher request rates.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure12.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure14.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure17.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Additionally, vLLM and PagedAttention are able to save significant amounts of memory on tasks where it is possible to re-use blocks (e.g. parallel sampling and beam search) - these graphs show average amount of memory saving as a percent, but it would be interesting to know in absolute terms.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/pagedattention/figure15.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;PagedAttention and vLLM are at the cutting edge of systems research and its application to AI - something that is becoming more of a topic in research and in practice (e.g. &lt;a href=&quot;https://charlesfrye.github.io/programming/2023/11/10/llms-systems.html&quot;&gt;Charles Frye’s post&lt;/a&gt;) now that LLMs are beginning to operate at scale. I’m looking forward to following along on the progress of the vLLM open source project, and from digging into the project, I discovered it is compatible with &lt;a href=&quot;https://skypilot.readthedocs.io/en/latest/&quot;&gt;SkyPilot&lt;/a&gt; (an open source project for deploying infrastructure cross-cloud, discussed in research from &lt;a href=&quot;https://www.usenix.org/conference/nsdi23/presentation/yang-zongheng&quot;&gt;NSDI 2023&lt;/a&gt;). As I tinker on &lt;a href=&quot;https://twitter.com/micahlerner/status/1741989855041843504&quot;&gt;LLM-based side-projects&lt;/a&gt;, I’m looking forward to experimenting with and learning from these promising new tools.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">Efficient Memory Management for Large Language Model Serving with PagedAttention</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications</title>
+      <link href="http://www.micahlerner.com/2024/01/02/blueprint-a-toolchain-for-highly-reconfigurable-microservice-applications.html" rel="alternate" type="text/html" title="Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications" />
+      <published>2024-01-02T00:00:00-08:00</published>
+      <updated>2024-01-02T00:00:00-08:00</updated>
+      <id>http://www.micahlerner.com/2024/01/02/blueprint-a-toolchain-for-highly-reconfigurable-microservice-applications</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2024/01/02/blueprint-a-toolchain-for-highly-reconfigurable-microservice-applications.html">&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/10.1145/3600006.3613138&quot;&gt;Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-the-research&quot;&gt;What is the research?&lt;/h2&gt;
+
+&lt;p&gt;The Blueprint paper talks about a new &lt;a href=&quot;https://gitlab.mpi-sws.org/cld/blueprint/blueprint-compiler&quot;&gt;open source framework&lt;/a&gt; for configuring, building, and deploying application code. This framework aims to simplify iteration on system design, application development, and configuration.&lt;/p&gt;
+
+&lt;p&gt;The authors argue that these tasks are currently difficult to accomplish because many services have tight coupling between application code, framework-level components (like RPC libraries and their behavior), and the actual deployment of the service (e.g. with Docker, Kubernetes, or other systems like Ansible).&lt;/p&gt;
+
+&lt;p&gt;By explicitly separating concerns of an application, and explicitly defining their interactions in a programmatic configuration, the authors are able to test out new configurations of a system - for example, quickly reconfiguring a set of independently deployed microservices into a single monolithic binary, then measuring the performance impact of the change.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;p&gt;Blueprint’s approach divides a system into three types of components:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Application level workflows: business logic that a developer writes to perform a specific function.&lt;/li&gt;
+  &lt;li&gt;Scaffolding: underlying framework-level components like RPC functionality, distributed tracing libraries, and storage backends (like caches and databases).&lt;/li&gt;
+  &lt;li&gt;Instantiations: specific configuration for framework-level components (e.g. using a specific RPC library with deadlines set or with novel functionality like &lt;a href=&quot;https://martinfowler.com/bliki/CircuitBreaker.html&quot;&gt;circuit-breakers&lt;/a&gt; enabled.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;A system is described in a programmatic configuration called a &lt;em&gt;workflow spec&lt;/em&gt; which contains application logic and its external interface.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/blueprint/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/blueprint/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Next, a user of Blueprint creates a &lt;em&gt;wiring spec&lt;/em&gt; that encode the relationship between pieces of application code and framework-level components. In one example, the authors recreate a simple microservice for posting on a social network, including connection to external caches and databases.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/blueprint/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Blueprint then uses the &lt;em&gt;wiring spec&lt;/em&gt; to compile an &lt;em&gt;intermediate representation&lt;/em&gt; (an idea &lt;a href=&quot;https://cs.lmu.edu/~ray/notes/ir/&quot;&gt;common to many compilers&lt;/a&gt;) of the system. The intermediate representation is effectively a graph with nodes describing code and edges describing dependencies (e.g. service A calls service B).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/blueprint/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, the intermediate representation is used to build concrete artifacts representing the components of the system - for example, the build system can compile the code for a service written in Go and wrap it with a Docker image, enabling later deployments to production.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;p&gt;The authors evaluate several research claims about the implementation, but three themes stood out to me:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Does Blueprint make it easier for developers to try new configurations of an system’s &lt;em&gt;existing&lt;/em&gt; components and libraries?&lt;/li&gt;
+  &lt;li&gt;Can Blueprint be used to create system configurations that reproduce reliability issues?&lt;/li&gt;
+  &lt;li&gt;What are the costs of the abstractions that Blueprint provides?&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To evaluate the first question of whether Blueprint makes it easier to try new configurations for a system’s existing components, the authors considered the lines of code required to enable/disable tracing and to convert a microservice deployment into a monolith.&lt;/p&gt;
+
+&lt;p&gt;They were able to perform the first task of making changes to tracing with 5 lines of code. Similarly, by changing ~10 lines of code in the Blueprint configuration, they were able to generate a monolithic version of an application previously deployed as microservices, then quantify the performance impact of this change.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/blueprint/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The authors also used Blueprint to reproduce or create reliability issues in a service - in particular they focused on &lt;a href=&quot;https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html&quot;&gt;Metastable failures&lt;/a&gt; described in a previous paper review. While creating specific configurations of a system to enable reliability testing is not necessarily a unique feature of Blueprint (e.g. &lt;a href=&quot;https://www.usenix.org/publications/loginonline/metastable-failures-wild&quot;&gt;Metastable Failures in the Wild&lt;/a&gt; discusses replicating metastability), the ease with which the authors performed this analysis was intriguing.&lt;/p&gt;
+
+&lt;p&gt;Lastly, paper analyzes how long it takes for Blueprint to generate systems of different sizes. While many of the examples are based on prototype systems, the authors also ran Blueprint on a system derived from a &lt;a href=&quot;https://dl.acm.org/doi/10.1145/3472883.3487003&quot;&gt;microservice dataset published by Alibaba&lt;/a&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/blueprint/table5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;Blueprint’s idea of separating the concerns involved in an application seems like a promising approach to dramatically increasing the velocity of the software development lifecycle (at least for microservices). One area that seems particularly exciting about Blueprint is the ability to simplify testing different service configurations across infrastructure - for example, rather than rewriting a large body of application code to test out a new tracing library, a developer can simply swap out the code in the Blueprint definition.&lt;/p&gt;
+
+&lt;p&gt;From reading the paper, there are several areas of further research for Blueprint, particularly around production readiness. For example, Blueprint’s compilation time for a system of ~3000 microservces described in a paper from Alibaba ran for 12 minutes. For organizations that would have many components in their configuration, the cost to run Blueprint would certainly be non-negligible. To speedup compliation of Blueprint, perhaps it would only recompute parts of the system touched by a developer’s changes.&lt;/p&gt;
+
+&lt;p&gt;Furthermore, adoption via onboarding new systems to Blueprint also seems like a challenge, as developers would need to perform some implementation in order to create the definition of their system - perhaps the team behind Blueprint will expand on tooling that automates this process by reading metadata source from a running system (e.g. traces).&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">2023 and looking forward to 2024</title>
+      <link href="http://www.micahlerner.com/2023/12/27/2023-and-looking-forward-to-2024.html" rel="alternate" type="text/html" title="2023 and looking forward to 2024" />
+      <published>2023-12-27T00:00:00-08:00</published>
+      <updated>2023-12-27T00:00:00-08:00</updated>
+      <id>http://www.micahlerner.com/2023/12/27/2023-and-looking-forward-to-2024</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2023/12/27/2023-and-looking-forward-to-2024.html">&lt;p&gt;A tradition of mine is to write a year end reflection, regardless of whether it makes it up onto the blog or not.&lt;/p&gt;
+
+&lt;p&gt;2023 year was a great year, and I’d go so far as to say the best of my life so far.&lt;/p&gt;
+
+&lt;p&gt;In my personal life, I celebrated an amazing first year of marriage, and bought a house in San Francisco. While the narrative of SF is that it is in a &lt;a href=&quot;https://www.nytimes.com/2023/11/29/us/san-francisco-doom-loop.html&quot;&gt;“doomloop”&lt;/a&gt;, the Bay Area has remained the center of gravity for technology innovation - predominantly all of the innovative AI companies have their headquarters in “Cerebral Valley”. There is also a budding community of builders. I’m optimistic that on the medium to longer term timescale, San Francisco’s challenges will be resolved.&lt;/p&gt;
+
+&lt;p&gt;Professionally, I also had amazing opportunities for growth, being a tech lead for a 20+ person team of Googley engineers helping to design and scale innovative new products in Maps (e.g. &lt;a href=&quot;https://blog.google/products/maps/google-maps-immersive-view-routes/&quot;&gt;immersive route preview&lt;/a&gt;, which uses &lt;a href=&quot;https://blog.research.google/2023/06/reconstructing-indoor-spaces-with-nerf.html&quot;&gt;Neural Radiance Fields&lt;/a&gt;). In 2024 I’ll be presenting about product reliability at industry conferences (e.g. &lt;a href=&quot;https://twitter.com/micahlerner/status/1729603161646620797&quot;&gt;SRECon&lt;/a&gt;), which I’m quite excited about. While the internet likes to critique Google and its culture, it is clear that the company 1) continuously deploys serious innovation at scale and 2) users around the world continue to love the company’s products.&lt;/p&gt;
+
+&lt;p&gt;Balancing my rewarding personal and professional lives impacted my bandwidth for producing content, and I explicitly prioritized the other areas of my life - tradeoffs I embraced enthusiastically. While I wrote fewer paper reviews, I also tried learning-in-public via &lt;a href=&quot;https://www.youtube.com/channel/UCPBFHwPU6wuw_tTKmu6TECw&quot;&gt;streaming my process&lt;/a&gt;. These tweaks seemed to resonate, and the number of subscribers grew quickly.&lt;/p&gt;
+
+&lt;p&gt;I enjoy the process of learning, distilling knowledge, and sharing it with others - wholesale abandoning these activities isn’t something that I intend to do. That said, given my rewarding personal life and demanding job, I’ve rethought how I invest my time in my creative pursuits.&lt;/p&gt;
+
+&lt;p&gt;In 2024 and beyond, I’ll be more intentional about the technical areas that I invest in learning about. I think that some topics in systems research are beginning to provide diminishing returns &lt;em&gt;for me personally&lt;/em&gt; - for example, while I’m far from an expert, I’m roughly familiar with flavors of distributed databases. As a result, I am not as excited about developments there, meaning I’m less likely to write a deep dive on a new paper. Furthermore, I don’t have interest in producing content solely for the goal of maximizing engagement (e.g. “going full influencer”).&lt;/p&gt;
+
+&lt;p&gt;Instead, I want to make a concentrated bet by pivoting my focus towards AI and the systems that power these new technologies - AI is here to stay, and will become a larger part of my life. Even without achieving artificial general intelligence, more everyday tools will begin to take advantage of recent rapid innovations. As a software engineer by trade, I can see AI’s exciting ability to impact my work on the horizon (e.g. with the rise of competent large language models capable of answering technical questions and writing code). In the past, going deep on the fundamentals has been not only interesting, but has also benefited me and my career. I’m very much looking forward to applying this approach, and seeing how this bet pays off down the road.&lt;/p&gt;
+
+&lt;p&gt;Looking forward to a great 2024 and thank you for joining me on this journey!&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">A tradition of mine is to write a year end reflection, regardless of whether it makes it up onto the blog or not.</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">Defcon: Preventing Overload with Graceful Feature Degradation</title>
+      <link href="http://www.micahlerner.com/2023/07/23/defcon-preventing-overload-with-graceful-feature-degradation.html" rel="alternate" type="text/html" title="Defcon: Preventing Overload with Graceful Feature Degradation" />
+      <published>2023-07-23T00:00:00-07:00</published>
+      <updated>2023-07-23T00:00:00-07:00</updated>
+      <id>http://www.micahlerner.com/2023/07/23/defcon-preventing-overload-with-graceful-feature-degradation</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2023/07/23/defcon-preventing-overload-with-graceful-feature-degradation.html">&lt;p&gt;&lt;a href=&quot;https://www.usenix.org/conference/osdi23/presentation/meza&quot;&gt;Defcon: Preventing Overload with Graceful Feature Degradation&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;This is one in a series of papers I’m reading from OSDI and Usenix ATC. These paper reviews can be &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions!&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-the-research&quot;&gt;What is the research?&lt;/h2&gt;
+
+&lt;p&gt;Severe outages can occur due to system overload, impacting users who rely on a product, and potentially damaging underlying hardware. It can also be difficult to recover from outages involving overloaded system due to additional problems this type of outages cause - in particular, &lt;a href=&quot;https://sre.google/sre-book/addressing-cascading-failures/&quot;&gt;cascading failures&lt;/a&gt;. There are many potential root-causes to a system entering an overloaded state, including seasonal traffic spikes, performance regressions consuming excess capacity, or subtle software bugs. As such, limiting the damage caused by overload conditions is a complicated problem.&lt;/p&gt;
+
+&lt;p&gt;To prevent overload from impacting its products, Meta developed a system called &lt;em&gt;Defcon&lt;/em&gt;. Defcon provides a set of abstractions that allows incident responders to increase available capacity by turning off features, an idea called &lt;em&gt;graceful feature degradation&lt;/em&gt;. By dividing product features into different levels of business criticality, Defcon also allows oncallers to take a variety actions depending on the severity of an ongoing incident.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The Defcon paper describes Meta’s design, implementation, and experience deploying this system at scale across many products (including Facebook, Messenger, Instagram, and Whatsapp) along with lessons from usage during production incidents.&lt;/p&gt;
+
+&lt;h2 id=&quot;background-and-motivation&quot;&gt;Background and Motivation&lt;/h2&gt;
+
+&lt;p&gt;The authors of Defcon describe several alternatives they considered when deciding how to mitigate the risk of system overload. Each of the options is evaluated on the amount of additional resources that the approach would consume during an incident, the amount of engineering effort required to implement, and the potential impact to users.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/table1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Given that serious overload events happen on a recurring basis (at least once a year), the authors decided to invest engineering resources in an engineering-intensive effort capable of limiting user impact.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;p&gt;The core abstraction in Defcon is the &lt;em&gt;knob&lt;/em&gt;, which represents for each feature: a unique name, whether a feature is turned on or not, the oncall rotation responsible, and a “level” corresponding to business-criticality.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/listing1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/features.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;After a feature is defined using this configuration, servers or applications (for example, in Web or iOS devices) import the knob into code and implement code paths that handle cases when the &lt;em&gt;knob&lt;/em&gt; is turned off - for example, short-circuiting expensive logic.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/listing2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;During testing and incident response, operators change a &lt;em&gt;knob&lt;/em&gt;’s state via a command-line or user interface, and Defcon handles replicating this state to impacted consumers (like servers and mobile applications). Knob state is also stored in a database.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Defcon’s &lt;em&gt;Knob Actuator Service&lt;/em&gt; propagates state changes for two types of knobs: &lt;em&gt;server-side knobs&lt;/em&gt; and &lt;em&gt;client-side knobs&lt;/em&gt;:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;em&gt;Server-side knobs&lt;/em&gt; are implemented in binaries running on the servers in data centers. The advantage of server-side knobs is that we can adjust the knobs’ state in seconds without any propagation delays.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;em&gt;Client-side knobs&lt;/em&gt; are implemented in client code running on phones, tablets, wearables, and so on. The advantage of client-side knobs is that they have the capability to reduce network load by stopping requests sent to the server along side reducing server load due to the request.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Client-side knobs (like those in an iOS application) are slightly more complex to update. Under normal conditions, they change via a push (called &lt;em&gt;Silent Push Notification (SPN)&lt;/em&gt;) or routine pull (&lt;em&gt;Mobile Configuration Pull&lt;/em&gt;) mechanism. To handle extenuating circumstances (like lower latency response to severe outages), Defcon can also instruct clients to pull a broader set of configuration stored in a specific server-location using a process called &lt;em&gt;Emergency Mobile Configuration&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Knobs are, “grouped into three categories: (1) By service name, (2) by product name, and (3) by feature name (such as “search,” “video,” “feed,” and so on)” to simplify testing during development and post-release. Testing occurs through small scale A/B tests (where one “experiment arm” of users experience feature degradation, and the “control” arm does not) and during larger exercises that ensure the Defcon system is working (described later in the paper). These tests also have the side effect of generating data on what capacity a feature or product is using, which serves as an input to capacity planning.&lt;/p&gt;
+
+&lt;p&gt;During incidents, oncallers can also use the output of these tests to understand what the potential implications are of turning off different knobs. The&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;p&gt;The paper uses three main types of datasets to quantify Defcon’s changes:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Real-time Monitoring System (RMS)&lt;/em&gt; and &lt;em&gt;Resource Utilization Metric (RUM)&lt;/em&gt;, which aim to measure utilization of Meta infrastructure. The specifics of which one to use depends on the experiment, as discussed below.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Transitive Resource Utilization (TRU)&lt;/em&gt;, which aims to measure the downstream utilization that a service has of shared Meta systems (like its graph infrastructure described in my previous paper review on &lt;a href=&quot;https://www.micahlerner.com/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html&quot;&gt;TAO: Facebook’s Distributed Data Store for the Social Graph&lt;/a&gt;).&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;User Behavior Measurement (UBM)&lt;/em&gt;, which tracks how changing a knob’s state impacts business metrics like “Video Watch Time”.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The first evaluation of Defcon’s impact is at the Product-level. By turning off progressively more business-critical functionality, the system makes greater impact on Meta’s resource usage. Entirely turning off critical features (aka “Defcon Level 1”), saves a large amount of capacity, but also significantly impacts critical business metrics.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure8.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/table2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Defcon is next evaluated for its ability to temporarily decrease capacity required of shared infrastructure. As discussed in a previous paper review of &lt;a href=&quot;https://www.micahlerner.com/2021/05/31/scaling-memcache-at-facebook.html&quot;&gt;Scaling Memcache at Facebook&lt;/a&gt;, Meta uses Memcache extensively. By turning off optional features, oncallers are able to decrease load on this type of core system.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure9.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Next, the research describes how Meta can decrease capacity requirements by turning off knobs in upstream systems with dependencies on other Meta products. For example, turning off Instagram-level knobs decreases load on Facebook, which ultimately depends on TAO, Meta’s graph service. Testing knobs outside of incident response surfaces resource requirements from these interdependencies.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure12.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The Defcon paper describes a protocol for forcing Meta systems into overload conditions, and testing the impact of turning progressively more business-critical features off. By ramping user traffic to a datacenter, these experiments place increasing load on infrastructure - turning knobs off then alleviates load.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/defcon/figure15.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;The Defcon paper describes a framework deployed at scale in Meta for disabling features in order to mitigate overload conditions. To reach this state,  the authors needed to solve technical challenges of building the system and to collaborate with product teams to define feature criticality - in some ways, the latter seems even more difficult. The paper also mentions issues with maintainability of knobs. On this front, it seems like future work could automate the process of ensuring that knobs cover features inside of deployed code. Lastly, I’m looking forward to learning more about Defon’s integration with other recently published Meta research, like &lt;a href=&quot;https://www.usenix.org/conference/osdi23/presentation/eriksen&quot;&gt;the company’s capacity management system&lt;/a&gt;.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">Defcon: Preventing Overload with Graceful Feature Degradation</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale</title>
+      <link href="http://www.micahlerner.com/2023/06/29/towards-an-adaptable-systems-architecture-for-memory-tiering-at-warehouse-scale.html" rel="alternate" type="text/html" title="Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale" />
+      <published>2023-06-29T00:00:00-07:00</published>
+      <updated>2023-06-29T00:00:00-07:00</updated>
+      <id>http://www.micahlerner.com/2023/06/29/towards-an-adaptable-systems-architecture-for-memory-tiering-at-warehouse-scale</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2023/06/29/towards-an-adaptable-systems-architecture-for-memory-tiering-at-warehouse-scale.html">&lt;p&gt;&lt;em&gt;This is one in a series of papers I’m reading from ASPLOS. These paper reviews can be &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions!&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/assets/pdf/adaptable.pdf&quot;&gt;Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Applications running in datacenter environments require resources to operate, like dynamic random access memory. DRAM is both expensive and in high demand. As alternatives to DRAM emerge, new approaches to trading off performance for cost became available to datacenter applications - specifically, the paper mentions &lt;a href=&quot;https://www.tomshardware.com/news/intel-optane-dimm-pricing-performance,39007.html&quot;&gt;Intel Optane&lt;/a&gt;, which offers significant cost savings&lt;/p&gt;
+
+&lt;p&gt;To use this new resource type while limiting the impact to application performance, the authors proposed, built, and deployed at scale a new system called &lt;em&gt;Transparent Memory Tiering System (TMTS)&lt;/em&gt;. The approach interacts with Google’s Borg scheduler to adaptively move an applications in-memory data from high performance memory to lower cost mediums, an approach it calls &lt;em&gt;memory tiering&lt;/em&gt; - based on usage, the system “promotes” in-use memory pages into high performance memory, and “demotes” infrequently-used memory to lower/performance mediums.&lt;/p&gt;
+
+&lt;p&gt;When deployed at scale, &lt;em&gt;TMTS&lt;/em&gt; replaced 25% of DRAM with lower cost solutions, while incurring little performance impact to the vast majority of applications.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The paper makes three main categories of contributions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Design and implementation of a memory tiering system.&lt;/li&gt;
+  &lt;li&gt;A testing methodology for evaluating changes to the system at scale.&lt;/li&gt;
+  &lt;li&gt;Lessons and evaluation from running the implementation in production.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;h3 id=&quot;system-metrics&quot;&gt;System metrics&lt;/h3&gt;
+
+&lt;p&gt;The paper discusses the key tradeoff the system needs to make between potential cost savings and performance degradation. For example, applications on the critical path of user requests (which the paper calls &lt;em&gt;high importance latency sensitive (HILS)&lt;/em&gt;) are more sensitive to latency and performance impact than batch workloads.&lt;/p&gt;
+
+&lt;p&gt;Furthermore, for a tiered memory system to deliver on its promise of cost savings, it needs to strike the right balance of using lower performance hardware - if the cluster scheduler doesn’t run jobs on the lower performance hardware, the resources intended to save cost will sit around being unutilized (meaning the potential cost savings will not occur &lt;em&gt;and&lt;/em&gt; there are more resources that you’ve paid for). On the other hand, if the scheduler assigns latency-sensitive applications to lower performance hardware, performance will suffer.&lt;/p&gt;
+
+&lt;p&gt;Using these two considerations, the paper defines two metrics to measure the success of memory tiering:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Secondary Tier Residency Ratio (STRR)&lt;/em&gt; represents the “fraction of allocated memory residing in tier2 [lower performance memory]”.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Secondary Tier Access Ratio (STAR)&lt;/em&gt; “is the fraction of all memory accesses of an application directed towards pages resident in tier2”. This is a proxy for application performance impact because an application accessing lower tier memory will likely incur higher latency.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In summary, the goal of the system is to maximize usage of cheaper/lower performance memory (represented via &lt;em&gt;STRR&lt;/em&gt;) while minimizing negative impact to application performance (via &lt;em&gt;STAR&lt;/em&gt;).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;system-architecture&quot;&gt;System Architecture&lt;/h3&gt;
+
+&lt;p&gt;The memory tiering system is divided into four levels of abstraction: &lt;em&gt;hardware&lt;/em&gt;, &lt;em&gt;kernel&lt;/em&gt;, &lt;em&gt;userspace&lt;/em&gt;, and the &lt;em&gt;cluster scheduler&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;At the bottom of the stack is the underlying &lt;em&gt;hardware&lt;/em&gt;, made up of several types of memory devices with different performance and cost profiles.&lt;/p&gt;
+
+&lt;p&gt;Immediately above the hardware is the &lt;em&gt;kernel&lt;/em&gt;, which abstracts the hardware into different tiers (&lt;em&gt;tier1&lt;/em&gt; for higher performance, &lt;em&gt;tier2&lt;/em&gt; for lower performance) and operates on hardware abstractions like memory pages.  Inside the kernel, the system uses daemons to monitor memory accesses, building the dataset that will inform the promotion/demotion process.&lt;/p&gt;
+
+&lt;p&gt;Above the kernel is &lt;em&gt;user space&lt;/em&gt;, where a management daemon (ufard) makes  demotion and promotion policies for memory between tier1 and tier2, then conveys changes in policies to the kernel. The promotion/demotion policy can change over time based on information that the kernel provides to this userspace daemon - for example, information on how many pages were not accessed recently. Other components of the system also run in user space, including a scheduler component and the applications themselves.&lt;/p&gt;
+
+&lt;p&gt;At the top layer, the &lt;em&gt;cluster scheduler&lt;/em&gt; makes decision about where to run applications based on their memory needs and performance of the system. The paper describes how the scheduler consumes information about which tiers of memory are available on which machines to make placement decisions.&lt;/p&gt;
+
+&lt;h3 id=&quot;hot-page-promotion-and-cold-page-demotion&quot;&gt;Hot page promotion and cold page demotion&lt;/h3&gt;
+
+&lt;p&gt;A key component of the memory system is demoting cold pages to low-cost memory, and promoting hot pages to higher performance resources.&lt;/p&gt;
+
+&lt;p&gt;A page is classified as “cold with threshold t if it has not been accessed in the prior t seconds”, but the policy about when to demote pages to cold memory is dependent on the needs of the application.&lt;/p&gt;
+
+&lt;p&gt;An application’s policy can also be adaptive, for example:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;“the kernel provides the userspace daemon a cold age histogram - the frequency distribution of inter-access interval duration. It answers questions such as how many pages were not accessed for at least 2 minutes. The policy engine uses this to identify application access patterns and adjust parameter values.”&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;To promote pages from tier2 to tier1, the tiered memory system relies on two approaches: &lt;em&gt;proactive promotion&lt;/em&gt; and &lt;em&gt;periodic scanning&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Proactive promotion&lt;/em&gt; aims to move pages from tier2 to tier1 as soon as they are likely to receive more accesses, rather than waiting until a surge of access occurs (which would introduce application latency). This proactive process is informed by signals from hardware, in particular the &lt;em&gt;Performance Monitoring Unit (PMU)&lt;/em&gt;) - for example, sampling last level cache miss events provides insights into which data is actively being used.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Periodic scanning&lt;/em&gt; complements the sampling-based approach by scanning pages over repeating periods. and promoting them based on how many consecutive “scan periods” the page has been accessed in. This approach is more accurate, but higher overhead. The system also aims to limit &lt;em&gt;thrashing&lt;/em&gt; - if a page is potentially going to be demoted, but was recently promoted, the demotion process waits for a longer time period before taking action.&lt;/p&gt;
+
+&lt;p&gt;These monitoring processes use a combination of &lt;a href=&quot;https://www.man7.org/linux/man-pages/man2/perf_event_open.2.html&quot;&gt;perf_event_open&lt;/a&gt; and Berkley Packet Filter (BPF) in the kernel which “optimize[s] the collection of tier2 hot page ages and their page addresses from the in-kernel page.”&lt;/p&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;h3 id=&quot;system-evaluation&quot;&gt;System Evaluation&lt;/h3&gt;
+
+&lt;p&gt;Memory tiering is deployed in production and is constantly evolving to perform more effectively. To evaluate the system, the paper considers three areas: &lt;em&gt;memory utilization / task capacity&lt;/em&gt;, &lt;em&gt;residency ratios&lt;/em&gt;, &lt;em&gt;access ratios / bandwidth&lt;/em&gt;, and &lt;em&gt;overall performance impact&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Memory utilization / task capacity&lt;/em&gt; represents the impact that the system has on individual applications - if an application is performing poorly (for example, serving requests with high user facing latency), the scheduler will either schedule more tasks for the application (increasing task capcity) or put fewer tasks on the impacted machines (leading to lower utilization, as there will be machines with fewer tasks). The paper presents data that shows memory utilization and task capacity isn’t significantly impacted by the memory tiering system.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;em&gt;Residency ratios&lt;/em&gt; gauges how successful the system is at storing infrequently used pages in tier2 memory. First, the paper shows that the &lt;em&gt;Secondary Tier Residency Ratio (STRR)&lt;/em&gt; is close to the percentage of deployed tier2 hardware, demonstrating effective use of tier2 memory. Additionally, the paper includes data on the ratio of cold memory stored in tier2, which is between 50 and 75% across all clusters - the paper compares this to swap based solutions which reach 10-25% memory coverage.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;em&gt;Access ratios / bandwidth&lt;/em&gt; are used to understand if the pages in tier2 are accessed frequently (which would impact performance), and whether accesses result in promotions/demotions - “about 80% of tier2 bandwidth is due to applications accessing pages resident in that tier, promotion being about 1/3 of the remaining and demotion 2/3”. The paper argues, “This suggests the system is effective in selecting pages for demotion while avoiding thrashing/ping-pong effects.”&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;em&gt;Overall performance impact&lt;/em&gt; is core to the tradeoffs that the tiered memory system is making, and the paper uses instructions per cycle (IPC). The authors were targeting a performance impact of 5%, but TMTS impacted a subset of applications more severely.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure6.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Digging deeper into the performance impact of tier2 memory, one example discussed by the paper is on huge pages. Hugepages can take up to large amounts of memory, but accesses to a small part of the hugepage can cause it be promoted. Demoting hugepages is also difficult because while the system was capable of breaking up the hugepages into smaller components when demoting, a “mostly cold” hugepage wouldn’t be demoted at all. Because many hugepages weren’t demoted, they were occupying space in tier1 memory, lowering tier2 memory. The authors describe two solutions including “migrating hugepages intact, without breaking them apart into 4KB pages on demotion” and compacting huge pages to produce more entirely cold pages (which can then be migrated to tier2).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure8.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;policy-evaluation&quot;&gt;Policy Evaluation&lt;/h3&gt;
+
+&lt;p&gt;Beyond the performance of the system itself, the paper also considers the impact that different policies can have on its northstar metrics (&lt;em&gt;STRR&lt;/em&gt; and &lt;em&gt;STAR&lt;/em&gt;).&lt;/p&gt;
+
+&lt;p&gt;Demotion policies are capable of changing the amount of cold memory in tier2 by trading off performance, for example executing policies more frequently (leading to cold pages moving to tier2 faster). The paper describes tweaking demotion policies according to whether an application serves &lt;em&gt;high importance latency sensitive (HILS)&lt;/em&gt;) traffic. Lengthening the time that pages used by &lt;em&gt;HILS&lt;/em&gt; applications take to demote to tier2 had minimal impact on percent of tier2 used (STRR), but significant performance impact (represented via &lt;em&gt;STAR&lt;/em&gt;, the amount of access ratios for pages in tier2).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure9.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper also discusses promotion policies, and argues that applications are actually more sensitive to situations when a page is not yet promoted to tier1, but is frequently accessed. The paper considers three policies to address this concern: 60s promotion (2, 30 second scans), 30s (1 30s scan), and a combination of 60s promotion with PMU-based sampling. Effectively all policies have the same outcome with respect to memory ending up in tier1, but the combined approach (described earlier in the paper) is able to successfully promote pages faster because the PMU-based sampling datasource provides faster information on accesses to tier2 memory.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure10.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/tmts/figure11.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;I found the tiered memory paper interesting because it illustrates the tradeoffs between performance and cost for hardware resources deployed at scale at scale. The research also builds on previous work, but uniquely includes many lessons from production - for example, evaluating policies based on their impact to north star metrics gathered from the wild. Lastly, the system described by the paper is enabled by integrating with a robust, extensible scheduler capable of making informed decisions about job placement. This abstraction allowed successful deployment at scale without involving individual application developers, dramatically decreasing the time to deployment.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">This is one in a series of papers I’m reading from ASPLOS. These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed. As always, feel free to reach out on Twitter with feedback or suggestions!</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators</title>
+      <link href="http://www.micahlerner.com/2023/06/06/telamalloc-efficient-on-chip-memory-allocation-for-production-machine-learning-accelerators.html" rel="alternate" type="text/html" title="TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators" />
+      <published>2023-06-06T00:00:00-07:00</published>
+      <updated>2023-06-06T00:00:00-07:00</updated>
+      <id>http://www.micahlerner.com/2023/06/06/telamalloc-efficient-on-chip-memory-allocation-for-production-machine-learning-accelerators</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2023/06/06/telamalloc-efficient-on-chip-memory-allocation-for-production-machine-learning-accelerators.html">&lt;p&gt;&lt;em&gt;This is one in a series of papers I’m reading from ASPLOS. These paper reviews can be &lt;a href=&quot;https://newsletter.micahlerner.com/&quot;&gt;delivered weekly to your inbox&lt;/a&gt;, or you can subscribe to the &lt;a href=&quot;https://www.micahlerner.com/feed.xml&quot;&gt;Atom feed&lt;/a&gt;. As always, feel free to reach out on &lt;a href=&quot;https://twitter.com/micahlerner&quot;&gt;Twitter&lt;/a&gt; with feedback or suggestions!&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dl.acm.org/doi/10.1145/3567955.3567961&quot;&gt;TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;A common pattern for integrating machine learning models with applications is deploying them to user devices, where the models run on local hardware. Running models locally provides performance improvements (by eliminating communication with a cloud), while enabling private computing. Unfortunately, there are also challenges to running models locally because of diversity in hardware capabilities - a program that works well on the highest end modern phone may not perform optimally on previous generation devices.&lt;/p&gt;
+
+&lt;p&gt;To effectively run on a user’s device, the software must efficiently use local resources, including memory. The problem of allocating memory has been studied extensively, but ML models pose novel challenges. Specifically, memory allocation for ML models is a 2D bin-packing problem - unlike programs which grow and shrink their memory usage over time, ML models have strict requirements for memory allocations because certain parts of the model depend on others.&lt;/p&gt;
+
+&lt;p&gt;Existing solutions for ML model memory allocation rely on heuristics or solvers (which can produce a closer to optimal output, but often take longer to run). The Telamalloc paper proposes a solution balancing a combination of heuristics and solvers. As a result, the research is able to tackle the challenge posed by wide variance in hardware capabilities, significantly reducing the time that it takes the model to allocate memory and run.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The paper makes three main contributions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Combining a heuristic-based approach to memory allocation with a solver aware of domain-specific knowledge.&lt;/li&gt;
+  &lt;li&gt;An evaluation of the approach combined approach&lt;/li&gt;
+  &lt;li&gt;A forward-looking proposal for improving on initial results by taking production data and feeding it back into the system.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;p&gt;The system takes the problem and turns it into a 2D-optimization problem, where memory blocks are assigned to different ranges of address space over time, based on the flow of the program.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The authors aim the approach at tensor memory allocation both on mobile devices and in Tensor Processing Units, a custom piece of hardware that is used for machine learning at scale.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;It is worth noting how well studied resource allocation is - the paper reviews the standard approach compilers follow to:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;1) take a graph representation of the model and perform various graph transformations, 2) divide the graph into smaller units of work (operators), and 3) map these operators to different units of hardware.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The authors call the third component the &lt;em&gt;mapping problem&lt;/em&gt;, and note it is fundamentally different than the problem they’re focused on, which they call the &lt;em&gt;memory allocation problem&lt;/em&gt;:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;the &lt;em&gt;mapping problem&lt;/em&gt; is concerned with determining which level of a memory hierarchy to map each buffer to, the &lt;em&gt;memory allocation&lt;/em&gt; problem selects buffer locations within addressable scratchpad memories that are shared between multiple buffers with overlapping live ranges.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Notably, the performance of solving the memory allocation problem impacts users. If the compilation of a model takes a long time, an application using a model won’t work. On the other hand, if the problem is solved quickly, but suboptimally, the model may not be able to successfully allocate memory (because it attempts to use too much memory).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;problem-formulation&quot;&gt;Problem Formulation&lt;/h3&gt;
+
+&lt;p&gt;The authors represent the problem by providing a set of buffers with &lt;em&gt;start&lt;/em&gt;, &lt;em&gt;end&lt;/em&gt;, and &lt;em&gt;size&lt;/em&gt; to the allocator, along with an upper limit to memory usage.&lt;/p&gt;
+
+&lt;p&gt;The allocator then attempts to produce a solution mapping each buffer to an address, where none of the buffers overlap, and memory usage doesn’t exceed the specified limit.&lt;/p&gt;
+
+&lt;h3 id=&quot;memory-allocation-heuristics&quot;&gt;Memory Allocation Heuristics&lt;/h3&gt;
+
+&lt;p&gt;The paper describes three main heuristics for assigning buffers to addresses: &lt;em&gt;best-fit&lt;/em&gt;, &lt;em&gt;greedy&lt;/em&gt;, the &lt;em&gt;approach Telamalloc implements&lt;/em&gt; (which is a combination of both).&lt;/p&gt;
+
+&lt;p&gt;A &lt;em&gt;best-fit&lt;/em&gt; allocator assigns buffers to address space in start time order. The paper notes, “This approach works well if memory is abundant but fails if the memory budget is tight” because memory allocations of many blocks in a constrained space will be suboptimal.&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;greedy&lt;/em&gt; approach (used by &lt;a href=&quot;https://blog.tensorflow.org/2020/10/optimizing-tensorflow-lite-runtime.html&quot;&gt;TFLite&lt;/a&gt;) takes, “the end time into account to pick locations one buffer at time, while ensuring that it does not overlap with any previously allocated buffers.” Again, this approach doesn’t do well when memory is tight because it also produces suboptimal solutions.&lt;/p&gt;
+
+&lt;p&gt;Lastly, there is the heuristic that Telamalloc implements, which takes into account the contention of a point of time (represented by the number of buffers that need to be assigned). Buffers with the highest contention are placed first at the lowest possible address (stored by keeping a “skyline” for each time period). If there are multiple buffers, the heuristic makes a decision based on other factors like the length of time a buffer exists.&lt;/p&gt;
+
+&lt;h3 id=&quot;solver-based-approaches&quot;&gt;Solver-based Approaches&lt;/h3&gt;
+
+&lt;p&gt;Heuristics for memory allocation have several downsides, including that their performance depends on the specific workload and problem difficulty - “once a heuristic has made a wrong decision that prevents it from solving the problem, it has no way to recover.” To address the shortcomings of heuristic failure, Telamalloc integrates a solver-based approach that represents the problem with several constraints, including all of the buffers taking up space at a given time can not exceed memory and buffers can not overlap.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;telamalloc-overview&quot;&gt;Telamalloc Overview&lt;/h3&gt;
+
+&lt;p&gt;As mentioned earlier, Telamalloc doesn’t solely rely on heuristics, nor solvers - heuristics get stuck on certain cases, and solvers can take too long. Normally solvers return the whole solution given an input and a set of constraints - instead, the program that guides the solver integrates interactively, reading the state of the solver for a particular buffer and making choices, then responding to feedback.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure6.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;At each step, the Search Heuristic chooses from the remaining unplaced blocks, and “backtracks” to undo choices if a state it ends up in is invalid. It splits backtracking into “minor” and “major” based on how many steps need to be undone - the former corresponds to a single buffer placement, whereas the latter corresponds to undoing a whole line of choices (because the final state is invalid).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The authors describe a number of optimizations to implement &lt;em&gt;smart backtracking&lt;/em&gt;. Several of these focus on avoiding a return to the conditions that caused the initial backtrack. For example, on failure to satisfy constraints, the solver reports which placements occurred, so the search algorithm can unwind them quickly. Another example optimization is explicitly prioritizing buffers whose placement (or inability to place) led to a major backtrack - “this avoids cases where the solver got stuck by ignoring blocks that were important but not among the largest or longest-lived blocks”.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure8.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, Telamalloc groups together buffers that contend with one another into &lt;em&gt;phases&lt;/em&gt;, then runs the algorithm over each &lt;em&gt;phase&lt;/em&gt;. This approach reduces the complexity of the problem, and allows choosing from a smaller set of candidate buffers when making choices.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure9.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;p&gt;The paper considers two main aspects of Telamalloc: &lt;em&gt;microbenchmarks&lt;/em&gt; evaluating the algorithm in isolation, and measurements from compiling models / making memory allocations on a Pixel 6.&lt;/p&gt;
+
+&lt;p&gt;The microbenchmarks consider the time to compute memory placements in the best and worst cases. In normal conditions, Telamalloc completes incredibly quickly (“≈10-100us for common problem sizes”). The worst case is represented by a large number of blocks (one thousand) with full overlap - in this situation, Telamalloc takes around 100000 ms, and each step takes significantly longer due to the strain placed on the solver (which needs to consider how a candidates interacts with many different potential placements).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/table1.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;When comparing Telamalloc’s compilation of common models on the Pixel 6 running against a solver (which is capable of achieving near-optimal results given enough time), the memory allocations Telamalloc produces are nearly identical. Telamalloc is also able to achieve a, “median speedup of ≈ 4.7× across the benchmark”.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/table2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/telamalloc/figure12.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;Telamalloc is an interesting paper because it discusses a combination of existing algorithms with optimizations tailored to improve user experiences relying on ML models. The paper also discusses using ML to make the performance of “smart” backtracking better - the idea of feeding in-the-wild data back into an algorithm to improve it over time is fascinating to me. This pattern also shows up in places like &lt;a href=&quot;https://developers.redhat.com/articles/2021/06/23/how-jit-compiler-boosts-java-performance-openjdk#&quot;&gt;Java’s JIT compiler&lt;/a&gt; which takes data about a program’s performance and execution, then uses that to make the program better over time. Beyond the technical details of the paper, I also appreciated its focus on the impact to users - being able to compile models efficiently and successfully across a wide range of hardware is critical to making new AI-powered capabilities accessible to all.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">This is one in a series of papers I’m reading from ASPLOS. These paper reviews can be delivered weekly to your inbox, or you can subscribe to the Atom feed. As always, feel free to reach out on Twitter with feedback or suggestions!</summary>
+      
+
+      
+      
+    </entry>
+    
+  
+    
+    <entry>
+      
+
+      <title type="html">Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems</title>
+      <link href="http://www.micahlerner.com/2023/04/16/perseus-a-fail-slow-detection-framework-for-cloud-storage-systems.html" rel="alternate" type="text/html" title="Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems" />
+      <published>2023-04-16T00:00:00-07:00</published>
+      <updated>2023-04-16T00:00:00-07:00</updated>
+      <id>http://www.micahlerner.com/2023/04/16/perseus-a-fail-slow-detection-framework-for-cloud-storage-systems</id>
+      
+      
+        <content type="html" xml:base="http://www.micahlerner.com/2023/04/16/perseus-a-fail-slow-detection-framework-for-cloud-storage-systems.html">&lt;p&gt;&lt;a href=&quot;https://www.usenix.org/conference/fast23/presentation/lu&quot;&gt;Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-the-research&quot;&gt;What is the research?&lt;/h2&gt;
+
+&lt;p&gt;This paper describes a system for detecting &lt;em&gt;fail-slow&lt;/em&gt; instances in Alibaba storage clusters - &lt;em&gt;fail-slow&lt;/em&gt; is failure mode in which hardware fails non-obviously, potentially by consistently degrading performance over time. While hardware deployed in data centers at scale fails for a variety of reasons (including environmental conditions, and hardware defects), automated detection normally finds these problems, allowing quick remediation by oncall engineers at the datacenter. Unfortunately, not all hardware misbehavior follows this path, as noted by previous research into &lt;em&gt;fail-slow&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;The Perseus paper focuses specifically on detecting &lt;em&gt;fail-slow&lt;/em&gt; in storage devices, although the category of problem impacts a wide variety of hardware. If left unresolved, &lt;em&gt;fail-slow&lt;/em&gt; instances can dramatically impact performance and tail latency. For example, if a drive fails, database writes reaching that drive may automatically fail or take a significant period of time to complete. The degradation can be particularly acute for distributed systems requiring multiple acknowledgements of a write before returning success to a client. Continuing speedups of hardware further exacerbates the problem.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/figure2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The &lt;em&gt;fail-slow&lt;/em&gt; phenomenon is difficult to detect for a variety of reasons. Typical SLO-based approaches monitoring a fixed performance threshold are insufficiently sensitive - varying load can cause periodic performance regressions, even if a drive is healthy. Othere orevious work to identify &lt;em&gt;fail-slow&lt;/em&gt; cases relies on deep integration with an application, which isn’t possible for cloud providers (who oftentimes have limited visibility into user workloads). The Perseus paper is novel in several respects, including not relying on deep knowledge of the workloads it is monitoring for detection.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-are-the-papers-contributions&quot;&gt;What are the paper’s contributions?&lt;/h2&gt;
+
+&lt;p&gt;The paper makes four main contributions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;A framework for detecting instances of fail-slow at scale, including takeaways about what did not work.&lt;/li&gt;
+  &lt;li&gt;The design and implementation of Perseus, a system for detecting fail-slow instances in storage clusters.&lt;/li&gt;
+  &lt;li&gt;An evaluation of the technique against a ground truth dataset from Alibaba.&lt;/li&gt;
+  &lt;li&gt;Root-cause analysis of detected failures.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;how-does-the-system-work&quot;&gt;How does the system work?&lt;/h2&gt;
+
+&lt;p&gt;In instrumenting their approach, the authors set out with several main design goals:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+&lt;em&gt;Non-intrusive&lt;/em&gt;: Alibaba runs cloud workloads, and doesn’t necessarily need (or want) to rely on deeper integration with customer applications.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Fine-grained&lt;/em&gt;: failures identified by the system should be specific about what hardware is failing and why.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;Accurate&lt;/em&gt;: the system should correctly identify failures, limiting wasted time by oncall engineers.&lt;/li&gt;
+  &lt;li&gt;
+&lt;em&gt;General&lt;/em&gt;: the solution should be able to identify problems across different types of hardware within the same category (for example both SSDs and HDDs).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The team built up a dataset of drive performance using daemons deployed in the Alibaba cloud, recording time series of average latency, average throughput keyed by machine and drive (as a machine can have many drives).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/table2.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h3 id=&quot;initial-attempts&quot;&gt;Initial Attempts&lt;/h3&gt;
+
+&lt;p&gt;With these goals in mind, the authors evaluated three different techniques for detecting fail-slow instances: &lt;em&gt;threshold filtering&lt;/em&gt;, &lt;em&gt;peer evaluation&lt;/em&gt;, and an approach based on previous research named IASO. Each of these techniques had their shortcomings with respect to the design goals.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Threshold filtering&lt;/em&gt; relied on identifying problematic drives by recording whether write latency increased over a fixed threshold. This approach didn’t work because disk latency would spike periodically when under heavy load, with little correlation to drive failure.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/figure3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;em&gt;Peer evaluation&lt;/em&gt; compared the performance of drives on the same machine against one another - theoretically drives attached to the same machine should receive somewhat similar workloads if used by the same customer, so repeated deviations of a drive’s performance from its neighbors would flag the drive for further inspection. The main downside to this approach was a reliance on fine-tuning for proper detection - the duration and frequency of deviations differed by clusters and workloads, requiring significant engineering work for accurate detection of fail slow events.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/figure4.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The last attempted approach described by the authors was one based on previous research from &lt;a href=&quot;https://www.usenix.org/system/files/atc19-panda_0.pdf&quot;&gt;IASO: A Fail-Slow Detection and Mitigation Framework for Distributed Storage Services&lt;/a&gt;. This &lt;em&gt;IASO-based model&lt;/em&gt; relies on timeouts - for example, counting the number of timeouts Cassandra has to a specific node, then using this as a proxy for a problematic set of devices. The IASO based approach was not suitable for a number of reasons, including that it targets nodes (rather than specific devices), and relies on knowledge of the workload (which isn’t true of Alibaba’s cloud). The authors still attempted to adapt it to their needs by reusing the output of the peer evaluation approach described above.&lt;/p&gt;
+
+&lt;h3 id=&quot;perseus&quot;&gt;Perseus&lt;/h3&gt;
+
+&lt;p&gt;The final approach that the authors implemented was given the code-name &lt;em&gt;Perseus&lt;/em&gt;. It relies on analysis of the distribution of latency vs throughput for a node - using metrics gathered by Alibaba daemons, the authors determined that latency vs throughput could vary within a cluster and within DB nodes (depending on the specific workload). However, within a specific node there was a closer relationship between latency and throughput, allowing analysis of whether the performance of a specific drive attached to a node deviates from its neighbors.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/figure5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Using the data on latency vs throughput for a node, Perseus follows a four step process: &lt;em&gt;performing outlier detection on the raw data&lt;/em&gt;, &lt;em&gt;building a regression model&lt;/em&gt;, &lt;em&gt;identifying fail slow events&lt;/em&gt;, and &lt;em&gt;evaluating the risk of any detected events&lt;/em&gt;.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/figure7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;In the first step, Perseus makes use of two algorithms (DBScan and Principal Component Analysis) for identifying outlier data points.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/figure8.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Next, the system excludes outliers and &lt;em&gt;builds a regression model&lt;/em&gt;, producing a curve  that fits remaining data points.&lt;/p&gt;
+
+&lt;p&gt;Perseus then runs this regression model over the time series for every drive in the node - for every drive, a given throughput should produce a given latency. Then the system measures the difference between the drive’s actual and expected latency for a given throughput using the &lt;em&gt;slowdown ratio&lt;/em&gt; (upper bound of expected latency divided by actual drive latency).&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/figure9.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, the system scans the &lt;em&gt;slowdown ratio&lt;/em&gt; timeseries for every drive, finding and categorizing slow down events based on their duration and severity (represented by a drive’s difference from expected performance). Drives with repeated, severe slowdowns are flagged for further investigation by engineers onsite.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/table3.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;h2 id=&quot;how-is-the-research-evaluated&quot;&gt;How is the research evaluated?&lt;/h2&gt;
+
+&lt;p&gt;To evalute the research, the authors compare the precision, recall, and Matthews Correlation Coefficient (MCC) of different approaches - “the precision indicates the percentage of drives identified by a method is indeed a fail-slow one. The recall is the percentage of real fail-slow drives identified by a method.” The authors use MCC because, “it evaluates binary classification models more fairly on imbalanced datasets.” Perseus outperforms each of the other approaches on these three metrics.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/table5.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;The paper also evaluates the different components of Perseus’ design. For example, measuring the impact of outlier removal, the combination of Principal Component Analysis with DBScan, and the thresholds used for what is considered as the upper bound of expected latency for a given throughput (a factor in computing the &lt;em&gt;slowdown ratio&lt;/em&gt;). The data from the paper supports their decision making.&lt;/p&gt;
+
+&lt;figure&gt;&lt;img class=&quot;maincolumn-img&quot; src=&quot;/assets/perseus/table7.png&quot;&gt;&lt;figcaption class=&quot;maincolumn-figure&quot;&gt;&lt;/figcaption&gt;&lt;/figure&gt;
+
+&lt;p&gt;Lastly, the paper notes the removal of fail-slow drives is signfiicant on tail latency:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The most direct benefit of deploying PERSEUS is reducing tail latency. By isolating the fail-slow, node-level 95th, 99th and 99.99th write latencies are reduced by 30.67% (±10.96%), 46.39% (±14.84%), and 48.05% (±15.53%), respectively.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;root-cause-analysis&quot;&gt;Root Cause Analysis&lt;/h3&gt;
+
+&lt;p&gt;The paper wraps up by diving into several root-causes of fail slow instances in Alibaba production clusters. Software problems caused a majority of the failures.&lt;/p&gt;
+
+&lt;p&gt;One example root cause happened because an operating system bug introduced thread contention - each drive received a thread from the operating system to manage IO, but a software bug would cause multiple drives to share the same thread, impacting performance.&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;An interesting facet of the paper was quantifying the impact to tail latency from few &lt;em&gt;fail-slow&lt;/em&gt; events in a single class of hardware (the paper uses a test dataset of 315 instances). I also appreciated the research identifying potential shortcomings of the approach. For example, Perseus makes the assumption that single (or few) drives on a node will fail-slow at the same time. If all drives attached to a machine fail-slow (which is possible), the system would likely not detect the problem.&lt;/p&gt;
+
+&lt;p&gt;For cloud providers with limited instrumentation of customer workloads, the approach seems quite promising, especially with a potential expansion to other &lt;em&gt;fail-slow&lt;/em&gt; cases like memory and networking. At the same time, growing adoption of commoditized infrastructure might mean that a Perseus-like approach is applied to only low-level infrastructure.&lt;/p&gt;</content>
+      
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Micah</name>
+        
+        
+      </author>
+
+      
+        
+      
+
+      
+
+      
+        <summary type="html">Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems</summary>
+      
+
+      
+      
+    </entry>
+    
+  
 </feed>

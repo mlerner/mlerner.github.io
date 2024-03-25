@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>XFaaS: Hyperscale and Low Cost Serverless Functions at Meta</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>XFaaS: Hyperscale and Low Cost Serverless Functions at Meta</h1>
+  
+  <h4>Published January 23, 2024</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-23-xfaas-hyperscale-and-low-cost-serverless-functions-at-meta.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=39200239'> Hacker News</a></p>   <p><em>This is one of several papers I’ll be reading from 2023’s Symposium on Operating Systems Principles (SOSP). If you’d like to receive regular updates as soon as they’re published, check out my <a href="https://newsletter.micahlerner.com/">newsletter</a> or follow me on the site formerly known as <a href="https://twitter.com/micahlerner">Twitter</a>. Enjoy!</em></p>
+
+<p><a href="https://www.micahlerner.com/assets/papers/xfaas.pdf">“XFaaS: Hyperscale and Low Cost Serverless Functions at Meta”</a></p>
+
+<h2 id="background">Background</h2>
+
+<p>Function-as-a-Service systems (a.k.a. FaaS) allow engineers to run code without setting aside servers to a specific function. Instead, users of FaaS systems run their code on generalized infrastructure (like <a href="https://aws.amazon.com/lambda/">AWS Lambda</a>, <a href="https://azure.microsoft.com/en-us/products/functions">Azure Functions</a>, and <a href="https://cloud.google.com/functions">GCP’s Cloud Functions</a>), and only pay for the time that they use.</p>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+<p>This paper describes Meta’s internal system for serverless, called XFaaS, which runs “trillions of function calls per day on more than 100,000 servers”.</p>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Besides characterization of this unique at-scale serverless system, the paper dives deeper on several challenges that the authors addressed before reaching the current state of the infrastructure:</p>
+
+<ul>
+  <li>Handling load spikes from Meta-internal systems scheduling large numbers of function executions.</li>
+  <li>Ensuring fast function startup and execution, which can impact the developer experience and decrease resource utilization.</li>
+  <li>Global load balancing across Meta’s distributed private cloud, avoiding datacenter overload.</li>
+  <li>Ensuring high-utilization of resources to limit cost increases from running the system.</li>
+  <li>Preventing overload of downstream services, as functions often access or update data via RPC requests when performing computation.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<h3 id="architecture">Architecture</h3>
+
+<p>The multi-region infrastructure of XFaaS contains five main components: <em>Submitter</em>, <em>load balancers</em>, <em>DurableQ</em>, <em>Scheduler</em>, and <em>Worker Pool</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Clients of the system schedule function execution by communicating with the <em>Submitter</em>. Functions can take one of three types:</p>
+
+<blockquote>
+  <p>(1) queue-triggered functions, which are submitted via a queue service; (2) event-triggered functions, which are activated by data-change events in our data warehouse and data-stream systems; and (3) timer-triggered functions, which automatically fire based on a pre-set timing.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/table1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>submitter</em> is an interesting design choice because it serves as an entry point to downstream parts of the system. Before the pattern was introduced, clients interfaced with downstream components of the system directly, allowing badly behaved services to overload XFaaS - now, clients receive default quota, and the system throttles those that exceed this quota (although there is a process for negotiating higher quota as needed).</p>
+
+<p>The next stage in the request flow is forwarding the initial function execution request to a load balancer (<em>Queue Load Balancers (QueueLB)</em>) sitting in front of durable storage (called <em>DurableQ</em>) that contains metadata about the function. The QueueLB is one usage of XFaaS’ usage of load balancers, and ensures effective utilization of distributed system resources while preventing overload.</p>
+
+<p>Once the information about a function is stored in a <em>DurableQ</em>, a <em>scheduler</em> will eventually attempt to run it - given that there are many clients of XFaaS, the scheduler, “determine(s) the order of function calls based on their criticality, execution deadline, and capacity quota”. This ordering is represented with in-memory datastructures called the <em>FuncBuffer</em> and the <em>RunQ</em> - “the inputs to the scheduler are multiple FuncBuffers (function buffers), one for each function, and the output is a single ordered RunQ (run queue) of function calls that will be dispatched for execution.”</p>
+
+<p>To assist with load-balancing computation, a scheduler can also choose to run functions from a different region if there aren’t enough functions to run in the local-region - this decision is based on a “traffic matrix” that XFaaS computes to represent how much load a region should externally source (e.g. Region A should source functions from Regions B, C, and D because they’re under relatively higher load).</p>
+
+<p>Once the scheduler determines that there is sufficient capacity to run more functions, it assigns the execution to a <em>WorkerPool</em> using a load-balancer approach similar to the <em>QueueLB</em> mentioned earlier.</p>
+
+<p>Given the large numbers of different functions in the system, one challenge with reaching high worker utilization is reducing the memory and CPU resources that workers spend on loading function data and code. XFaaS addresses this constraint by implementing <em>Locality Groups</em> that limit a function’s execution to a subset of the larger pool.</p>
+
+<h3 id="performance-optimizations">Performance Optimizations</h3>
+
+<p>The paper mentions two other optimizations to increase worker utilization: <em>time-shifted computing</em> and <em>cooperative JIT compilation</em>.</p>
+
+<p><em>Time-shifted computing</em> introduces flexibility to when a function executes - for example, rather than specififying “this function must execute immediately”, XFaaS can delay the computation to a time when other functions aren’t executing, smoothing resource utilization. Importantly, users of the system are incentivized to take advantage of this flexibility as functions have two different quotas, <em>reserved</em> and <em>opportunistic</em> (mapping to more or less rigid timing where <em>opportunistic</em> quota is internally treated as “cheaper”).</p>
+
+<p>Additionally, the code in Meta’s infrastructure takes advantage of <a href="https://blog.acolyer.org/2018/08/08/hhvm-jit-a-profile-guided-region-based-compiler-for-php-and-hack/">profiling-guided optimization</a>, a technique that can dramatically improve performance. XFaaS ensures that these performance optimizations computed on one worker benefit other workers in the fleet by shipping the optimized code across the network.</p>
+
+<h3 id="preventing-overload">Preventing Overload</h3>
+
+<p>It is critical that accessing downstream services don’t cause or worsen overload - an idea very similar to what was discussed in a previous paper review on <a href="https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html">Metastable Failures in the Wild</a>. XFaaS implements this by borrowing the idea of <a href="https://medium.com/@jayphelps/backpressure-explained-the-flow-of-data-through-software-2350b3e77ce7"><em>backpressure</em></a> from TCP (specifically <a href="https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease">Additive increase/multiplicative decrease</a>) and other distributed systems.</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper evaluates the system’s ability to achieve high utilization, efficiently execute functions while taking advantage of performance improvements, and prevent overload of downstream services.</p>
+
+<p>To evaluate XFaaS’s ability to maintain high utilization and smooth load, the authors compare the rate of incoming requests to the load of the system - “the peak-to-trough ratio of CPU utilization is only 1.4x, which is a significant improvement over the peak-to-trough ratio of 4.3x depicted…for the <em>Received</em> curve.”</p>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>One reason for consistently high load is the incentive to allow flexibility in the execution of their functions, highlighted by usage of the two quota-types described by the paper.</p>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure11.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To determine the effectiveness of assigning a subset of functions to a worker using <em>Locality Groups</em>, the authors share time series data on the number of functions executed by workers and memory utiliation across the fleet, finding that both stay relatively constant.</p>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Furthermore, XFaaS’ performance optimizations allow it to maintain a relatively high throughput, visible from contrasting requests per-second with and without profile-guided optimizations in place.</p>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure12.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, the paper presents how XFaaS execution behaves in response to issues with downstream systems (specifically, not exacerabating outages). For example, when there were outage in Meta’s graph database (TAO, the subject of a previous paper review), or infrastructure related to it, XFaaS reduced the execution of functions accessing these services.</p>
+
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure13.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/xfaas/figure14.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The XFaaS paper is unique in characterizing a serverless system running at immmense scale. While previous research has touched on this topic, none have provided specific numbers of utilization, likely omitted due to privacy or business concerns (although <a href="https://www.usenix.org/conference/atc20/presentation/shahrad">Serverless in the Wild</a> comes close).</p>
+
+<p>At the same time, the data on XFaaS comes with caveats, as the system is able to make design choices under a different set of constraints than serverless platforms from public cloud providers. For example, public clouds must guarantee isolation between customers and prioritize security considerations. While XFaaS doesn’t wholly neglect these concerns (e.g. some jobs must run on separate machines and there are some levels of isolation between jobs with these considerations), it otherwise relaxes this constraint. Furthermore, XFaaS explicitly does not handle functions on the path of a user-interaction (even though the paper discusses executing latency-sensitive functions) - this is in contrast with services like Lambda which use Serverless functions to respond to HTTP requests.</p>
+
+<p>While XFaaS is a fascinating system, the paper left me with several questions including whether many of the functions the system executes would actually be better served with a batch job. Furthermore, the authors allude to XFaaS utilization being significantly higher based on “anecdotal knowledge” - while this might be true, it would be useful to know the source of this data to judge whether any differences are in fact meaningful.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-23-xfaas-hyperscale-and-low-cost-serverless-functions-at-meta.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

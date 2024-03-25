@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems</h1>
+  
+  <h4>Published November 09, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-11-09-the-demikernel-datapath-os-architecture-for-microsecond-scale-datacenter-systems.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=29237007'> Hacker News</a></p>   <p><em>The papers over the next few weeks will be from <a href="https://sosp2021.mpi-sws.org/">SOSP</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="https://dl.acm.org/doi/10.1145/3477132.3483569">The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems</a></p>
+
+<p>This week’s paper is <em>The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems</em>.  Demikernel<label for="pwl" class="margin-toggle sidenote-number"></label><input type="checkbox" id="pwl" class="margin-toggle" /><span class="sidenote">Irene Zhang, the paper’s first author, also gave a talk at <a href="https://www.youtube.com/watch?v=4LFL0_12cK4">Papers We Love</a>! </span> is an operating systems architecture designed for an age in which IO devices and network speeds are improving faster than CPUs are<label for="killerms" class="margin-toggle sidenote-number"></label><input type="checkbox" id="killerms" class="margin-toggle" /><span class="sidenote">The “Attack of the Killer Microseconds” describes this problem area, and is available on the <a href="https://cacm.acm.org/magazines/2017/4/215032-attack-of-the-killer-microseconds/fulltext">ACM website</a>. </span>. The code is <a href="https://github.com/demikernel/demikernel">open source</a> and predominantly implemented in Rust.</p>
+
+<p>One approach to addressing the growing disconnect between IO and CPU speeds is a technique called <em>kernel-bypass</em>. Kernel-bypass allows more direct access to devices by moving functionality typically inside of an OS kernel to user space<label for="userspace" class="margin-toggle sidenote-number"></label><input type="checkbox" id="userspace" class="margin-toggle" /><span class="sidenote">Helpful reference on the difference between kernel space and user space is <a href="https://unix.stackexchange.com/questions/87625/what-is-difference-between-user-space-and-kernel-space">here</a>. </span> or offloading features to the device itself. Executing operating system functionality inside user space provides several latency-related advantages, like reducing costly userspace to kernel space transitions<label for="overhead" class="margin-toggle sidenote-number"></label><input type="checkbox" id="overhead" class="margin-toggle" /><span class="sidenote">The <a href="https://blog.cloudflare.com/kernel-bypass/">Cloudflare blog</a> provides more details on this topic. </span> and allowing applications to limit memory copies during IO (known as “zero copy IO” - more details later in this paper review).</p>
+
+<p>While kernel bypass systems are becoming ubiquitous and can enable dramatic speedups for applications (in particular, those in cloud environments), there are challenges to adoption - engineering resources must be used to port applications to this new architecture and new device APIs or versions can incur ongoing maintenance costs.</p>
+
+<p>Demikernel aims to solve the tension between the utility of kernel-bypass and the engineering challenges that limit the technique’s adoption - one key to its approach is providing abstractions that applications migrating to kernel-bypass can use.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The Demikernel paper makes three contributions: a new operating system API for developing kernel-bypass applications, the design for an operating system architecture that uses the new API, and several implementations of operating systems that implement the design using the API proposed by the paper.</p>
+
+<h2 id="demikernel-approach">Demikernel approach</h2>
+
+<p>There are three main goals of Demikernel:</p>
+
+<ul>
+  <li>Make it easier for engineers to adopt kernel-bypass technology</li>
+  <li>Allow applications that use Demikernel to run across many different devices and in cloud environments</li>
+  <li>Enable systems to achieve the ultra-low (nanosecond) IO latency required in the “Age of the killer microseconds”</li>
+</ul>
+
+<p>First, Demikernel aims to simplify usage of kernel-bypass technology by building reusable components that can be swapped in (or out) depending on the needs of an application. Before Demikernel, kernel-bypass applications would often re-implement traditional operating system features inside of user space, one example being the network stack. Two new abstractions in Demikernel, <em>PDPIX</em> and <em>libOS</em>, are targeted at encapsulating these common user space features in easy to use APIs, limiting the amount of time that developers spend reimplementing existing logic.</p>
+
+<p>Next, Demikernel aims to allow kernel-bypass applications to run across many different devices and environments (including cloud providers). The system focuses on IO, but Demikernel still runs alongside a host kernel performing other OS functions outside of the datapath.</p>
+
+<p>Lastly, achieving ultra-low IO latency in the “Age of the Killer Microseconds” requires more advanced techniques that pose their own complexities. One example of these advanced technique is zero-copy IO<label for="zcio" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zcio" class="margin-toggle" /><span class="sidenote">For more on zero-copy IO, I had the chance to dig into the topic in a previous paper review of <a href="/2021/07/07/breakfast-of-champions-towards-zero-copy-serialization-with-nic-scatter-gather.html">Breakfast of Champions: Towards Zero-Copy Serialization with NIC Scatter-Gather</a>! </span>, which ensures that information on the data path is not copied (as unnecessary copies incur latency). Implementing zero-copy IO is complicated by different devices implementing different abstractions around the memory used in zero-copy IO<label for="zciodiff" class="margin-toggle sidenote-number"></label><input type="checkbox" id="zciodiff" class="margin-toggle" /><span class="sidenote">For example, some kernel-bypass devices (like RDMA) require ‘registration’ of memory used for zero-copy IO through specific API calls - more on this topic in a later section. </span>.</p>
+
+<p>To achieve these design goals, Demikernel implements two concepts: a <em>portable datapath interface (PDPIX)</em> and a set of <em>library operating systems (libOSes)</em> built with this API.</p>
+
+<h2 id="portable-datapath-api-pdpix">Portable Datapath API (PDPIX)</h2>
+
+<p>The <em>portable datapath interface (PDPIX)</em> aims to provide a similar set of functionality to POSIX system calls, but reworks the POSIX systems calls to satisfy the needs of low-latency IO.</p>
+
+<p>In contrast to the POSIX API:</p>
+
+<ul>
+  <li>PDPIX replaces the file descriptor<label for="fd" class="margin-toggle sidenote-number"></label><input type="checkbox" id="fd" class="margin-toggle" /><span class="sidenote"><a href="https://stackoverflow.com/questions/5256599/what-are-file-descriptors-explained-in-simple-terms">What are file descriptors?</a> </span> abstraction used in POSIX with IO queues - applications <code class="language-plaintext highlighter-rouge">create</code> queues, then <code class="language-plaintext highlighter-rouge">push</code> data to or <code class="language-plaintext highlighter-rouge">pop</code> data from the queue, finally calling <code class="language-plaintext highlighter-rouge">close</code> to destroy the queue.</li>
+  <li>PDPIX implements semantics that allow zero-copy IO (as zero-copy is crucial for low-latency IO). In one example, API calls that push data to a given queue provide access to arrays in a shared heap. The data in the shared heap can be read by the device in the kernel-bypass system immediately, without requiring an unnecessary copy into kernel space.</li>
+  <li>PDPIX explicitly is designed around asynchronous IO operations<label for="epoll" class="margin-toggle sidenote-number"></label><input type="checkbox" id="epoll" class="margin-toggle" /><span class="sidenote">While Linux has <a href="https://linux.die.net/man/4/epoll">epoll</a>, the paper notes two shortcomings: “epoll: (1) wait directly returns the data from the operation so the application can begin processing immediately, and (2) assuming each application worker waits on a separate qtoken, wait wakes only one worker on each I/O completion.
+“ </span>. API calls, like <code class="language-plaintext highlighter-rouge">push</code> and <code class="language-plaintext highlighter-rouge">pop</code>, return a <code class="language-plaintext highlighter-rouge">qtoken</code>. Applications can call <code class="language-plaintext highlighter-rouge">wait</code>  (or <code class="language-plaintext highlighter-rouge">wait_all</code> for a set of qtokens) to block further execution until an operation has completed.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/demikernel/syscalls.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="library-operating-system-libos">Library Operating System (libOS)</h2>
+
+<p>Demikernel implements the idea of library operating systems (each implementation is called a <em>libOS</em>) to abstract an application’s use of a kernel-bypass device - there are multiple types of devices used by kernel-bypass sytems, and using a different type of device involves potentially moving different parts of the operating system stack into user space. Each <em>libOS</em> takes advantage of the <em>PDPIX</em> API discussed in the previous section.</p>
+
+<p>The paper discusses <em>libOS</em> implementatations for several different types of IO devices, but this paper review focuses on two:</p>
+
+<ul>
+  <li><em>Remote Direct Memory Access (RDMA)</em>, which allows computers to directly access the memory of other computers (for example, in a datacenter), without interfering with the processing on the other computer. RDMA is commonly used in data center networks<label for="rdma" class="margin-toggle sidenote-number"></label><input type="checkbox" id="rdma" class="margin-toggle" /><span class="sidenote">See research from <a href="https://dl.acm.org/doi/10.1145/2829988.2787484">Microsoft</a> and <a href="https://dl.acm.org/doi/10.1145/2829988.2787510">Google</a>. Also, <a href="https://blogs.nvidia.com/blog/2020/04/29/what-is-rdma/">this article</a> about RDMA from Nvidia’s blog. </span> -</li>
+  <li><em>Data Plane Development Kit (DPDK)</em>: the goal of DPDK devices is high-performance processing TCP packets in user space, rather than in kernel space (the <a href="https://docs.microsoft.com/en-us/azure/virtual-network/setup-dpdk">Microsoft Azure docs</a> provide additional context).</li>
+</ul>
+
+<p>While RDMA and DPDK are both targeted at networking applications, devices that support the two approaches don’t implement the same capabilities on the device itself - for example, RDMA devices support features like congestion control and reliable delivery of messages<label for="congestion control" class="margin-toggle sidenote-number"></label><input type="checkbox" id="congestion control" class="margin-toggle" /><span class="sidenote">See <a href="https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p523.pdf">Congestion Control for Large-Scale RDMA Deployments</a> </span>, while DPDK devices may not.</p>
+
+<p>Because RDMA and DPDK devices don’t natively support the same functionality on the device, kernel-bypass applications that aim to use these devices are limited to what logic they can run on the device versus in user space. To make this more concrete - if an application wanted to use DPDK instead of RDMA, it would need to implement <em>more</em> functionality in code, placing a greater burden on the application developer.</p>
+
+<figure><img class="maincolumn-img" src="/assets/demikernel/libos.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>There are three main components to the libOS implementations: <em>IO processing</em>, <em>memory management</em>, and a <em>coroutine scheduler</em>.</p>
+
+<p>The <em>libOS</em> implemenations are in Rust and uses <code class="language-plaintext highlighter-rouge">unsafe</code> code<label for="rudra" class="margin-toggle sidenote-number"></label><input type="checkbox" id="rudra" class="margin-toggle" /><span class="sidenote">Related to my <a href="/2021/10/31/rudra-finding-memory-safety-bugs-in-rust-at-the-ecosystem-scale.html">last paper review on Rudra</a>, which aims to analyze <code class="language-plaintext highlighter-rouge">unsafe</code> code for security issues! </span> to call C/C++ libraries for the various devices</p>
+
+<p>Each <em>libOS</em> processes IOs with an “error free fast path” that makes various assumptions<label for="assumptions" class="margin-toggle sidenote-number"></label><input type="checkbox" id="assumptions" class="margin-toggle" /><span class="sidenote">For example “packets arrive in order, send windows are open … which is the common case in the datacenter”. </span> based on the goal of optimizing for conditions in a datacenter<label for="homa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="homa" class="margin-toggle" /><span class="sidenote">It is very interesting to see how diffferent papers implement systems using this assumption - see my <a href="2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html">previous paper review on Homa</a>, a transport protocol that aims to replace TCP/IP in the datacenter. </span> (where kernel-bypass applications are normally deployed). The <em>libOS</em> has a main thread that handles this “fast path” by polling for IOs to operate on<label for="homa2" class="margin-toggle sidenote-number"></label><input type="checkbox" id="homa2" class="margin-toggle" /><span class="sidenote">The paper notes that polling is CPU intensive but ensures that events are processed quickly (a similar type of tradeoff is made by <a href="/2021/08/29/a-linux-kernel-implementation-of-the-homa-transport-protocol.html">Homa</a>). </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/demikernel/dpdk.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To manage memory (and facilitate zero-copy IO), the <em>libOS</em> uses a “uses a device-specific, modified Hoard for memory management.” <a href="https://github.com/emeryberger/Hoard">Hoard</a> is a memory allocator that is much faster than <code class="language-plaintext highlighter-rouge">malloc</code><label for="hoard" class="margin-toggle sidenote-number"></label><input type="checkbox" id="hoard" class="margin-toggle" /><span class="sidenote">An interesting comparison of Hoard with other memory allocators is <a href="http://ithare.com/testing-memory-allocators-ptmalloc2-tcmalloc-hoard-jemalloc-while-trying-to-simulate-real-world-loads/">here</a>. </span>. The original Hoard paper is <a href="https://www.cs.utexas.edu/users/mckinley/papers/asplos-2000.pdf">here</a> and discusses the reasons for Hoard’s performance (although the official documentation that the project has changed significantly since the original implementation). Each memory allocator must be device-specific because devices have different strategies for managing the memory available on the device itself - as an example, RDMA devices use “memory registration” that “takes a memory buffer and prepare it to be used for local and/or remote access.”<label for="rdmamr" class="margin-toggle sidenote-number"></label><input type="checkbox" id="rdmamr" class="margin-toggle" /><span class="sidenote"><a href="https://www.rdmamojo.com/2012/09/07/ibv_reg_mr/#Why_is_a_MR_good_for_anyway">Ref</a> </span>, while DPDK uses a “mempool library” that allocates fixed-sized objects<label for="mempool" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mempool" class="margin-toggle" /><span class="sidenote"><a href="https://doc.dpdk.org/guides/prog_guide/mempool_lib.html">Ref</a> </span>. To ensure that user-after-free<label for="uaf" class="margin-toggle sidenote-number"></label><input type="checkbox" id="uaf" class="margin-toggle" /><span class="sidenote">Use-after-free (abbreviated to UAF) vulnerabilities are <a href="https://cwe.mitre.org/data/definitions/416.html">quite serious</a>! </span> vulnerabilities do not occur, each libOS implements reference counting<label for="refcount" class="margin-toggle sidenote-number"></label><input type="checkbox" id="refcount" class="margin-toggle" /><span class="sidenote"><a href="https://stackoverflow.com/questions/45080117/what-is-reference-counter-and-how-does-it-work">Here</a> is a helpful description of what reference counting is. </span>.</p>
+
+<p>Each <em>libOS</em> uses “Rust’s async/await language features to implement asynchronous I/O processing within coroutines”<label for="coroutines" class="margin-toggle sidenote-number"></label><input type="checkbox" id="coroutines" class="margin-toggle" /><span class="sidenote">The paper notes that Rust async/await and coroutines are in active development. I am far from an expert on Rust, so this <a href="https://github.com/rust-lang/rfcs/pull/2033">RFC</a>, <a href="https://lang-team.rust-lang.org/design_notes/general_coroutines.html">design overview</a>, and <a href="https://www.youtube.com/watch?v=ThjvMReOXYM">episode from Crust of Rust</a> were helpful background. </span>.</p>
+
+<p>Coroutines are run with a <em>coroutine scheduler</em> that runs three coroutine types:</p>
+
+<blockquote>
+  <p>(1) a fast-path I/O processing coroutine for each I/O stack that polls for I/O and performs fast-path I/O processing, (2) several background coroutines for other I/O stack work (e.g., managing TCP send windows), and (3) one application coroutine per blocked qtoken, which runs an application worker to process a single request.</p>
+</blockquote>
+
+<p>The details of the scheduler implementation are fascinating and I highly recommend referencing the paper for more info, as the paper discusses how it achieves the performance needed to meet the nanosecond-level design goal of Demikernel - one interesting trick is <a href="https://github.com/demikernel/catnip/blob/59195aa4db5dd145683acda86bc929fc5741afd0/src/collections/async_slab.rs#L15">using</a> <a href="https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/">Lemire’s algorithm</a>.</p>
+
+<h3 id="library-operating-system-libos-implementations">Library Operating System (libOS) implementations</h3>
+
+<p>The paper describes several library operating system implementations<label for="cat" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cat" class="margin-toggle" /><span class="sidenote">The names of which (Catpaw, Catnap, Catmint, Catnip, and Cattree) indicate that the authors might be cat people 🙂! </span> that implement interfaces used for testing (providing the PDPIX API, but using the POSIX API under the hood), RDMA, DPDK, or the Storage Performance Developer Kit (SPDK)<label for="spdk" class="margin-toggle sidenote-number"></label><input type="checkbox" id="spdk" class="margin-toggle" /><span class="sidenote"><a href="https://www.intel.com/content/www/us/en/developer/articles/tool/introduction-to-the-storage-performance-development-kit-spdk.html">SPDK</a> is a kernel-bypass framework for storage devices. </span>. Each <em>libOS</em> is paired with a host operating system (Windows or Linux), and uses the host operating system’s kernel-bypass interfaces. The paper does an amazing job of giving the implementation details of each libOS, for more detail please see the paper!</p>
+
+<h2 id="evaluation">Evaluation</h2>
+
+<p>The paper evaluates Demikernel on how well it achieves the three design goals described in an earlier section of this paper review.</p>
+
+<p>To evaluate the ease of use and complexity for applications that adopt Demikernel, the paper compares lines of code for a number of different applications that use the POSIX or Demikernel APIs. The authors also note the time it takes to port existing applications to Demikernel, noting that developers commented on Demikernel being the easiest interface to use.</p>
+
+<figure><img class="maincolumn-img" src="/assets/demikernel/loc.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper evaluates whether Demikernel achieves nanosecond scale IO processing for storage and networking applications across a number of platforms.</p>
+
+<figure><img class="maincolumn-img" src="/assets/demikernel/echo-linux.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/demikernel/echo-win.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The most recent paper on Demikernel is the culmination of a large body of work from the authors focused on high-performacnce IO. I’m very excited to follow how Demikernel (or similar systems built on top of the ideas) are adopted across industry - in particular, I am looking forward to hearing more about the developer experience of porting applications to the paradigm that the paper outlines.</p>
+
+<p>Thanks for reading - as always, feel free to reach out with feedback on <a href="https://twitter.com/micahlerner">Twitter</a>!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-11-09-the-demikernel-datapath-os-architecture-for-microsecond-scale-datacenter-systems.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

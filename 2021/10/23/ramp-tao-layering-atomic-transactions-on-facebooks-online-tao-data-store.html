@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store</h1>
+  
+  <h4>Published October 23, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-10-23-ramp-tao-layering-atomic-transactions-on-facebooks-online-tao-data-store.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=29610334'> Hacker News</a></p>   <p><em>The papers over the next few weeks will be from <a href="https://sosp2021.mpi-sws.org/">SOSP</a>, which is taking place October 26-29th, 2021. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="/assets/papers/ramp-tao.pdf">RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store</a></p>
+
+<p>This is the second in a two part series on TAO, Facebook’s eventually-consistent<label for="ec" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ec" class="margin-toggle" /><span class="sidenote">I like <a href="https://www.allthingsdistributed.com/2008/12/eventually_consistent.html">this description</a> of what eventual consistency means from Werner Vogels, Amazon’s CTO. </span> graph datastore. The <a href="/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html">first part</a> provides background on the system. This part (the second in the series) focuses on TAO-related research published at this year’s VLDB - <a href="https://www.vldb.org/pvldb/vol14/p3014-cheng.pdf">RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store</a>.</p>
+
+<p>The paper on RAMP-TAO describes the design and implementation of transactional semantics on top of the existing large scale distributed system, which “serves over ten billion reads and tens of millions of writes per second on a changing data set of many petabytes”. This work is motivated by the difficulties that a lack of transactions poses for both internal application developers and external users.</p>
+
+<p>Adding transactional semantics to the existing system was made more difficult by other external engineering requirements - applications should be able gradually migrate to the new functionality and any new approach should have limited impact on the performance of existing applications. In building their solution, the authors adapt an existing protocol, called <em>RAMP</em><label for="ramp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ramp" class="margin-toggle" /><span class="sidenote">While I give some background on RAMP further on in this paper review, <a href="http://www.bailis.org/blog/scalable-atomic-visibility-with-ramp-transactions/">Peter Bailis</a> (an author on the RAMP and RAMP-TAO papers) and <a href="https://blog.acolyer.org/2015/03/27/scalable-atomic-visibility-with-ramp-transactions/">The Morning Paper</a> both have great overviews. </span>, to TAO’s unique needs.</p>
+
+<h2 id="tao-background">TAO Background</h2>
+
+<p>This section provides a brief background on TAO - feel free to skip to the next section if you have either read <a href="/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html">last week’s paper review</a>, or the original TAO paper is fresh in your mind. TAO is an eventually consistent datastore that represents Facebook’s graph data using two database models - associations (edges) and objects (nodes).</p>
+
+<p>To respond to the read-heavy demands placed on the system, the infrastructure is divided into two layers - the storage layer (MySQL databases which store the backing data) and the cache layer (which stores query results). The data in the storage layer is divided into many <em>shards</em>, and there are many copies of any given shard. Shards are kept in sync with leader/follower replication.</p>
+
+<p>Reads are first sent to the cache layer, which aims to serve as many queries as possible via cache hits. On a cache miss, the cache is updated with data from the storage layer. Writes are forwarded to the leader for a shard, and eventually replicated to followers - as seen in <a href="https://research.fb.com/publications/wormhole-reliable-pub-sub-to-support-geo-replicated-internet-services/">other papers</a>, Facebook invests significant engineering effort into the technology that handles this replication with low latency and high availability.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The RAMP-TAO paper makes four main contributions. It explains the need for transactional semantics in TAO, quantifies the problem’s impact, provides an implementation that fits the unique engineering constraints (which are covered in future sections), and demonstrates the feasability of the implementation with benchmarks.</p>
+
+<h2 id="motivation">Motivation</h2>
+
+<p>The paper begins by discussing why transactional semantics matter in TAO, then provides examples of how application developers have worked around their omission from the original design.</p>
+
+<h3 id="example-problems">Example problems</h3>
+
+<p>The lack of transactional semantics in TAO allows two types of problems to crop up: <em>partially successful writes</em> and <em>fractured reads</em>.</p>
+
+<p>If writes are not batched together in transactions, it is possible for some of them to succeed and others to fail (<em>partially successful writes</em>), resulting in an incorrect state of the system (as evidenced by the figure below).</p>
+
+<figure><img class="maincolumn-img" src="/assets/ramp-tao/partially-successful-writes.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>A <em>fractured read</em> is “a read result that captures partial transactional updates”, causing an inconsistent state to be returned to an application. <em>Fractured reads</em> happen because of a combination of TAO’s eventual consistency and lack of transactional semantics - writes to different shards are replicated independently. Eventually all of the writes will be reflected in a copy of the dataset receiving these updates. In the meantime, it is possible for only some of the writes to be reflected in the dataset.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ramp-tao/fractured-read.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To address these two problems, the authors aruge that TAO must fulfill two guarantees:</p>
+
+<ul>
+  <li><em>Failure atomicity</em> addresses <em>partially successful writes</em> by ensuring “either all or none of the items in a write transaction are persisted.”</li>
+  <li><em>Atomic visibility</em> addresses <em>fractured reads</em> by ensuring “a property that guarantees that either all or none of any transaction’s updates are visible to other transactions.”<label for="stale" class="margin-toggle sidenote-number"></label><input type="checkbox" id="stale" class="margin-toggle" /><span class="sidenote">As we will see later on in the paper review, it is preferable that TAO serves stale (rather than incorrect) data. </span></li>
+</ul>
+
+<h3 id="existing-failure-atomicity-solutions-in-tao">Existing failure atomicity solutions in TAO</h3>
+
+<p>The paper notes three existing approaches used to address <em>failure atomicity</em> for applications built on TAO:  <em>single-shard MultiWrites</em>, <em>cross-shard transactions</em>, and <em>background repair</em>.</p>
+
+<p><em>Single-shard MultiWrites</em> allows an application to perform many writes to the same shard (each shard of the data in TAO is stored as an individual database), meaning that this approach is able to use “MySQL transactions and their ACID properties” to ensure that all writes succeed or none of them do. There are several downsides including (but not limited to) hotspotting<label for="hotspotting" class="margin-toggle sidenote-number"></label><input type="checkbox" id="hotspotting" class="margin-toggle" /><span class="sidenote">If an application uses this approach, it will send many writes to a single machine/shard, which also could cause the shard to be larger than it would be otherwise. </span> and the requirement that applications structure their schema/code to leverage the approach<label for="migrating" class="margin-toggle sidenote-number"></label><input type="checkbox" id="migrating" class="margin-toggle" /><span class="sidenote">If a paper isn’t architected with this approach in mind, the paper notes that migrating an already-deployed application to use <em>single-shard MultiWrites</em> at scale is difficult. </span>.</p>
+
+<p><em>Cross-shard transactions</em> allow writes to be executed across multiple shards using a two-phase commit protocol (a.k.a 2PC)<label for="2pc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="2pc" class="margin-toggle" /><span class="sidenote">For more on 2PC, I highly recommend <a href="https://www.the-paper-trail.org/post/2008-11-27-consensus-protocols-two-phase-commit/">this article</a> from <a href="https://twitter.com/henryr">Henry Robinson</a>. </span> to roll back or restart transactions as needed. While this approach ensures that writes are <em>failure atomic</em> (all writes succeed or none of them do), it does not provide <em>atomic visibility</em> (“all of a transactions updates are visible or none of them are”), as the writes from a stalled transaction will be partially visible.</p>
+
+<p>The last approach is <em>background repair</em>. Certain entities in the database, like edges for which there will always be a complement (called bidirectional associations), can be automatically checked to ensure that both edges exist. Unfortunately, this technique is limited to a subset of all of the entities stored in TAO, as this property is not universal.</p>
+
+<h2 id="measuring-failure">Measuring failure</h2>
+
+<p>To determine the engineering requirements facing an implementation of transactional semantics in TAO, the paper evaluates how frequently and for how long <em>fractured reads</em> persist. The paper doesn’t dig as much into quantifying write-failures - while <em>failure atomicity</em> is a property that the system should have, <em>cross-shard transactions</em> roughly fill the requirement. Even so, <em>cross-shard transactions</em> are still susceptible to <em>atomic visibility</em> violations where some (but not all) of the writes from an in-progress transaction are visible to applications using TAO.</p>
+
+<p>The results from the measurement study indicate that 1 in 1,500 transactions violate <em>atomic visibility</em>, noting that:</p>
+
+<blockquote>
+  <p>45% of these fractured reads last for only a short period of time (i.e., naïvely retrying within a few seconds resolves these anomalies). After a closer look, these short-lasting anomalies occur when read and write transactions begin within 500 ms of each other. For these atomic visibility violations, their corresponding write transactions were all successful.</p>
+</blockquote>
+
+<p>For the rest of the violations (those that are not fixed within 500ms):</p>
+
+<blockquote>
+  <p>these atomic visibility violations could not be fixed within a short retry window and last up to 13 seconds. For this set of anomalies, their overlapping write transactions needed to undergo the 2PC failure recovery process, during which read anomalies persisted.</p>
+</blockquote>
+
+<p>The paper’s authors argue that atomic visibility violations pose difficulties for engineers building applications with TAO, as “any decrease in write availability (e.g., from service deployment, data center maintenance, to outages) increases the probability that write transactions will stall, leading in turn to more read anomalies”.</p>
+
+<h2 id="design">Design</h2>
+
+<p>Following the measurement study, the paper pivots to discussing the design of a read API that provides <em>atomic visibility</em> for TAO - there are three components to the design:</p>
+
+<ul>
+  <li>Choosing an isolation model<label for="isolation model" class="margin-toggle sidenote-number"></label><input type="checkbox" id="isolation model" class="margin-toggle" /><span class="sidenote">Isolation models define how transactions observe the impact of other running/completed transactions - related blog post from FaunaDB <a href="https://fauna.com/blog/introduction-to-transaction-isolation-levels">here</a>. This page from <a href="https://jepsen.io/consistency">Jepsen</a> discusses the different, but related topic of distributed system consistency models. </span></li>
+  <li>Constraints posed by the existing TAO infrastructure.</li>
+  <li>The protocol that clients will use to eliminate <em>atomic visibility violations</em>.</li>
+</ul>
+
+<h3 id="isolation-model">Isolation model</h3>
+
+<p>The paper considers whether a Snapshot Isolation, Read Atomic isolation, or Read Uncommitted isolation model best solve the requirement of eliminating <em>atomic visibility</em> violations (while maintaining the performance of the existing read-heavy workloads served by TAO). The authors choose Read Atomic isolation as it does not introduce unncessary features at the cost of performance as Snapshot Isolation does<label for="snapshot" class="margin-toggle sidenote-number"></label><input type="checkbox" id="snapshot" class="margin-toggle" /><span class="sidenote">Snapshot Isolation provides point-in-time snapshots of a database useful for analytical queries, which TAO is not focused on supporting. </span>, nor does it allow fractured reads as Read Committed does<label for="rc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="rc" class="margin-toggle" /><span class="sidenote">Read Committed “prevents access to uncommitted or intermediate versions of data”, but it is possible for TAO transactions to be committed, but not replicated. </span>.</p>
+
+<h3 id="design-constraints">Design constraints</h3>
+
+<p>To implement Read Atomic isolation, the authors turn to the RAMP protocol<label for="ramp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ramp" class="margin-toggle" /><span class="sidenote">While I give some background on RAMP, <a href="http://www.bailis.org/blog/scalable-atomic-visibility-with-ramp-transactions/">Peter Bailis</a> (an author on the RAMP and RAMP-TAO papers) and <a href="https://blog.acolyer.org/2015/03/27/scalable-atomic-visibility-with-ramp-transactions/">The Morning Paper</a> both have great overviews. </span> (short for <em>Read Atomic Multiple Partition</em>) - several key ideas in RAMP fit well within the paradigm that TAO uses (where there are multiple partitions of the data) and can achieve <em>Read Atomic</em> isolation.</p>
+
+<p>The RAMP read protocol works in two phases:</p>
+
+<blockquote>
+  <p>In the first round, RAMP sends out read requests for all data items and detects nonatomic reads<label for="nonatomic" class="margin-toggle sidenote-number"></label><input type="checkbox" id="nonatomic" class="margin-toggle" /><span class="sidenote">Which could happen if only part of another transaction’s writes were visible. </span>. In the second round, the algorithm explicitly repairs these reads by fetching any missing versions. RAMP writers use a modified two-phase commit protocol that requires metadata to be attached to each update, similar to the mechanism used by cross-shard write transactions on TAO.</p>
+</blockquote>
+
+<p>Unfortunately, the original RAMP implementation can not be directly implemented in TAO, as the original paper operates with different assumptions:</p>
+
+<ul>
+  <li>RAMP assumes that all transactions in the system are using the protocol, but it is infeasible to have all TAO clients support the new functionality on day one. In the meantime, unupgraded clients shouldn’t incur the protocol’s overhead.</li>
+  <li>RAMP maintains metadata for each item, but doesn’t consider replicating that data to increase availability<label for="metadata" class="margin-toggle sidenote-number"></label><input type="checkbox" id="metadata" class="margin-toggle" /><span class="sidenote">There are many replicas of each shard in TAO, so the metadata has to be copied for every shard. </span>, like TAO will need to.</li>
+  <li>RAMP assumes multiple versions of data is available, although this is not true - TAO maintains a single version for each row.</li>
+</ul>
+
+<p>While the solutions to the first two challenges are non-trivial, they are relatively more straightforward - the first is addressed by gradually rolling out the functionality to applications, while the problem of metadata size is solved by applying specific structuring to MySQL tables. The next section of this paper review focuses on how TAO addresses the third challenge of “multiversioning”.</p>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>RAMP-TAO adapts the existing RAMP<label for="ramp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ramp" class="margin-toggle" /><span class="sidenote">Specifically, the paper adapts one of three RAMP variants, RAMP-FAST. Each RAMP variant TODO </span> protocol to fit the specifics of Facebook’s use case. This section describes a critical piece of Facebook infrastructure (called the <em>RefillLibrary</em>) used in TAO’s implementation, as well as how RAMP-TAO works.</p>
+
+<h3 id="the-refilllibrary">The RefillLibrary</h3>
+
+<p>First, RAMP-TAO uses an existing piece of Facebook infrastructure called the <em>RefillLibrary</em> to add support for “limited multiversioning” - “the RefillLibrary is a metadata buffer recording recent writes within TAO, and it stores approximately 3 minutes of writes from all regions”. By including additional metadata about whether items in the buffer were impacted by write transactions, RAMP-TAO can ensure that the system doesn’t violate <em>atomic visibility</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ramp-tao/refill.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>When a read happens, TAO first checks whether the items being read are in the <em>RefillLibrary</em>. If any items are in the <em>RefillLibrary</em> and are marked as being written in a transaction, TAO returns metadata about the write to the caller. The caller in turn uses this metadata to perform logic that ensure <em>atomic visibility</em> (described in the next section). If there is not a corresponding element in the <em>RefillLibrary</em> for an item, “there are two possibilities: either it has been evicted (aged out) or it was updated too recently and has not been replicated to the local cache.”</p>
+
+<p>To determine which situation applies, TAO compares the timestamp of the oldest item in the <em>RefillLibrary</em> to the timestamps of the items being read.</p>
+
+<p>If the timestamps for all read items are older than the oldest timestamp in the <em>RefillLibrary</em>, it is safe to assume replication is complete - writes are evicted after 3 minutes, and based on the measurement study there are few replication issues that last that long. On the other hand, RAMP-TAO needs to perform additional work if timestamps from read items are greater than the oldest timestamp in the <em>RefillLibrary</em> (in other words, still within the 3 minute range), and there are no entries in the <em>RefillLibrary</em> for those items. This situation occurs if a write has not been replicated to the given location. To resolve this case, TAO performs a database request, and returns the most recent version stored in the database to the client (who may use the data to ensure <em>atomic visibility</em>, as discussed in the next section).</p>
+
+<h3 id="the-ramp-tao-protocol">The RAMP-TAO Protocol</h3>
+
+<p>A primary goal of the RAMP-TAO protocol is ensuring <em>atomic visibility</em> (“a property that guarantees that either all or none of any transaction’s updates are visible to other transactions”). At the same time, RAMP-TAO aims to offer comparable performance for existing applications that migrate to the new technology. Existing applications that don’t make use of transactional semantics parallelize requests to TAO and use whatever the database returns, even if the result reflects state from an in-progress transaction. In contrast, RAMP-TAO resolves situations where data from in-progress transactions is returned to applications.</p>
+
+<p>There are two primary paths that read requests in RAMP-TAO take: the <em>fast path</em> and the <em>slow path</em>.</p>
+
+<p>The <em>fast path</em> happens in one round - the clients issue parallel read requests, and the returned data doesn’t reflect the partial result of an in-progress transaction<label for="hooray" class="margin-toggle sidenote-number"></label><input type="checkbox" id="hooray" class="margin-toggle" /><span class="sidenote">Hooray! </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ramp-tao/fast.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>In contrast, RAMP-TAO follows the <em>slow path</em> when data is returned to the client that reflects an in-progress write transaction. In this situation, TAO reissues read requests to resolve the <em>atomic visibility violation</em>. One way that violations are resolved on the slow path is by reissuing a request to fetch an older version of data - TAO applications are tolerant to serving stale, but correct, data.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ramp-tao/slow.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="performance">Performance</h2>
+
+<p>To evaluate the prototype system’s performance, the authors evaluate the performance of the protocol:</p>
+
+<blockquote>
+  <p>Our prototype serves over 99.93% of read transactions in one round of communication. Even when a subsequent round is necessary, the performance impact is small and bounded to under 114ms in the 99𝑡ℎ percentile (Figure 12). Our tail latency is within the range of TAO’s P99 read latency of 105ms for a similar workload. We note that these are the worst-case results for RAMP-TAO because the prototype currently requires multiple round trips to the database for transaction metadata. Once the changes to the RefillLibrary are in place, the large majority of the read transactions can be directly served with data in this buffer and will take no longer than a typical TAO read.</p>
+</blockquote>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>While RAMP-TAO is still in development (and will require further changes to both applications and Facebook infrastructure), it is exciting to see the adaptation of existing systems to different constraints - unlike systems built from scratch, RAMP-TAO also needed to balance unique technical considerations like permitting gradual adoption. I enjoyed the RAMP-TAO paper as it not only solves a difficult technical problem, but also clearly outlines the thinking and tradeoffs behind the design.</p>
+
+<p>As always, feel free to reach out with feedback on <a href="https://twitter.com/micahlerner">Twitter</a>!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-10-23-ramp-tao-layering-atomic-transactions-on-facebooks-online-tao-data-store.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

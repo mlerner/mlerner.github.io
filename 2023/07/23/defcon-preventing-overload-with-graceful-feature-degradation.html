@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Defcon: Preventing Overload with Graceful Feature Degradation</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Defcon: Preventing Overload with Graceful Feature Degradation</h1>
+  
+  <h4>Published July 23, 2023</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-07-23-defcon-preventing-overload-with-graceful-feature-degradation.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="https://www.usenix.org/conference/osdi23/presentation/meza">Defcon: Preventing Overload with Graceful Feature Degradation</a></p>
+
+<p><em>This is one in a series of papers I’m reading from OSDI and Usenix ATC. These paper reviews can be <a href="https://newsletter.micahlerner.com/">delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!</em></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>Severe outages can occur due to system overload<label for="load" class="margin-toggle sidenote-number"></label><input type="checkbox" id="load" class="margin-toggle" /><span class="sidenote">Discussion of managing load <a href="https://sre.google/workbook/managing-load/">from the SRE book here</a>. </span>, impacting users who rely on a product, and potentially damaging underlying hardware<label for="failslow" class="margin-toggle sidenote-number"></label><input type="checkbox" id="failslow" class="margin-toggle" /><span class="sidenote">Damage to hardware can show up as <em>fail-slow</em> situations, where performance degrades overtime. This is also discussed in a previous paper review on <a href="https://www.micahlerner.com/2023/04/16/perseus-a-fail-slow-detection-framework-for-cloud-storage-systems.html">Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems</a> </span>. It can also be difficult to recover from outages involving overloaded system due to additional problems this type of outages cause - in particular, <a href="https://sre.google/sre-book/addressing-cascading-failures/">cascading failures</a>. There are many potential root-causes to a system entering an overloaded state, including seasonal traffic spikes, performance regressions consuming excess capacity<label for="metastable" class="margin-toggle sidenote-number"></label><input type="checkbox" id="metastable" class="margin-toggle" /><span class="sidenote">This situation can lead to metastable failures, as discussed in a previous <a href="https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html">paper review</a>. </span>, or subtle software bugs. As such, limiting the damage caused by overload conditions is a complicated problem.</p>
+
+<p>To prevent overload from impacting its products, Meta developed a system called <em>Defcon</em>. Defcon provides a set of abstractions that allows incident responders to increase available capacity by turning off features, an idea called <em>graceful feature degradation</em>. By dividing product features into different levels of business criticality, Defcon also allows oncallers to take a variety actions depending on the severity of an ongoing incident.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The Defcon paper describes Meta’s design, implementation, and experience deploying this system at scale across many products (including Facebook, Messenger, Instagram, and Whatsapp) along with lessons from usage during production incidents.</p>
+
+<h2 id="background-and-motivation">Background and Motivation</h2>
+
+<p>The authors of Defcon describe several alternatives they considered when deciding how to mitigate the risk of system overload. Each of the options is evaluated on the amount of additional resources that the approach would consume during an incident, the amount of engineering effort required to implement, and the potential impact to users.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/table1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Given that serious overload events happen on a recurring basis (at least once a year), the authors decided to invest engineering resources in an engineering-intensive effort capable of limiting user impact.</p>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>The core abstraction in Defcon is the <em>knob</em>, which represents for each feature: a unique name, whether a feature is turned on or not, the oncall rotation responsible, and a “level” corresponding to business-criticality.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/listing1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/defcon/features.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>After a feature is defined using this configuration, servers or applications (for example, in Web or iOS devices) import the knob into code and implement code paths that handle cases when the <em>knob</em> is turned off - for example, short-circuiting expensive logic.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/listing2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>During testing and incident response, operators change a <em>knob</em>’s state via a command-line or user interface, and Defcon handles replicating this state to impacted consumers (like servers and mobile applications). Knob state is also stored in a database.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Defcon’s <em>Knob Actuator Service</em> propagates state changes for two types of knobs: <em>server-side knobs</em> and <em>client-side knobs</em>:</p>
+
+<blockquote>
+  <p><em>Server-side knobs</em> are implemented in binaries running on the servers in data centers. The advantage of server-side knobs is that we can adjust the knobs’ state in seconds without any propagation delays.</p>
+</blockquote>
+
+<blockquote>
+  <p><em>Client-side knobs</em> are implemented in client code running on phones, tablets, wearables, and so on. The advantage of client-side knobs is that they have the capability to reduce network load by stopping requests sent to the server along side reducing server load due to the request.</p>
+</blockquote>
+
+<p>Client-side knobs (like those in an iOS application) are slightly more complex to update. Under normal conditions, they change via a push (called <em>Silent Push Notification (SPN)</em>) or routine pull (<em>Mobile Configuration Pull</em>) mechanism. To handle extenuating circumstances (like lower latency response to severe outages), Defcon can also instruct clients to pull a broader set of configuration stored in a specific server-location using a process called <em>Emergency Mobile Configuration</em><label for="serious" class="margin-toggle sidenote-number"></label><input type="checkbox" id="serious" class="margin-toggle" /><span class="sidenote">Under normal operating conditions, a full reset isn’t used because it has the tradeoff of using more resources (in particular networking), which is unfriendly to user mobile plans and device batteries. </span>.</p>
+
+<p>Knobs are, “grouped into three categories: (1) By service name, (2) by product name, and (3) by feature name (such as “search,” “video,” “feed,” and so on)” to simplify testing during development and post-release. Testing occurs through small scale A/B tests (where one “experiment arm” of users experience feature degradation, and the “control” arm does not) and during larger exercises that ensure the Defcon system is working (described later in the paper). These tests also have the side effect of generating data on what capacity a feature or product is using, which serves as an input to capacity planning.</p>
+
+<p>During incidents, oncallers can also use the output of these tests to understand what the potential implications are of turning off different knobs. The</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper uses three main types of datasets to quantify Defcon’s changes:</p>
+
+<ul>
+  <li><em>Real-time Monitoring System (RMS)</em> and <em>Resource Utilization Metric (RUM)</em>, which aim to measure utilization of Meta infrastructure. The specifics of which one to use depends on the experiment, as discussed below.</li>
+  <li><em>Transitive Resource Utilization (TRU)</em>, which aims to measure the downstream utilization that a service has of shared Meta systems (like its graph infrastructure described in my previous paper review on <a href="https://www.micahlerner.com/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html">TAO: Facebook’s Distributed Data Store for the Social Graph</a>).</li>
+  <li><em>User Behavior Measurement (UBM)</em>, which tracks how changing a knob’s state impacts business metrics like “Video Watch Time”.</li>
+</ul>
+
+<p>The first evaluation of Defcon’s impact is at the Product-level. By turning off progressively more business-critical functionality, the system makes greater impact on Meta’s resource usage<label for="mips" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mips" class="margin-toggle" /><span class="sidenote">Represented with <em>mega-instructions per second (MIPS)</em>, a normalized resource representation corresponding to compute. </span>. Entirely turning off critical features (aka “Defcon Level 1”), saves a large amount of capacity, but also significantly impacts critical business metrics.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/defcon/table2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Defcon is next evaluated for its ability to temporarily decrease capacity required of shared infrastructure. As discussed in a previous paper review of <a href="https://www.micahlerner.com/2021/05/31/scaling-memcache-at-facebook.html">Scaling Memcache at Facebook</a>, Meta uses Memcache extensively. By turning off optional features, oncallers are able to decrease load on this type of core system.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Next, the research describes how Meta can decrease capacity requirements by turning off knobs in upstream systems with dependencies on other Meta products. For example, turning off Instagram-level knobs decreases load on Facebook, which ultimately depends on TAO, Meta’s graph service. Testing knobs outside of incident response surfaces resource requirements from these interdependencies.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure12.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The Defcon paper describes a protocol for forcing Meta systems into overload conditions, and testing the impact of turning progressively more business-critical features off. By ramping user traffic to a datacenter, these experiments place increasing load on infrastructure - turning knobs off then alleviates load.</p>
+
+<figure><img class="maincolumn-img" src="/assets/defcon/figure15.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The Defcon paper describes a framework deployed at scale in Meta for disabling features in order to mitigate overload conditions. To reach this state,  the authors needed to solve technical challenges of building the system and to collaborate with product teams to define feature criticality - in some ways, the latter seems even more difficult. The paper also mentions issues with maintainability of knobs. On this front, it seems like future work could automate the process of ensuring that knobs cover features inside of deployed code. Lastly, I’m looking forward to learning more about Defon’s integration with other recently published Meta research, like <a href="https://www.usenix.org/conference/osdi23/presentation/eriksen">the company’s capacity management system</a>.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-07-23-defcon-preventing-overload-with-graceful-feature-degradation.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

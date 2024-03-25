@@ -1,8 +1,66 @@
----
-layout: default
----
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
 
-<article>
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Micah Lerner</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
   <h2>Micah Lerner</h2>
   <section>
     <p>
@@ -72,12 +130,26 @@ layout: default
     <div style="padding-top: 20px">
       <h3>Recent writing</h3>
       <ul style="list-style: none; padding-left: 0px">
-        {% for post in site.posts %} {% unless post.draft or post.paid %}
+         
         <li>
           <p>
-            <a href="{{post.url}}">{{post.title}}</a> - {{ post.date | date: '%B
-            %d, %Y' }} {% if post.hn.size > 0 %}
-            <a href="{{post.hn}}" class="hn" style="text-decoration: none">
+            <a href="/2024/03/03/a-cloud-scale-characterization-of-remote-procedure-calls.html">A Cloud-Scale Characterization of Remote Procedure Calls</a> - March
+            03, 2024 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2024/01/30/gemini-fast-failure-recovery-in-distributed-training-with-in-memory-checkpoints.html">Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints</a> - January
+            30, 2024 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2024/01/23/xfaas-hyperscale-and-low-cost-serverless-functions-at-meta.html">XFaaS: Hyperscale and Low Cost Serverless Functions at Meta</a> - January
+            23, 2024 
+            <a href="https://news.ycombinator.com/item?id=39200239" class="hn" style="text-decoration: none">
               <img
                 class="hn-image"
                 src="/assets/y18.gif"
@@ -86,26 +158,711 @@ layout: default
                 height="18"
               />
             </a>
-            {% endif %}
+            
           </p>
         </li>
-        {% endunless %} {% endfor %}
+          
+        <li>
+          <p>
+            <a href="/2024/01/11/efficient-memory-management-for-large-language-model-serving-with-pagedattention.html">Efficient Memory Management for Large Language Model Serving with PagedAttention</a> - January
+            11, 2024 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2024/01/02/blueprint-a-toolchain-for-highly-reconfigurable-microservice-applications.html">Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications</a> - January
+            02, 2024 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/12/27/2023-and-looking-forward-to-2024.html">2023 and looking forward to 2024</a> - December
+            27, 2023 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/07/23/defcon-preventing-overload-with-graceful-feature-degradation.html">Defcon: Preventing Overload with Graceful Feature Degradation</a> - July
+            23, 2023 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/06/29/towards-an-adaptable-systems-architecture-for-memory-tiering-at-warehouse-scale.html">Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale</a> - June
+            29, 2023 
+            <a href="https://news.ycombinator.com/item?id=36523762" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/06/06/telamalloc-efficient-on-chip-memory-allocation-for-production-machine-learning-accelerators.html">TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators</a> - June
+            06, 2023 
+            <a href="https://news.ycombinator.com/item?id=36221010" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/04/16/perseus-a-fail-slow-detection-framework-for-cloud-storage-systems.html">Perseus: A Fail-Slow Detection Framework for Cloud Storage Systems</a> - April
+            16, 2023 
+            <a href="https://news.ycombinator.com/item?id=35765100" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/03/28/ambry-linkedins-scalable-geo-distributed-object-store.html">Ambry: LinkedIn’s Scalable Geo-Distributed Object Store</a> - March
+            28, 2023 
+            <a href="https://news.ycombinator.com/item?id=35505778" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/02/27/metas-next-generation-realtime-monitoring-and-analytics-platform.html">Meta’s Next-generation Realtime Monitoring and Analytics Platform</a> - February
+            27, 2023 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/01/19/elastic-cloud-services-scaling-snowflakes-control-plane.html">Elastic Cloud Services: Scaling Snowflake’s Control Plane</a> - January
+            19, 2023 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2023/01/16/conferences-2023.html">CS Conferences in 2023</a> - January
+            16, 2023 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/12/13/jupiter-rising-a-decade-of-clos-topologies-and-centralized-control-in-googles-datacenter-network.html">Jupiter Rising: A Decade of Clos Topologies and Centralized Control in Google’s Datacenter Network</a> - December
+            13, 2022 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/10/31/design-and-evaluation-of-ipfs-a-storage-layer-for-the-decentralized-web.html">Design and Evaluation of IPFS: A Storage Layer for the Decentralized Web</a> - October
+            31, 2022 
+            <a href="https://news.ycombinator.com/item?id=33419680" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/10/08/sdn-in-the-stratosphere-loons-aerospace-mesh-network.html">SDN in the Stratosphere: Loon’s Aerospace Mesh Network</a> - October
+            08, 2022 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/09/03/seven-years-in-the-life-of-hypergiants-off-nets.html">Seven years in the life of Hypergiants' off-nets</a> - September
+            03, 2022 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/07/24/automatic-reliability-testing-for-cluster-management-controllers.html">Automatic Reliability Testing For Cluster Management Controllers</a> - July
+            24, 2022 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/07/11/metastable-failures-in-the-wild.html">Metastable Failures in the Wild</a> - July
+            11, 2022 
+            <a href="https://news.ycombinator.com/item?id=32459557" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/07/03/sundial-fault-tolerant-clock-synchronization-for-datacenters.html">Sundial: Fault-tolerant Clock Synchronization for Datacenters</a> - July
+            03, 2022 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/06/04/data-parallel-actors-a-programming-model-for-scalable-query-serving-systems.html">Data-Parallel Actors: A Programming Model for Scalable Query Serving Systems</a> - June
+            04, 2022 
+            <a href="https://news.ycombinator.com/item?id=32228569" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/05/15/druid-a-real-time-analytical-data-store.html">Druid: A Real-time Analytical Data Store</a> - May
+            15, 2022 
+            <a href="https://news.ycombinator.com/item?id=32259587" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/04/24/monarch-googles-planet-scale-in-memory-time-series-database.html">Monarch: Google’s Planet-Scale In-Memory Time Series Database</a> - April
+            24, 2022 
+            <a href="https://news.ycombinator.com/item?id=31379383" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/01/13/the-ties-that-un-bind-decoupling-ip-from-web-services-and-sockets-for-robust-addressing-agility-at-cdn-scale.html">The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale</a> - January
+            13, 2022 
+            <a href="https://news.ycombinator.com/item?id=32298751" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2022/01/08/shard-manager-a-generic-shard-management-framework-for-geo-distributed-applications.html">Shard Manager: A Generic Shard Management Framework for Geo-distributed Applications</a> - January
+            08, 2022 
+            <a href="https://news.ycombinator.com/item?id=30400447" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/12/30/conferences-2022.html">CS Conferences in 2022</a> - December
+            30, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/12/28/ghost-fast-and-flexible-user-space-delegation-of-linux-scheduling.html">ghOSt: Fast & Flexible User-Space Delegation of Linux Scheduling</a> - December
+            28, 2021 
+            <a href="https://news.ycombinator.com/item?id=30315716" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/12/11/kangaroo-caching-billions-of-tiny-objects-on-flash.html">Kangaroo: Caching Billions of Tiny Objects on Flash</a> - December
+            11, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/11/30/faster-and-cheaper-serverless-computing-on-harvested-resources.html">Faster and Cheaper Serverless Computing on Harvested Resources</a> - November
+            30, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/11/28/selecting-papers-to-read.html">Choosing papers to read and write about</a> - November
+            28, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/11/23/log-structured-protocols-in-delos.html">Log-structured Protocols in Delos</a> - November
+            23, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/11/09/the-demikernel-datapath-os-architecture-for-microsecond-scale-datacenter-systems.html">The Demikernel Datapath OS Architecture for Microsecond-scale Datacenter Systems</a> - November
+            09, 2021 
+            <a href="https://news.ycombinator.com/item?id=29237007" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/10/31/rudra-finding-memory-safety-bugs-in-rust-at-the-ecosystem-scale.html">Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale</a> - October
+            31, 2021 
+            <a href="https://news.ycombinator.com/item?id=32465052" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/10/23/ramp-tao-layering-atomic-transactions-on-facebooks-online-tao-data-store.html">RAMP-TAO: Layering Atomic Transactions on Facebook’s Online TAO Data Store</a> - October
+            23, 2021 
+            <a href="https://news.ycombinator.com/item?id=29610334" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/10/13/tao-facebooks-distributed-data-store-for-the-social-graph.html">TAO: Facebook’s Distributed Data Store for the Social Graph</a> - October
+            13, 2021 
+            <a href="https://news.ycombinator.com/item?id=29045443" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/10/10/scaling-large-production-clusters-with-partitioned-synchronization.html">Scaling Large Production Clusters with Partitioned Synchronization</a> - October
+            10, 2021 
+            <a href="https://news.ycombinator.com/item?id=28819518" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/08/29/a-linux-kernel-implementation-of-the-homa-transport-protocol.html">A Linux Kernel Implementation of the Homa Transport Protocol, Part II</a> - August
+            29, 2021 
+            <a href="https://news.ycombinator.com/item?id=28440542" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/08/15/a-linux-kernel-implementation-of-the-homa-transport-protocol.html">Homa: A Receiver-Driven Low-Latency Transport Protocol Using Network Priorities, Part I</a> - August
+            15, 2021 
+            <a href="https://news.ycombinator.com/item?id=28204808" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/08/14/systems-conferences-2021.html">Systems Conferences 2021</a> - August
+            14, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/08/07/posh-a-data-aware-shell.html">POSH: A Data-Aware Shell</a> - August
+            07, 2021 
+            <a href="https://news.ycombinator.com/item?id=28108347" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/07/31/pash-light-touch-data-parallel-shell-processing.html">PaSh: Light-touch Data-Parallel Shell Processing</a> - July
+            31, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/07/24/from-laptop-to-lambda-outsourcing-everyday-jobs-to-thousands-of-transient-functional-containers.html">From Laptop to Lambda: Outsourcing Everyday Jobs to Thousands of Transient Functional Containers</a> - July
+            24, 2021 
+            <a href="https://news.ycombinator.com/item?id=27950204" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/07/14/unix-shell-programming-the-next-50-years.html">Unix Shell Programming: The Next 50 Years (The Future of the Shell, Part I)</a> - July
+            14, 2021 
+            <a href="https://news.ycombinator.com/item?id=29610956" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/07/07/breakfast-of-champions-towards-zero-copy-serialization-with-nic-scatter-gather.html">Breakfast of Champions: Towards Zero-Copy Serialization with NIC Scatter-Gather</a> - July
+            07, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/06/27/ray-a-distributed-framework-for-emerging-ai-applications.html">Ray: A Distributed Framework for Emerging AI Applications</a> - June
+            27, 2021 
+            <a href="https://news.ycombinator.com/item?id=27730807" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/06/17/firecracker-lightweight-virtualization-for-serverless-applications.html">Firecracker: Lightweight Virtualization for Serverless Applications</a> - June
+            17, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/06/12/foundationdb-a-distributed-unbundled-transactional-key-value-store.html">FoundationDB: A Distributed Unbundled Transactional Key Value Store</a> - June
+            12, 2021 
+            <a href="https://news.ycombinator.com/item?id=28740497" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/05/31/scaling-memcache-at-facebook.html">Scaling Memcache at Facebook</a> - May
+            31, 2021 
+            <a href="https://news.ycombinator.com/item?id=36397485" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/05/23/reflecting-on-2020.html">Reflecting on 2020</a> - May
+            23, 2021 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2021/03/28/noria-dynamic.html">Noria: dynamic, partially-stateful data-flow for high-performance web applications</a> - March
+            28, 2021 
+            <a href="https://news.ycombinator.com/item?id=29615085" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2020/05/09/understanding-raft-consensus-part-2.html">Understanding Raft - Part 2 (Raft leaders, logs, and safety)</a> - May
+            09, 2020 
+            <a href="https://news.ycombinator.com/item?id=23128787" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2020/05/08/understanding-raft-consensus.html">Understanding Raft Consensus  - Part 1</a> - May
+            08, 2020 
+            <a href="https://news.ycombinator.com/item?id=23128787" class="hn" style="text-decoration: none">
+              <img
+                class="hn-image"
+                src="/assets/y18.gif"
+                style="border: 1px white solid"
+                width="18"
+                height="18"
+              />
+            </a>
+            
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/2020/03/22/understanding-googles-file-system.html">Understanding Google&#8217;s File System</a> - March
+            22, 2020 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/yearly/review/2020/03/01/looking-ahead-in-2020.html">2019 year in review & looking ahead in 2020</a> - March
+            01, 2020 
+          </p>
+        </li>
+          
+        <li>
+          <p>
+            <a href="/post/2019/01/12/NewBlog.html">A new year of learning and writing</a> - January
+            12, 2019 
+          </p>
+        </li>
+         
       </ul>
     </div>
     <div style="padding-top: 20px">
       <h3>Recent fragments</h3>
       <ul style="list-style: none; padding-left: 0px">
-        {% for post in site.fragments reversed %} {% unless post.tags contains
-        'draft' %}
+         
         <li>
           <p>
-            <a href="{{post.url}}">{{post.title}}</a> - {{ post.date | date: '%B
-            %d, %Y' }}
+            <a href="/fragments/drovorub-and-fancy-bear">Drovorub and Fancy Bear</a> - August
+            21, 2020
           </p>
-          <!-- <p>Published {{ post.date | date: '%B %d, %Y' }} </p> -->
+          <!-- <p>Published August 21, 2020 </p> -->
         </li>
-        {% endunless %} {% endfor %}
+          
+        <li>
+          <p>
+            <a href="/fragments/thoughts-on-reviewing-books">Thoughts on reviewing books</a> - June
+            13, 2020
+          </p>
+          <!-- <p>Published June 13, 2020 </p> -->
+        </li>
+          
+        <li>
+          <p>
+            <a href="/fragments/Bug-Bounty-Hunting">Getting started in Bug Bounty Hunting</a> - December
+            17, 2019
+          </p>
+          <!-- <p>Published December 17, 2019 </p> -->
+        </li>
+          
+        <li>
+          <p>
+            <a href="/fragments/RE">Diving into Reverse Engineering</a> - July
+            22, 2019
+          </p>
+          <!-- <p>Published July 22, 2019 </p> -->
+        </li>
+          
+        <li>
+          <p>
+            <a href="/fragments/CTFs">The Cybersecurity Rabbithole</a> - June
+            02, 2019
+          </p>
+          <!-- <p>Published June 02, 2019 </p> -->
+        </li>
+         
       </ul>
     </div>
   </section>
 </article>
+
+  </body>
+</html>

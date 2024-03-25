@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Efficient Memory Management for Large Language Model Serving with PagedAttention</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Efficient Memory Management for Large Language Model Serving with PagedAttention</h1>
+  
+  <h4>Published January 11, 2024</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-11-efficient-memory-management-for-large-language-model-serving-with-pagedattention.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="https://dl.acm.org/doi/10.1145/3600006.3613165">Efficient Memory Management for Large Language Model Serving with PagedAttention</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>Large language models (like OpenAI’s <a href="https://openai.com/blog/chatgpt">ChatGPT</a>, Google’s <a href="https://bard.google.com">Bard</a>, Meta’s <a href="https://ai.meta.com/llama/">Llama</a>, and Mistral’s <a href="https://mistral.ai/news/mixtral-of-experts/">Mixtral</a>) take in a user prompt and respond with generated text (note: for the purposes of this paper, the authors don’t include multi-modal response). Based on public reports, supporting this functionality is <a href="https://www.businessinsider.com/how-much-chatgpt-costs-openai-to-run-estimate-report-2023-4">expensive</a>, and given the relatively new nature of LLMs deployed at scale, there are opportunities for improving performance.</p>
+
+<p>To that end, this paper focuses on increasing the queries per second (a.k.a throughput) large language models (LLMs) can serve through two innovations, <em>PagedAttention</em>, and <em>vLLM</em>, discussed in detail later in this paper review. Improving throughput can significantly decrease the cost of large language model serving by responding to more requests with the same number of GPU resources. The evaluations from the paper show that, “vLLM improves the LLM serving throughput by 2-4× compared to the state-of-the-art systems…without affecting the model accuracy at all.”</p>
+
+<p>Based on the observation that large language model serving is memory bound, the authors identify several areas of improvement for GPU memory allocation, then design a system that addresses these shortcomings. One of the foremost problems they address is static allocation of memory. Existing LLM serving systems (or at least publically released ones) set aside fixed, contiguous memory to store the data needed to generate a response. If the response to the user is shorter than this fixed size, the resources are inaccessible to use for serving other requests until the original request is complete. Requiring contiguous memory blocks adds additional resource waste by “stranding” memory between the contiguously allocated areas of memory, causing it become unusable for serving other requests.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Borrowing ideas a page from virtual memory, the authors propose a solution, <em>PagedAttention</em>, that can <em>dynamically</em> grow the memory used in LLM serving (in addition to incorporating other optimizations). The paper also describes how <em>PagedAttention</em> is implemented in a new GPU serving library via the open source <a href="https://github.com/vllm-project/vllm">vLLM project</a>.</p>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>Large language models take in a prompt from a user, then generate a text response.  The paper focuses specifically on improving the performance of serving for transformers, a technology used by predominantly all implementations of large language models to generate the next word in a sequence - for more background, I recommend <a href="http://jalammar.github.io/illustrated-transformer/">The Illustrated Transformer</a> and <a href="https://osanseviero.github.io/hackerllama/blog/posts/random_transformer/">Understand how transformers work by demystifying all the math behind them</a>.</p>
+
+<p>Generating these sequences requires information on the users prompt, and about previous tokens in the response - this knowledge takes the form of vectors stored in memory in  a data structure the authors call the Key Value Cache (aka <em>KV cache</em>). Because the limiting step in the execution of an LLM depends on reading and writing data to/from memory, an LLM process is “memory bound” - as a result, improving memory utilization (specifically, of the <em>KV Cache</em>) can increase performance of the system.</p>
+
+<p>The authors identify three main types of waste in the <em>KV Cache</em>:</p>
+
+<blockquote>
+  <p><em>reserved slots</em> for future tokens, <em>internal fragmentation</em> due to over-provisioning for potential maximum sequence lengths, and <em>external fragmentation</em> from the memory allocator.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="pagedattention">PagedAttention</h3>
+
+<p>One of the paper’s key insights is that allowing a model to <em>dynamically</em> scale up its usage of non-contiguous memory can drastically improve memory utilization. The authors propose <em>PagedAttention</em>, which introduces the idea of <em>logical</em> and <em>physical</em> memory blocks for storing data in the <em>KV Cache</em>. This distinction is <a href="https://stackoverflow.com/a/15851473">similar to virtual memory</a> which provides the abstraction of contiguous RAM to a program, even though the data is physically stored in separate areas of RAM.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Blocks contain entries for more than one token, and blocks are allocated on demand based on how the LLM responds to a user query - for example, the prompt “Four score and seven years ago our fathers brought forth” contains ten tokens, causing the allocation of three blocks each with the space for four entries (the last block allocated because of the prompt is partially filled). Gradually allocating blocks primarily addresses <em>internal fragmentation</em> and <em>reserved</em> memory.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>As the large language model generates tokens, it references data on previous tokens using a <em>block table</em> storing the mapping between logical blocks for a query and physical GPU DRAM. Critically, this approach allows for the GPU to serve multiple requests at the same time while using non-contiguous memory, addressing concerns like <em>external fragmentation</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also describes how PagedAttention approach is able to reduce memory usage in three other large language model serving request patterns - <em>parallel sampling</em>, <em>beam search</em>, and <em>shared prefix</em> prompting.</p>
+
+<p><em>Parallel sampling</em> involves generating multiple results for a single prompt - this can occur by having the LLM choose a different token, leading to a different branch of response. The implementation follows a <a href="https://stackoverflow.com/questions/628938/what-is-copy-on-write">“copy-on-write”</a> pattern that reuse the same data in GPU memory until the branch in output occurs (at which point, the block with the difference is copied to a new location in memory, and execution completes independently for the different branches).</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also describes PagedAttention in the context of <em>beam search</em>, an algorithm for generating possible next states and choosing a “top-K” subset to continue with - the paper cites <a href="https://proceedings.neurips.cc/paper/2014/file/a14ac55a4f27472c5d894ec1c3c743d2-Paper.pdf">Sequence to Sequence Learning
+with Neural Networks</a> when referencing beam search, but I think <a href="https://d2l.ai/chapter_recurrent-modern/beam-search.html#id1">this explanation</a> gets the gist across better. A <em>beam search</em> implemented with <em>PagedAttention</em> can reuse blocks across multiple search paths, meaning that the process has less memory overhead.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, the paper discusses PagedAttention’s impact on prompts with a <em>shared prefix</em> - in many situations, a user of an LLM will provide a separate “system” prompt that applies, no matter the details of the task (this is also discussed in <a href="https://platform.openai.com/docs/guides/prompt-engineering">OpenAI’s documentation on prompt engineering</a>). One example system prompt is, “you are a helpful agent that only speaks JSON”. PagedAttention allows the blocks allocated for this part of the prompt to be reused across multiple tasks, reducing memory usage.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="vllm">vLLM</h3>
+
+<p>To deploy PagedAttention in a distributed environment, the paper proposes the vLLM system, containing a <em>scheduler</em> (which chooses which work to run where), the <em>KV Cache Manager</em>, <em>Workers</em> (computers containing GPU hardware), and <em>Block Allocators</em>. I elide the details of this section given that vLLM is an <a href="https://github.com/vllm-project/vllm/tree/d0215a58e78572d91dadafe9d832a2db89b09a13/vllm/core">open source project</a>, and the details of the infrastructure are likely to change.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>That said, there were a few interesting design choices that stuck out to me:</p>
+<ul>
+  <li>vLLM adopts patterns from <a href="https://arxiv.org/pdf/1909.08053.pdf">Megatron-LM</a>, which details how to run transformers at scale across many GPUs while minimizing communication.</li>
+  <li>vLLM implements the <a href="https://docs.vllm.ai/en/latest/getting_started/quickstart.html#openai-compatible-server">OpenAI API interface</a>, simplifying developer adoption.</li>
+  <li>vLLM supports higher-level abstractions (via <code class="language-plaintext highlighter-rouge">fork</code>, <code class="language-plaintext highlighter-rouge">append</code>, and <code class="language-plaintext highlighter-rouge">free</code> commands) used to implement approaches like <em>beam search</em>, <em>parallel sampling</em>, and <em>shared prefix</em> - luckily <a href="https://github.com/vllm-project/vllm/blob/937e7b7d7c460c00805ac358a4873ec0653ab2f5/vllm/sequence.py#L212">the code is open source</a> which allows for a deeper dive!</li>
+</ul>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper compares performance of models served with vLLM against other serving systems (e.g. a custom implementation of <a href="https://www.usenix.org/conference/osdi22/presentation/yu">Orca</a>, an LLM-serving system described in research from OSDI 2022) emulating workloads sourced based on open source datasets (<a href="https://sharegpt.com/">ShareGPT</a> and <a href="https://github.com/tatsu-lab/stanford_alpaca">Stanford Alpaca</a>).</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure11.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper compares three different types of tasks - basic sampling (e.g. normal LLM usage), search-based techniques like <em>parallel sampling</em> and <em>beam search</em>, and chatbot-like uses of LLMs (which have longer prompts, along with back and forth between the user and the LLM).</p>
+
+<p>For <em>basic sampling</em>, <em>parallel sampling</em>, <em>beam search</em>, and chatbot-like workloads, vLLM is able to achieve significantly higher request rates.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure12.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure14.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure17.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Additionally, vLLM and PagedAttention are able to save significant amounts of memory on tasks where it is possible to re-use blocks (e.g. parallel sampling and beam search) - these graphs show average amount of memory saving as a percent, but it would be interesting to know in absolute terms.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pagedattention/figure15.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>PagedAttention and vLLM are at the cutting edge of systems research and its application to AI - something that is becoming more of a topic in research and in practice (e.g. <a href="https://charlesfrye.github.io/programming/2023/11/10/llms-systems.html">Charles Frye’s post</a>) now that LLMs are beginning to operate at scale. I’m looking forward to following along on the progress of the vLLM open source project, and from digging into the project, I discovered it is compatible with <a href="https://skypilot.readthedocs.io/en/latest/">SkyPilot</a> (an open source project for deploying infrastructure cross-cloud, discussed in research from <a href="https://www.usenix.org/conference/nsdi23/presentation/yang-zongheng">NSDI 2023</a>). As I tinker on <a href="https://twitter.com/micahlerner/status/1741989855041843504">LLM-based side-projects</a>, I’m looking forward to experimenting with and learning from these promising new tools.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-11-efficient-memory-management-for-large-language-model-serving-with-pagedattention.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

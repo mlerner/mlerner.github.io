@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators</h1>
+  
+  <h4>Published June 06, 2023</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-06-06-telamalloc-efficient-on-chip-memory-allocation-for-production-machine-learning-accelerators.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=36221010'> Hacker News</a></p>   <p><em>This is one in a series of papers I’m reading from ASPLOS. These paper reviews can be <a href="https://newsletter.micahlerner.com/">delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!</em></p>
+
+<p><a href="https://dl.acm.org/doi/10.1145/3567955.3567961">TelaMalloc: Efficient On-Chip Memory Allocation for Production Machine Learning Accelerators</a></p>
+
+<p>A common pattern for integrating machine learning models with applications is deploying them to user devices, where the models run on local hardware<label for="transformers" class="margin-toggle sidenote-number"></label><input type="checkbox" id="transformers" class="margin-toggle" /><span class="sidenote">See <a href="https://machinelearning.apple.com/research/neural-engine-transformers">Apple’s guide</a> to deploying transformers to the <em>Apple Neural Engine</em>. </span>. Running models locally provides performance improvements (by eliminating communication with a cloud), while enabling private computing. Unfortunately, there are also challenges to running models locally because of diversity in hardware capabilities - a program that works well on the highest end modern phone may not perform optimally on previous generation devices.</p>
+
+<p>To effectively run on a user’s device, the software must efficiently use local resources, including memory. The problem of allocating memory has been studied extensively<label for="alloc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="alloc" class="margin-toggle" /><span class="sidenote">See <a href="https://www.cs.hmc.edu/~oneill/gc-library/Wilson-Alloc-Survey-1995.pdf">Dynamic Storage Allocation: A Survey and Critical Review</a>. </span>, but ML models pose novel challenges. Specifically, memory allocation for ML models is a 2D bin-packing problem<label for="2dbin" class="margin-toggle sidenote-number"></label><input type="checkbox" id="2dbin" class="margin-toggle" /><span class="sidenote">There is a large amount of research on solving this problem - see <a href="https://www.csc.liv.ac.uk/~epa/surveyhtml.html">Survey on two-dimensional packing</a> and the <a href="https://en.wikipedia.org/wiki/Bin_packing_problem">Wikipedia reference</a>. </span> - unlike programs which grow and shrink their memory usage over time, ML models have strict requirements for memory allocations because certain parts of the model depend on others.</p>
+
+<p>Existing solutions<label for="heuristics" class="margin-toggle sidenote-number"></label><input type="checkbox" id="heuristics" class="margin-toggle" /><span class="sidenote">The paper cites <a href="https://www.tensorflow.org/xla">XLA</a>, <a href="https://www.tensorflow.org/lite">TFLite</a> (optimized for mobile devices), and <a href="https://tvm.apache.org/">Apache TVM</a>. </span> for ML model memory allocation rely on heuristics or solvers (which can produce a closer to optimal output, but often take longer to run). The Telamalloc paper proposes a solution balancing a combination of heuristics and solvers. As a result, the research is able to tackle the challenge posed by wide variance in hardware capabilities, significantly reducing the time that it takes the model to allocate memory and run.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions:</p>
+
+<ul>
+  <li>Combining a heuristic-based approach to memory allocation with a solver aware of domain-specific knowledge.</li>
+  <li>An evaluation of the approach combined approach</li>
+  <li>A forward-looking proposal for improving on initial results by taking production data and feeding it back into the system.</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>The system takes the problem and turns it into a 2D-optimization problem, where memory blocks are assigned to different ranges of address space over time, based on the flow of the program.</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The authors aim the approach at tensor memory allocation both on mobile devices and in Tensor Processing Units<label for="tpu" class="margin-toggle sidenote-number"></label><input type="checkbox" id="tpu" class="margin-toggle" /><span class="sidenote">See <a href="https://cloud.google.com/blog/products/ai-machine-learning/an-in-depth-look-at-googles-first-tensor-processing-unit-tpu">An in-depth look at Google’s first Tensor Processing Unit (TPU)</a>. </span>, a custom piece of hardware that is used for machine learning at scale.</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>It is worth noting how well studied resource allocation is - the paper reviews the standard approach compilers follow to:</p>
+
+<blockquote>
+  <p>1) take a graph representation of the model and perform various graph transformations, 2) divide the graph into smaller units of work (operators), and 3) map these operators to different units of hardware.</p>
+</blockquote>
+
+<p>The authors call the third component the <em>mapping problem</em>, and note it is fundamentally different than the problem they’re focused on, which they call the <em>memory allocation problem</em>:</p>
+
+<blockquote>
+  <p>the <em>mapping problem</em> is concerned with determining which level of a memory hierarchy to map each buffer to, the <em>memory allocation</em> problem selects buffer locations within addressable scratchpad memories that are shared between multiple buffers with overlapping live ranges.</p>
+</blockquote>
+
+<p>Notably, the performance of solving the memory allocation problem impacts users. If the compilation of a model takes a long time, an application using a model won’t work. On the other hand, if the problem is solved quickly, but suboptimally, the model may not be able to successfully allocate memory (because it attempts to use too much memory).</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="problem-formulation">Problem Formulation</h3>
+
+<p>The authors represent the problem by providing a set of buffers with <em>start</em>, <em>end</em>, and <em>size</em> to the allocator, along with an upper limit to memory usage.</p>
+
+<p>The allocator then attempts to produce a solution mapping each buffer to an address, where none of the buffers overlap, and memory usage doesn’t exceed the specified limit.</p>
+
+<h3 id="memory-allocation-heuristics">Memory Allocation Heuristics</h3>
+
+<p>The paper describes three main heuristics for assigning buffers to addresses: <em>best-fit</em>, <em>greedy</em>, the <em>approach Telamalloc implements</em> (which is a combination of both).</p>
+
+<p>A <em>best-fit</em> allocator assigns buffers to address space in start time order<label for="bfc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bfc" class="margin-toggle" /><span class="sidenote">The paper mentions that Tensorflow uses this strategy with its <a href="https://github.com/tensorflow/tensorflow/blob/c570cb257715014eec85b26bdac25114c5ad4582/tensorflow/tsl/framework/bfc_allocator.h">best-fit with coalescing (BFC) allocator</a>. </span>. The paper notes, “This approach works well if memory is abundant but fails if the memory budget is tight” because memory allocations of many blocks in a constrained space will be suboptimal.</p>
+
+<p>The <em>greedy</em> approach (used by <a href="https://blog.tensorflow.org/2020/10/optimizing-tensorflow-lite-runtime.html">TFLite</a>) takes, “the end time into account to pick locations one buffer at time, while ensuring that it does not overlap with any previously allocated buffers.” Again, this approach doesn’t do well when memory is tight because it also produces suboptimal solutions.</p>
+
+<p>Lastly, there is the heuristic that Telamalloc implements, which takes into account the contention of a point of time (represented by the number of buffers that need to be assigned). Buffers with the highest contention are placed first at the lowest possible address (stored by keeping a “skyline” for each time period)<label for="skyline" class="margin-toggle sidenote-number"></label><input type="checkbox" id="skyline" class="margin-toggle" /><span class="sidenote">This is reminiscent of the <a href="https://leetcode.com/problems/the-skyline-problem/">Skyline Problem</a>! </span>. If there are multiple buffers, the heuristic makes a decision based on other factors like the length of time a buffer exists.</p>
+
+<h3 id="solver-based-approaches">Solver-based Approaches</h3>
+
+<p>Heuristics for memory allocation have several downsides, including that their performance depends on the specific workload and problem difficulty - “once a heuristic has made a wrong decision that prevents it from solving the problem, it has no way to recover.” To address the shortcomings of heuristic failure, Telamalloc integrates a solver-based<label for="ilp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ilp" class="margin-toggle" /><span class="sidenote">In particular, the paper relies on integer liner programming (ILP), described in more detail <a href="https://en.wikipedia.org/wiki/Integer_programming">here</a>. </span> approach that represents the problem with several constraints, including all of the buffers taking up space at a given time can not exceed memory and buffers can not overlap.</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="telamalloc-overview">Telamalloc Overview</h3>
+
+<p>As mentioned earlier, Telamalloc doesn’t solely rely on heuristics, nor solvers - heuristics get stuck on certain cases, and solvers can take too long. Normally solvers<label for="cpsat" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cpsat" class="margin-toggle" /><span class="sidenote">The paper specifically refers to <a href="https://developers.google.com/ optimization/cp/cp_solver">a solver framework from Google</a>, capable of representing a wide variety of constraints and problems. </span> return the whole solution given an input and a set of constraints - instead, the program that guides the solver integrates interactively, reading the state of the solver for a particular buffer and making choices, then responding to feedback.</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>At each step, the Search Heuristic chooses from the remaining unplaced blocks<label for="heur" class="margin-toggle sidenote-number"></label><input type="checkbox" id="heur" class="margin-toggle" /><span class="sidenote">It chooses blocks based on the following heuristics in order, “(1) The block with the longest lifetime (end-start time). (2) The block with the largest size. (3) The block with the largest area (i.e., size × lifetime).” </span>, and “backtracks” to undo choices if a state it ends up in is invalid. It splits backtracking into “minor” and “major” based on how many steps need to be undone - the former corresponds to a single buffer placement, whereas the latter corresponds to undoing a whole line of choices (because the final state is invalid).</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The authors describe a number of optimizations to implement <em>smart backtracking</em>. Several of these focus on avoiding a return to the conditions that caused the initial backtrack. For example, on failure to satisfy constraints, the solver reports which placements occurred, so the search algorithm can unwind them quickly. Another example optimization is explicitly prioritizing buffers whose placement (or inability to place) led to a major backtrack - “this avoids cases where the solver got stuck by ignoring blocks that were important but not among the largest or longest-lived blocks”.</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, Telamalloc groups together buffers that contend with one another into <em>phases</em>, then runs the algorithm over each <em>phase</em>. This approach reduces the complexity of the problem, and allows choosing from a smaller set of candidate buffers when making choices.</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper considers two main aspects of Telamalloc: <em>microbenchmarks</em> evaluating the algorithm in isolation, and measurements from compiling models / making memory allocations on a Pixel 6.</p>
+
+<p>The microbenchmarks consider the time to compute memory placements in the best and worst cases. In normal conditions, Telamalloc completes incredibly quickly (“≈10-100us for common problem sizes”). The worst case is represented by a large number of blocks (one thousand) with full overlap - in this situation, Telamalloc takes around 100000 ms, and each step takes significantly longer due to the strain placed on the solver (which needs to consider how a candidates interacts with many different potential placements).</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/table1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>When comparing Telamalloc’s compilation of common models on the Pixel 6 running against a solver (which is capable of achieving near-optimal results given enough time), the memory allocations Telamalloc produces are nearly identical. Telamalloc is also able to achieve a, “median speedup of ≈ 4.7× across the benchmark”.</p>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/table2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<figure><img class="maincolumn-img" src="/assets/telamalloc/figure12.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Telamalloc is an interesting paper because it discusses a combination of existing algorithms with optimizations tailored to improve user experiences relying on ML models. The paper also discusses using ML to make the performance of “smart” backtracking better - the idea of feeding in-the-wild data back into an algorithm to improve it over time is fascinating to me. This pattern also shows up in places like <a href="https://developers.redhat.com/articles/2021/06/23/how-jit-compiler-boosts-java-performance-openjdk#">Java’s JIT compiler</a> which takes data about a program’s performance and execution, then uses that to make the program better over time. Beyond the technical details of the paper, I also appreciated its focus on the impact to users - being able to compile models efficiently and successfully across a wide range of hardware is critical to making new AI-powered capabilities accessible to all.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-06-06-telamalloc-efficient-on-chip-memory-allocation-for-production-machine-learning-accelerators.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>
