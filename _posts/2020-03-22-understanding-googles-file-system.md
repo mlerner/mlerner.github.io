@@ -3,6 +3,7 @@ layout: post
 title: "Understanding Google&#8217;s File System"
 tags: ["Distributed Systems"]
 intro: These paper reviews can [be delivered weekly to your inbox](https://newsletter.micahlerner.com/), or you can subscribe to the [Atom feed](https://www.micahlerner.com/feed.xml). As always, feel free to reach out on [Twitter](https://twitter.com/micahlerner) with feedback or suggestions!
+hn: https://news.ycombinator.com/item?id=39756262
 ---
 
 Today I read [the original paper](http://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) about the Google File System (GFS), a system that provided the storage layer for many of Google's applications in the company's early days. The original implementation has reportedly been replaced by a newer version called Colossus, but reading about the original approach was still illuminating and I thought I'd do a quick write up about it.
