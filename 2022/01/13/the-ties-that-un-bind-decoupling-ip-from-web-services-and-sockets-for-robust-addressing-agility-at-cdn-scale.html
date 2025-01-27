@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale</h1>
+  
+  <h4>Published January 13, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-01-13-the-ties-that-un-bind-decoupling-ip-from-web-services-and-sockets-for-robust-addressing-agility-at-cdn-scale.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=32298751'> Hacker News</a></p>  
+    <p>
+      <em>
+        This week’s paper is from a conference earlier in 2021 (SIGCOMM 2021). I’m also trying out a new format for the paper reviews, your thoughts are greatly appreciated.
+
+        
+        These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!
+
+        
+      </em>
+    </p>
+
+     <p><a href="https://dl.acm.org/doi/10.1145/3452296.3472922">The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>The research in  <em>The Ties that un-Bind: Decoupling IP from web services and sockets for robust addressing agility at CDN-scale</em> describes Cloudflare’s work to decouple networking concepts (hostnames and sockets) from IP addresses.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ties/fig1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>By decoupling hostnames and sockets from addresses, Cloudflare’s infrastructure can quickly change the machines that serve traffic for a given host, as well as the services running on each host - the authors call this approach <em>addressing agility</em>.</p>
+
+<h2 id="what-are-the-papers-motivations">What are the paper’s motivations?</h2>
+
+<p>The paper notes <em>reducing IP address use</em> as the initial motivation for decoupling IP addresses from hostnames. The authors argue that CDNs don’t necessarily need large numbers of IP addresses to operate - this is in contrast with the fact that, “large CDNs have acquired a massive number of IP addresses: At the time of this writing, Cloudflare has 1.7M IPv4 addresses, Akamai has 12M, and Amazon AWS has over 51M!”</p>
+
+<p>Traditionally, many CDNs use large numbers of IPs because their architecture (shown in the figure below) places entry and exit points on the public internet - entry points receive requests from clients, while exit points make requests to origin servers on cache miss<label for="arch" class="margin-toggle sidenote-number"></label><input type="checkbox" id="arch" class="margin-toggle" /><span class="sidenote"><a href="https://www.cloudflare.com/learning/cdn/glossary/origin-server/">These docs</a> on “What is an origin server?” are helpful. </span>. For these machines to be reachable, they need public IP addresses.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ties/fig2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Other factors can increase a CDN’s IP address usage. CDNs may bind specific IPs to hostnames, creating a relationship between the number of hostnames served by the CDN and the number of addresses the CDN requires. Furthermore, CDN servers normally have an upper bound on networking sockets<label for="socketover" class="margin-toggle sidenote-number"></label><input type="checkbox" id="socketover" class="margin-toggle" /><span class="sidenote">Network connections have read/write buffers for connections, as well as a kernel data structure called <a href="https://wiki.linuxfoundation.org/networking/sk_buff"><code class="language-plaintext highlighter-rouge">sk_buff</code></a>. More info <a href="https://stackoverflow.com/a/8732314">here</a>. </span>, so increased client usage also translates into more machines (and associated IP addresses).</p>
+
+<h2 id="how-does-it-work">How does it work?</h2>
+
+<p>The paper focuses on two types of bindings:</p>
+
+<ul>
+  <li><em>Hostname-to-address</em> bindings control how hostnames (like <code class="language-plaintext highlighter-rouge">www.micahlerner.com</code>) map to IP addresses/machines that can serve requests</li>
+  <li><em>Address-to-socket</em> bindings control how services running on machines<label for="sockets" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sockets" class="margin-toggle" /><span class="sidenote">For a reference on network sockets, I have really enjoyed <a href="https://beej.us/guide/bgnet/">Beej’s Guide to Networking Programming</a> </span> service client requests.</li>
+</ul>
+
+<p>First, the paper describes how Cloudflare can quickly and dynamically update <em>hostname-to-address</em> bindings by changing configurations called <em>policies</em> - DNS servers ingest <em>policies</em> and use them to decide which IP addresses to return for a given hostname.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ties/fig3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>One example policy allows hostnames to map to IP addresses randomly chosen from a set of candidates (called a <em>pool</em>). Using <em>policies</em> instead of fixed mappings from hostnames to IP addresses is in contrast with other deployments, where changing <em>hostname-to-IP address</em> mappings is both operationally complex and error-prone.</p>
+
+<p>The second major change to IP addressing decouples <em>address-to-socket</em> bindings.</p>
+
+<p>Normally a service receives traffic on a fixed set of ports - this approach has several downsides, including that each socket has overhead (meaning a fixed number of services can run on each machine) and it isn’t possible to run two services with overlapping ports on the same machine without complications<label for="sameport" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sameport" class="margin-toggle" /><span class="sidenote">The paper notes one approach, using <code class="language-plaintext highlighter-rouge">INADDR_ANY</code> (relevant documentation <a href="https://man7.org/linux/man-pages/man7/ip.7.html">here</a>), that allows one socket to receive packets sent to all interfaces on a machine. This approach doesn’t come without its downsides, like potentially introducing security issues - if internal traffic goes to the same socket as external traffic, an internal service could accidentally respond to external requests. </span> (as they can’t re-use the same port).</p>
+
+<figure><img class="maincolumn-img" src="/assets/ties/fig4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To addresses these challenges, Cloudflare’s system introduces <em>programmable socket lookup</em><label for="crowded" class="margin-toggle sidenote-number"></label><input type="checkbox" id="crowded" class="margin-toggle" /><span class="sidenote">The Cloudflare blog has more background <a href="https://blog.cloudflare.com/its-crowded-in-here/">here</a>. </span>, using BPF<label for="bpf" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bpf" class="margin-toggle" /><span class="sidenote">eBPF/BPF have come up a few times in past paper reviews, and I really like <a href="https://jvns.ca/blog/2017/06/28/notes-on-bpf---ebpf/">this post</a> from Julia Evans on the topic. </span> (as part of the implementation, the authors built <a href="https://lwn.net/Articles/819618/"><code class="language-plaintext highlighter-rouge">sk_lookup</code></a><label for="ebpf" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ebpf" class="margin-toggle" /><span class="sidenote">There is also a greta tutorial <a href="https://ebpf.io/summit-2020-slides/eBPF_Summit_2020-Lightning-Jakub_Sitnicki-Steering_connections_to_sockets_with_BPF_socke_lookup_hook.pdf">here</a>. </span>). This approach routes traffic inside of the kernel based on rules. An example rule could route client traffic to different instances of the same service running side-by-side, with a separate socket for every instance.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ties/fig5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="why-does-the-research-matter">Why does the research matter?</h2>
+
+<p>The paper discusses a number of performance and security benefits that <em>addressing agility</em> provides - importantly, these benefits are available with no discernible change to other important system metrics!</p>
+
+<p>First, decoupling <em>hostname-to-address</em> and <em>address-to-socket</em> bindings allows the Cloudlare CDN<label for="transfer" class="margin-toggle sidenote-number"></label><input type="checkbox" id="transfer" class="margin-toggle" /><span class="sidenote">The paper notes that the approach is transferable to external deployments as well, with a few caveats. </span> to operate with fewer IPs. Addresses no longer need to be reserved for use by a specific host name and machines can now have significantly more sockets. Fewer IP addresses impacts cost and lowers barrier to entry - the paper notes that the IP space owned by the major cloud providers is worth north of 500 million USD (if not more).</p>
+
+<p>The IP addresses that Cloudflare does continue to use are also become easier to manage. Dynamically allocating IP addresses to hostnames turns the operational task of taking machines (and the associated addresses) offline into a matter of removing addresses from the pool provided to clients.</p>
+
+<p>Furthermore, the randomization approach described (where IP addressess from a pool are returned in response to DNS queries) by the paper results in better load balancing.</p>
+
+<figure><img class="maincolumn-img" src="/assets/ties/fig7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>While the paper discusses the scalability benefits <em>addressing agility</em> provides, it also discusses other implications beyond limiting address use - as an example, the approach can help with Denial of Service attacks.</p>
+
+<p>If a specific address is under attack, the traffic to that address can be blackholed<label for="blackholed" class="margin-toggle sidenote-number"></label><input type="checkbox" id="blackholed" class="margin-toggle" /><span class="sidenote">Cloudflare’s reference on blachole routing <a href="https://www.cloudflare.com/learning/ddos/glossary/ddos-blackhole-routing/">here</a>. </span>. If a hostname is under attack, the traffic to that hostname will be distributed evenly across machines in the address pool.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-01-13-the-ties-that-un-bind-decoupling-ip-from-web-services-and-sockets-for-robust-addressing-agility-at-cdn-scale.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

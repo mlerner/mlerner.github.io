@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Metastable Failures in the Wild</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Metastable Failures in the Wild</h1>
+  
+  <h4>Published July 11, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-07-11-metastable-failures-in-the-wild.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=32459557'> Hacker News</a></p>  
+    <p>
+      <em>
+        After this paper, I’ll be reading a few others from this year’s OSDI conference. These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!
+
+        
+      </em>
+    </p>
+
+     <p><a href="https://www.usenix.org/conference/osdi22/presentation/huang-lexiang">Metastable Failures in the Wild</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p><em>Metastable failures</em><label for="metastablepaper" class="margin-toggle sidenote-number"></label><input type="checkbox" id="metastablepaper" class="margin-toggle" /><span class="sidenote">The authors first discussed the subject in <a href="https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf">Metastable Failures in Distributed Systems</a>. One of authors (Alexey Charapko) wrote an overview of the paper <a href="http://charap.co/metastable-failures-in-distributed-systems/">here</a>. </span> are a class of outage that, “<em>feed</em> and strengthen their own <em>failed</em> condition. The main characteristic of a metastable failure is a positive feedback loop that keeps the system in a degraded/failed state”<label for="aleksey" class="margin-toggle sidenote-number"></label><input type="checkbox" id="aleksey" class="margin-toggle" /><span class="sidenote">Aleksey Charapko, one of the authors of the paper, provided this characterization in their discussion of the research <a href="http://charap.co/metastable-failures-in-the-wild/">here</a>. Aleksey also runs a <a href="http://charap.co/category/reading-group/">great reading group</a> that I highly recommend for distributed systems topics! </span>. While some failures that match this characterization are well known (like <a href="https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/">overload</a>, <a href="https://sre.google/sre-book/addressing-cascading-failures/">cascading failures</a>, and <a href="https://devops.stackexchange.com/questions/898/how-to-avoid-retry-storms-in-distributed-services">retry storms</a>), the authors argue that categorizing them under a single class will facilitate work by industry practitioners and academia to address them<label for="category" class="margin-toggle sidenote-number"></label><input type="checkbox" id="category" class="margin-toggle" /><span class="sidenote">The authors note that this type of categorization for other types of distributed systems failures (like <a href="https://dl.acm.org/doi/10.1145/357369.357371">fail-stop</a>, <a href="https://www.usenix.org/conference/fast18/presentation/gunawi">fail-slow</a>, and <a href="https://www.usenix.org/conference/fast19/presentation/stuardo">scalability failures</a>) had a similar affect. Of those, I’m particularly interested in fail-slow (which are hardware failures that stop short of total failure, often occurring in systems at scale) and hope to cover them in a future paper review. </span>.</p>
+
+<p>While there are well-known mitigations<label for="requestretries" class="margin-toggle sidenote-number"></label><input type="checkbox" id="requestretries" class="margin-toggle" /><span class="sidenote">Like introducing jitter, backoff behavior, or <a href="https://brooker.co.za/blog/2022/02/28/retries.html">other techniques</a> for lightening load (some of these are described in the <a href="https://sre.google/sre-book/addressing-cascading-failures/">SRE book</a>). </span> to reducing types of metastable failures, these approaches don’t stop the class of failure from continuously plaguing systems and operations teams -  a fact highlighted by the paper’s dataset on severe, user-facing outages from a wide variety of cloud providers and businesses. Given the serious and complex outages that the failure class could lead to, research into systematically finding and eliminating the possibility of <em>metastable failures</em> before they happen could have an impact across industry.</p>
+
+<h2 id="background">Background</h2>
+
+<p>Metastable failures happen in distributed systems, which run in one of several states: <em>stable</em>, <em>vulnerable</em>, or <em>metastable</em>.</p>
+
+<p>To understand the transitions between different system states, we can consider service behavior in the presence of growing numbers of request retries - if a system can both serve all requests successfully and scale to handle additional load, it is in a <em>stable</em> state.</p>
+
+<figure><img class="maincolumn-img" src="/assets/metastable/fig1_p1.png" /><figcaption class="maincolumn-figure">From <a href="https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf">Metastable Failures in Distributed Systems</a>.</figcaption></figure>
+
+<p>A system in a <em>stable</em> state can transition into a <em>vulnerable</em> state for a wide variety of factors. One example is if a system’s organic traffic grows over time, but its reserve capacity does not - in this situation, the service transitions to a <em>vulnerable</em> state because it can’t scale up if it becomes overloaded.</p>
+
+<p>Once in a <em>vulnerable</em> state, the system can transition to <em>metastable</em> failure due to a <em>trigger</em>. One example trigger is slowdown in the system’s dependencies<label for="db" class="margin-toggle sidenote-number"></label><input type="checkbox" id="db" class="margin-toggle" /><span class="sidenote">Like increased database latency. </span> - dependency slowdown impacts the ability of the service to respond in a timely manner to clients, as it must wait longer to receive required responses.</p>
+
+<p>If a trigger’s magnitude or duration is strong enough, a system might enter a <em>metastable state</em> and begin failing in a manner that compounds the original problem. For example, if the server takes long enough to respond (due to the previously mentioned dependency slowdown), a client might give up on the request and re-try. As more clients retry, more load is added to the system, meaning that existing requests keep getting slower (and in turn causing more client retries). This type of vicious cycle is called a <em>sustaining effect</em> because it keeps the system in a failing state, even after the original trigger (dependency slowdown) is removed.</p>
+
+<figure><img class="maincolumn-img" src="/assets/metastable/fig2_p1.png" /><figcaption class="maincolumn-figure">From <a href="https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf">Metastable Failures in Distributed Systems</a>.</figcaption></figure>
+
+<p>Oftentimes transitioning out of <em>metastable failure</em> and into a <em>stable</em> safe state requires action like dropping retries, or adding emergency capacity.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The <em>Metastable Failures in the Wild</em> makes four main contributions:</p>
+
+<ul>
+  <li>An analysis of metastable failures from a variety of cloud providers and businesses, compiled from publicly available incident data</li>
+  <li>A model for representing the causes/effects of metastable failures.</li>
+  <li>An industry perspective on metastable failure from Twitter</li>
+  <li>Experimental testbed and results for several applications, including MongoDB replication, with induced metastable failures.</li>
+</ul>
+
+<h2 id="metastable-failures-in-the-wild">Metastable Failures in the Wild</h2>
+
+<p>To understand the occurrence of <em>metastable failures</em>, the paper first builds a dataset from publicly available data outage reporting tools and community datasets. In particular, the authors draw on public information from cloud providers (AWS, Azure, GCP), businesses (IBM, Spotify), and open source projects (Elasticsearch, Apache Cassandra)<label for="outages" class="margin-toggle sidenote-number"></label><input type="checkbox" id="outages" class="margin-toggle" /><span class="sidenote">The paper cites a number of great resources that track public postmortems, including <a href="https://pinboard.in/u:peakscale/">collections on Pinboard</a>, <a href="https://postmortems.info/">postmortems.info</a>, and <a href="https://sreweekly.com/">SRE Weekly</a>. </span>.</p>
+
+<p>The paper then evaluates this dataset for shared characteristics of the failure class, looking for:</p>
+
+<blockquote>
+  <p>tell-tale signs of metastability—temporary triggers, work amplification or sustaining effects, and certain specific mitigation practices. More specifically, we look for patterns when a trigger initiates some processes that amplify the initial trigger-induced problem and sustain the degraded performance state even after the trigger is removed.</p>
+</blockquote>
+
+<p>After filtering the dataset, the authors annotate outages with information about <em>triggers</em> (what pushed the transition from <em>vulnerable</em> to <em>metastable failure</em>), <em>sustaining effects</em> (what kept the system in <em>metastable failure</em> after the initial trigger was removed), and <em>mitigations</em>. The paper also categorizes the impact of the incidents (measured by length of time and count of impacted services).</p>
+
+<figure><img class="maincolumn-img" src="/assets/metastable/table1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Many (45%) of the incidents have multiple triggers, while load spikes and engineer errors are involved in 35% and 45% of incidents respectively. Interestingly retry policy is one of the most common <em>sustaining effects</em> (50% of the incidents).</p>
+
+<p>Pulling one example from the dataset, Amazon EC2 and RDS are <a href="https://aws.amazon.com/message/65648/">the subjects of one of the most severe incidents</a> in the paper<label for="ebs" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ebs" class="margin-toggle" /><span class="sidenote">This incident has an amazing amount of detail on the system internals impacted during the incident, making this paper’s research possible! </span>. A trigger for the incident was network overload that occurred while attempting to migrate traffic. When the network overload was resolved, nodes in the now restored part of the network sent a surge of requests, increasing latency in other parts of the system. To bring EBS back to a workable condition, the team had to add additional capacity, shed load, and manipulate traffic prioritization to ensure that the requests required to restore the system could complete.</p>
+
+<h2 id="metastable-model">Metastable Model</h2>
+
+<p>To model how a system behaves with respect to metastability, the authors introduce a mathematical framework that models capacity, load, responses to triggers, and amplification (feedback loops that impact a system’s load by changing either capacity or load)<label for="model" class="margin-toggle sidenote-number"></label><input type="checkbox" id="model" class="margin-toggle" /><span class="sidenote">I elide the mathematical notation in this post, but recommend referencing the paper if this topic sounds interesting! </span>.</p>
+
+<p>This framework is used to model two types of <em>triggers</em>:</p>
+
+<ul>
+  <li><em>Load-spike triggers</em>: events that increase the load on the system (potentially adding client retries on top of the base load the service receive).</li>
+  <li><em>Capacity-decreasing triggers</em>: events that reduce the system’s ability to serve traffic. For example, if a service relies on a cache whose hit rate drops.</li>
+</ul>
+
+<p>The triggers are combined with two types of <em>amplification</em>:</p>
+
+<ul>
+  <li><em>Workload amplification</em>: a feedback loop that increases the system load (retries would be an example).</li>
+  <li><em>Capacity degradation amplification</em>: a feedback loop that decreases the system load. For example, a lookaside<label for="lookaside" class="margin-toggle sidenote-number"></label><input type="checkbox" id="lookaside" class="margin-toggle" /><span class="sidenote">Lu Pan has <a href="https://blog.the-pans.com/different-ways-of-caching-in-distributed-system/">an article</a> on the different types of caches, and <a href="https://tanzu.vmware.com/content/blog/an-introduction-to-look-aside-vs-inline-caching-patterns">this</a> article from VMWare also contains help context. </span> cache-based system not being able to refill a cache in an overload situation.</li>
+</ul>
+
+<p>The authors model combinations of these triggers and amplification mechanisms in order to represent how a system behaves in different situations.</p>
+
+<figure><img class="maincolumn-img" src="/assets/metastable/table2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="metastability-at-twitter">Metastability at Twitter</h2>
+
+<p>The paper includes one example of metastability in a system at Twitter that relies on Garbage Collection (GC)<label for="scala" class="margin-toggle sidenote-number"></label><input type="checkbox" id="scala" class="margin-toggle" /><span class="sidenote">Twitter <a href="https://dl.acm.org/doi/10.1145/1900160.1900170">has a large number of Scala services</a> and has <a href="https://twitter.github.io/scala_school/">extensive information on how to use the language</a>. </span>.</p>
+
+<p>In the case study, a load test of the system serves as a <em>trigger</em>, increasing one of the service’s internal queues. A larger queue increases memory pressure and GC, further increasing the queue length as requests start taking longer and longer - this feedback loop is an example of a <em>sustaining effect</em><label for="capacity" class="margin-toggle sidenote-number"></label><input type="checkbox" id="capacity" class="margin-toggle" /><span class="sidenote">This is likely  <em>capacity degradation amplification</em> because the paper notes that, “high queueing increases memory pressure and mark-and-sweep processing during GC, causing job slowdowns and thus higher queueing.” </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/metastable/twitterfig2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/metastable/twitterfig3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To solve the issue, oncallers can increase the capacity of the serving system, or change the service to provide enough overhead (such that additional load doesn’t interact with GC processes).</p>
+
+<h2 id="experimental-testbed-and-results">Experimental Testbed and Results</h2>
+
+<p>The paper includes a section with experimental results from triggering metastability in a selection of systems.</p>
+
+<p>One of the experiments is related to state machine replication implemented in MongoDB<label for="mongodb" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mongodb" class="margin-toggle" /><span class="sidenote">The original paper is <a href="https://www.usenix.org/conference/nsdi21/presentation/zhou">here</a>, although there is also a summary from Aleksey Charapko’s reading group <a href="http://charap.co/reading-group-fault-tolerant-replication-with-pull-based-consensus-in-mongodb/">here</a>. </span>. The primary goal of this experiment is to demonstrate that the duration/magnitude of a trigger (in this case, resource constriction that leads to retries) can cause a system to transition from <em>vulnerable</em> to <em>metastable</em> failure.</p>
+
+<p>The experiment evaluates how temporarily restricting CPU resources for different periods introduces latency that leads to client timeouts and retry storms. In response to triggers of limited duration, the system doesn’t transition to a <em>metastable state</em>. This is not true for longer triggers with the same level of resource constriction, which cause client timeouts and subsequent retries (introducing a <em>sustaining effect</em>). This experiment demonstrates that the duration of a trigger impacts whether a system transitions into a <em>metastable</em> failure mode.</p>
+
+<figure><img class="maincolumn-img" src="/assets/metastable/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also tests a look-aside cache<label for="lookaside" class="margin-toggle sidenote-number"></label><input type="checkbox" id="lookaside" class="margin-toggle" /><span class="sidenote">See prior side note on lookaside caches above. </span> implementation, where a drop in cache hit rate (the <em>trigger</em>) causes a significant increase in requests to the backend service. The backend service is not able to increase its capacity, and begins timing out requests. Timed-out requests do not refill the cache, meaning that the system can not recover its cache hit rate (serving as the <em>sustaining effect</em>).</p>
+
+<figure><img class="maincolumn-img" src="/assets/metastable/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>There are several great things about this paper. First of all, the survey of publically available incident reporting, with annotations on the triggers, impact, mitigation, and sustaining effects is impressive - several studies of other failure classes<label for="bugs" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bugs" class="margin-toggle" /><span class="sidenote">For example, <a href="https://dl.acm.org/doi/10.1145/2670979.2670986">What Bugs Live in the Cloud? A Study of 3000+ Issues in Cloud Systems</a>. </span> start with a more structured (or at least semi-labeled dataset).</p>
+
+<p>I’m also interested in seeing how this research continues to progress - in particular, I’m looking forward to seeing how future research systematically predicts, then reduces (or eliminates) metastable failures - potentially the authors will use something along the lines of <a href="http://psas.scripts.mit.edu/home/stamp-workshops/">MIT’s STAMP methodology</a>)!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-07-11-metastable-failures-in-the-wild.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

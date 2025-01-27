@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>FoundationDB: A Distributed Unbundled Transactional Key Value Store</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>FoundationDB: A Distributed Unbundled Transactional Key Value Store</h1>
+  
+  <h4>Published June 12, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-06-12-foundationdb-a-distributed-unbundled-transactional-key-value-store.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=28740497'> Hacker News</a></p>   <p><a href="https://www.foundationdb.org/files/fdb-paper.pdf">FoundationDB: A Distributed Unbundled Transactional Key Value Store</a> Zhou, et al., 2021</p>
+
+<p><em>I heard good things about FoundationDB<label for="jepsen" class="margin-toggle sidenote-number"></label><input type="checkbox" id="jepsen" class="margin-toggle" /><span class="sidenote">In particular, I read that FoundationDB passed Jepsen testing <a href="https://web.archive.org/web/20150312112556/http://blog.foundationdb.com/foundationdb-vs-the-new-jepsen-and-why-you-should-care">“with flying colors on their first try”</a> and saw that there were many happy users of the system on <a href="https://news.ycombinator.com/item?id=27424605">Hacker News</a>. </span>, so after seeing that their paper was accepted to SIGMOD’21 (and made available), I decided to read it this week. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the new <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<h2 id="what-is-foundationdb">What is FoundationDB?</h2>
+
+<p>The paper discusses a distributed key value store that Apple, Snowflake, and  VMWare (among others) run core services on at immense scale<label for="cloudkit" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cloudkit" class="margin-toggle" /><span class="sidenote">Apple’s CloudKit is built on FoundationDB, in addition to other services (as described in <a href="https://www.foundationdb.org/blog/fdb-paper/">their SIGMOD’21 announcement</a>). Snowflake’s usage of FoundationDB is explained in this <a href="https://www.youtube.com/watch?v=OJb8A6h9jQQ">great talk</a>. </span>. Unlike other large-scale data stores that forego implementing transactions in order to simplify scaling, FoundationDB was designed with strictly serializable<label for="serializability" class="margin-toggle sidenote-number"></label><input type="checkbox" id="serializability" class="margin-toggle" /><span class="sidenote">Strict serializability means that transactions can be given a definite order. Achieving strict serializability is easy on a single node database, but is difficult to scale to an enormous distributed database (part of why the paper is so interesting). For background on the topic, I would recommend <a href="http://www.bailis.org/blog/linearizability-versus-serializability/">Peter Bailis’s blog</a>. </span> transactions from the ground up.</p>
+
+<p>In the process of building the system, the team also wrote a testing framework for simulating faults in the network, disk, and other dependencies. This framework became powerful enough that it actually found bugs in software that FoundationDB relied on (like Zookeeper)!</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper boils down to two major contributions.</p>
+
+<ul>
+  <li>The FoundationDB system itself (including its feature set and overall architecture)</li>
+  <li>The framework used to model and test the system</li>
+</ul>
+
+<p>On its own, the FoundationDB system is a significant contribution. Its design contrasts with other large-scale storage systems aiming to service billions of users, store petabytes/exabytes of data, and respond to millions of requests per second - FoundationDB supports transactions by default. NoSQL (a common architecture used in large scale storage systems), normally do not include transactions by default<label for="NoSQL" class="margin-toggle sidenote-number"></label><input type="checkbox" id="NoSQL" class="margin-toggle" /><span class="sidenote">The paper does note that many NoSQL systems (like Cassandra, MongoDB, and CouchDB) did not have transactions until recently. </span>, instead accepting writes that eventually propagate to the entire system (a.k.a. eventual consistency). In the eyes of the authors, systems that rely on eventual consistency force developers to think deeply about how their applications handle concurrent writes (given that with eventual consistency, readers and writers may not see updates to the database immediately).</p>
+
+<p>The framework used to test the FoundationDB system is also novel. Code related to running the system can be stubbed out (more on stubbing out components in the <em>What is unique about FoundationDB’s testing framework section?</em>), allowing for engineers to control predominantly all sources of non-deterministic behavior. Being able to artificially induce many different types of failures means that an enormous amount of edge cases can be simulated. More edge cases simulated means more possible issues with those edge cases are found before being released.</p>
+
+<h2 id="architecture-of-foundationdb">Architecture of FoundationDB</h2>
+<p>To understand how FoundationDB works, the author’s invoke the design principle of “divide-and-conquer” - different components of the FoundationDB architecture are responsible for specific functionality and each function can be scaled separately. The impact of this design choice is that capacity can be gradually added to the components of the system that serve reads or writes, depending on changing usage patterns.</p>
+
+<p>The divide-and-conquer principle is put into practice by splitting FoundationDB into two planes: the <em>Control Plane</em> and the <em>Data Plane</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/foundationdb/arch.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="control-plane">Control Plane</h2>
+
+<p>The <em>Control Plane</em> maintains critical metadata (like system configuration) and performs five independent functions: <em>Coordinators</em>, <em>Cluster Controller</em>, <em>Data Distributor</em>, and <em>Rate Keeper</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/foundationdb/controlplane.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>Coordinators</em> store metadata about different components of the system so that a FoundationDB deployment can recover in the event of failures. As an example, one would run <em>Coordinators</em> across many different failure domains (for example, running in many regions or datacenters)<label for="quorom" class="margin-toggle sidenote-number"></label><input type="checkbox" id="quorom" class="margin-toggle" /><span class="sidenote">The paper notes that “As long as a quorum (i.e., majority) of Coordinators are live, this metadata can be recovered.” </span>. The <em>Coordinators</em> are part of an Active Disk Paxos<label for="disk paxos" class="margin-toggle sidenote-number"></label><input type="checkbox" id="disk paxos" class="margin-toggle" /><span class="sidenote"><a href="https://groups.csail.mit.edu/tds/papers/Chockler/podc-02.pdf">Active Disk Paxos</a> is an extension of Disk Paxos, and Disk Paxos is an extension of the basic Paxos algorithm. Disk Paxos is similar to the normal Paxos algorithm, except it can have multiple disks per processor, and a disk can be accessed by many processors. As an example, the <em>Coordinators</em> could use defined sections of a shared disk, rather than independent disks. Active Disk Paxos is different than Disk Paxos in that it can scale to infinite clients, while the original Disk Paxos implementation can not. The original paper on Disk Paxos is <a href="https://lamport.azurewebsites.net/pubs/disk-paxos-disc.pdf">here</a> and there is also an interesting description about it on <a href="https://www.microsoft.com/en-us/research/publication/disk-paxos/">Microsoft Research</a>. Apparently a programmatic proof of the algorithm was developed and it found errors in the algorithm, but Lamport chose not to correct the original paper - with the note that “Anyone who writes a rigorous mechanically-checked proof will find them.” </span> group, and elect a single <em>Cluster Controller</em>. If the <em>Cluster Controller</em> fails or becomes unresponsive, a new <em>Cluster Controller</em> will be elected.</p>
+
+<p>The <em>Cluster Controller</em> has several key roles - it monitors all servers in the cluster, in addition to “recruiting” (a.k.a. starting) three key external processes. These three processes are in turn responsible for monitoring specific systems in FoundationDB. Two of the processes run in the <em>Control Plane</em> - the <em>Data Distributor</em> ensures optimal functioning of processes in the <em>Data Plane</em>’s <em>Storage System</em>, and the <em>Rate Keeper</em> ensures that the cluster as a whole isn’t overloaded<label for="ratekeeper" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ratekeeper" class="margin-toggle" /><span class="sidenote">Although how it ensures this is opaque and not covered in the paper </span>. The third process run by the <em>Cluster Controller</em> is called the <em>Sequencer</em>, and it runs in the <em>Data Plane</em>. To understand the function of the <em>Data Distributor</em> and the <em>Sequencer</em>, let’s move onto the <em>Data Plane</em>.</p>
+
+<h2 id="data-plane">Data Plane</h2>
+
+<p>In contrast to the Control Plane’s single subsystem, the <em>Data Plane</em> contains three: the <em>Transaction System</em>, the <em>Log System</em>, and the <em>Storage System</em>. We will first talk about the systems at a high level, then dive into how they work individually.</p>
+
+<figure><img class="maincolumn-img" src="/assets/foundationdb/dataplane.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>Transaction System</em> communicates with clients and is responsible for in-memory transaction processing in the event of a write transaction - in the event of a transaction commit, components in the <em>Transaction System</em> call into the <em>Log System</em> to persist mutations associated with the transaction.</p>
+
+<p>The <em>Log System</em> stores persistent record of a transaction (through a Write Ahead Log), and communicates with the <em>Storage System</em> in order to replicate the Write Ahead Log.</p>
+
+<p>The <em>Storage System</em> receives mutations from the <em>Log System</em> and applies the mutations to its storage. Clients also communicate directly with the <em>Storage System</em> when performing a read request.</p>
+
+<p>Now that we understand the different systems in the <em>Data Plane</em> at a high level, let’s dive into the specifics of how each works.</p>
+
+<h3 id="transaction-system">Transaction System</h3>
+
+<p>The primary functions of the <em>Transaction System</em> are to act as a router for read requests and decide whether to commit write transactions. It accomplishes these goals by using three stateless components: a <em>Sequencer</em>, <em>Proxies</em>, and <em>Resolvers</em>.</p>
+
+<p>As mentioned in the <em>Control Plane</em> section, the <em>Sequencer</em> is recruited and monitored by the <em>Cluster Controller</em>. Once the process is running, it starts the other processes in the <em>Transaction System</em>. The <em>Sequencer</em> hands out information to the <em>Proxies</em> when the latter receive client requests<label for="sequencestate" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sequencestate" class="margin-toggle" /><span class="sidenote">We will delve into what state the <em>Sequencer</em> controls in the <em>How does FoundationDB respond to requests?</em> section. </span>.</p>
+
+<p><em>Proxies</em> respond to client read and write requests. In the event of a read request for a set of keys from a client, the <em>Proxies</em> will respond with locations of the servers storing the requested information and a version that the client can use to request the data. In the event of a write request, the <em>Proxies</em> coordinate with the <em>Sequencer</em> and the third component in the <em>Transaction System</em>, the <em>Resolvers</em>.</p>
+
+<p><em>Resolvers</em> check whether a client transaction involving writes conflicts with other writes. Each <em>Resolver</em> is only responsible for preventing transaction conflicts on a subset of the keys in the key-value store.</p>
+
+<h3 id="log-system">Log System</h3>
+
+<p>The primary goal of the <em>Log System</em> is to ensure data about committed transactions is replicated once the <em>Transaction System</em> decides to commit. To perform this function, the <em>Log System</em> uses many instances of a single server type: the <em>Log Server</em>.</p>
+
+<p>A <em>Log Server</em> can be configured to replicate mutations from a single transaction to many copies of the same shard (where a shard is a specific subset of the key-value store’s data and is stored in the <em>Storage System</em>). To replicate a mutation, <em>Log Servers</em> communicate with servers in the <em>Storage System</em>.</p>
+
+<h3 id="storage-system">Storage System</h3>
+
+<p>Like the <em>Log System</em>, the <em>Storage System</em> also has a single server type: the <em>Storage Server</em>.</p>
+
+<p>Each <em>Storage Server</em> can store many different shards of the key-value store’s data (normally multiple copies of the same exact shard are not stored on a single server), and each shard corresponds to a contiguous key range<label for="keyrange" class="margin-toggle sidenote-number"></label><input type="checkbox" id="keyrange" class="margin-toggle" /><span class="sidenote">The paper mentions that this results in functionality that is “like a distributed B-tree”. </span>. The data on each <em>StorageServer</em> is stored in a souped-up version of SQLite, but there is an in-progress migration to RocksDB.</p>
+
+<h2 id="how-does-foundationdb-respond-to-requests">How does FoundationDB respond to requests?</h2>
+
+<p>Now that we understand the architecture of FoundationDB, we will dig into how client transactions work. There are three primary types of transactions in FoundationDB: <em>read-write transactions</em> (reads and writes associated with a single transaction), <em>read-only transactions</em>, and <em>snapshot reads</em>. <em>Read-write transactions</em> are by far the most complicated and are where we will devote most of our discussion.</p>
+
+<h3 id="read-write-transactions">Read-write transactions</h3>
+
+<p>If a client executes logic that writes data based on what it reads, it should likely use a <em>read-write transaction</em>. Reasons for using this style of transaction could be: ensuring that writes fail if the previously-read data is no longer correct, or to require an all-or-nothing approach to applying multiple writes (all writes need to commit or none of them commit).</p>
+
+<p>In order to perform a <em>read-write transaction</em>, a client first requests a <em>read version</em> from a <em>Proxy</em>. The <em>Proxy</em> then turns around and requests two pieces of information from the <em>Sequencer</em>: a  <em>read version</em> and a <em>commit version</em> (remember that both the <em>Proxy</em> and <em>Sequencer</em> are in the <em>Transaction System</em>) <label for="versions" class="margin-toggle sidenote-number"></label><input type="checkbox" id="versions" class="margin-toggle" /><span class="sidenote">Before moving on, it is important to note an important property of the <em>commit version</em>: the <em>commit version</em> must be “greater than any existing read versions or commit versions”. We will come back to this property when we consider the write-path. </span>. The <em>Proxy</em> internally associates a transaction’s <em>read version</em> with the <em>commit version</em> before returning the <em>read version</em> to the client. The client can then use the <em>read version</em> to fetch data at a specific version directly from the <em>Storage Server</em>.</p>
+
+<p>Once the <em>Proxy</em> returns the <em>read version</em> to the client, the client will read keys from the <em>Storage Servers</em> and buffer writes until it wants to commit. When the client finally sends a commit request to the <em>Proxy</em>, it includes the set of all of the key ranges that the client read (while the client may have only read a specific key, that key is stored in a key range on a shard, and that shard could have been impacted by a different transaction) and the set of all key ranges that the client intends to write to.</p>
+
+<p>Once the <em>Proxy</em> receives these two sets of impacted key ranges, it then needs to determine whether the transaction can be committed or not. This is accomplished by using <em>Resolvers</em>, which maintain state about when the key ranges they are responsible for were last impacted by a committed transaction. Because the <em>Resolvers</em> are each responsible for a subset of key ranges (remembering the description above), the <em>Proxy</em> forwards the sets to the appropriate <em>Resolver</em>, which evaluates whether the transaction can be committed.</p>
+
+<p>When a <em>Resolver</em> receives these requests from the <em>Proxy</em> it uses a relatively straightforward algorithm to determine whether the transaction can be committed - for every key range that was read by the transaction, was the key range committed to by a transaction with a greater commit version. If the last commit for a key range is greater than the current read version, committing would break strict serializability, which mandates that “transactions must observe the results of all previous committed transactions”. In this situation, the client should retry their transaction. On the other hand, if it is safe to commit, the <em>Resolver</em> does so, meanwhile updating its “last committed to” field for all ranges that the transaction wrote to.</p>
+
+<figure><img class="maincolumn-img" src="/assets/foundationdb/mutation.png" /><figcaption class="maincolumn-figure">The flow when a commit occurs</figcaption></figure>
+
+<p>Once a commit has been accepted, the <em>Proxy</em> broadcasts a message to all <em>LogServers</em> - the message contains the key ranges that were impacted by the commit. When a <em>LogServer</em> receives this message, it stores it on disk (to ensure recovery in case of system failure) and determines whether it manages replicas of any of the impacted key ranges. Meanwhile, <em>Storage Servers</em> are continuously polling <em>Log Servers</em> for updates, and will pull (then persist) the update themselves.</p>
+
+<h3 id="read-only-transactions-and-snapshot-reads">Read-only transactions and snapshot reads</h3>
+
+<p>Read-only transactions and snapshot reads are relatively straightforward in FoundationDB - when a client initiates a read request, the <em>Proxy</em> returns a <em>read version</em> (through the same process of interacting with the <em>Sequencer</em>, as mentioned above). The client the communicates directly with the <em>Storage Servers</em> associated with the key ranges that the client wants to read. The simplicity of this approach is great because the load on the database is dominated by reads.</p>
+
+<h2 id="what-is-unique-about-foundationdbs-testing-framework">What is unique about FoundationDB’s testing framework?</h2>
+
+<figure><img class="maincolumn-img" src="/assets/foundationdb/simulation.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Now that we have walked through the many components involved in FoundationDB transactions, it may be easier to see how many places in the system that a failure could happen. To root out potential issues caused by failures, the team developed a simulation testing framework where “all sources of nondeterminism and communication are abstracted, including network, disk, time, and pseudo random number generator.” In production, these stubs are just sent to the backing system calls - pretty neat! The testing framework also reminded me of fuzzing software to trigger rarely-hit edge cases and see what happens.</p>
+
+<p>When running test workloads, failures at the “machine, rack, and data-center” are simulated. Modeled hardware will be “broken”, then returned to a state where the system should be able to recover (and if a recovery doesn’t happen, the developers investigate why). The simulation code can also arbitrarily break operations by returning error codes, adding delay, or modifying configuration variables beyond a range of what would normally be set.</p>
+
+<p>Part of what I found most interesting about the testing framework was the idea that the simulations can be “bursted” around releases - because many simulations can be run in parallel, the developers will just run more of them and try to find bugs.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Given that this paper review is already fairly long, I decided not to cover other interesting aspects of the system (for example FoundationDB’s approach to system recovery, replication, or failovers).</p>
+
+<p>The takeways from what this review does cover are:</p>
+<ul>
+  <li>FoundationDB separates different parts of the system so that they can be scaled independently</li>
+  <li>Creating separate subsystems that can scale independently is difficult, but facilitated by a novel simulation testing framework that allows the developer team to confidently rework the system (not to mention making users of the system confident that bugs will be caught before they reach production).</li>
+</ul>
+
+<p>Until next week!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-06-12-foundationdb-a-distributed-unbundled-transactional-key-value-store.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

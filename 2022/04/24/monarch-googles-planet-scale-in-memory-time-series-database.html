@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Monarch: Google’s Planet-Scale In-Memory Time Series Database</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Monarch: Google’s Planet-Scale In-Memory Time Series Database</h1>
+  
+  <h4>Published April 24, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-04-24-monarch-googles-planet-scale-in-memory-time-series-database.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=31379383'> Hacker News</a></p>  
+    <p>
+      <em>
+        These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!
+
+        
+      </em>
+    </p>
+
+     <p><a href="https://research.google/pubs/pub50652/">Monarch: Google’s Planet-Scale In-Memory Time Series Database</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>Monarch is Google’s system for storing time-series metrics<label for="timeseries" class="margin-toggle sidenote-number"></label><input type="checkbox" id="timeseries" class="margin-toggle" /><span class="sidenote">Time-series data describes data points that occur over time. Storing and using this type of information is an <a href="https://paperswithcode.com/task/time-series">active area of research</a> and <a href="https://www.timescale.com/blog/what-the-heck-is-time-series-data-and-why-do-i-need-a-time-series-database-dcf3b1b18563/">industry development</a>. </span>. Time series metrics<label for="o11ystack" class="margin-toggle sidenote-number"></label><input type="checkbox" id="o11ystack" class="margin-toggle" /><span class="sidenote">Metrics are one of the main components in an observability stack (among tracing, events, and logging). The paper <a href="https://people.csail.mit.edu/tatbul/publications/sigmod_record20.pdf">Towards Observability Data Management at Scale</a> has more information on the other components of the stack. </span> are used for alerting, graphing performance, and ad-hoc diagnosis of problems in production.</p>
+
+<p>Monarch is not the first time series database, nor is it the first optimized for storing metrics<label for="tsdbs" class="margin-toggle sidenote-number"></label><input type="checkbox" id="tsdbs" class="margin-toggle" /><span class="sidenote"><a href="https://www.influxdata.com/">InfluxDB</a>, <a href="https://www.timescale.com/">TimescaleDB</a>, <a href="https://prometheus.io/">Prometheus</a>, and <a href="https://www.vldb.org/pvldb/vol8/p1816-teller.pdf">Gorilla</a> are just a few of the existing time series databases. </span>, but the system is unique for several reasons.</p>
+
+<p>First, Monarch optimizes for availability - you wouldn’t want a metrics system to be down before, during, or after a production incident, potentially lengthening the time to detection or resolution of an outage. One example of this tradeoff in practice is Monarch’s choice to store data in (relatively) more expensive memory, rather than on persistent storage. This design choice limits dependence on external databases (increasing availability by limiting dependencies), but increases cost.</p>
+
+<p>Second, Monarch chooses a <em>push-based</em> approach to collecting metrics from external services. This is contrast to <em>pull-based</em> systems like <a href="https://www.vldb.org/pvldb/vol8/p1816-teller.pdf">Prometheus</a> and Borgmon (<a href="https://sre.google/sre-book/practical-alerting/">Monarch’s predecessor</a>)<label for="pull" class="margin-toggle sidenote-number"></label><input type="checkbox" id="pull" class="margin-toggle" /><span class="sidenote">The paper notes that the pull-based approach, “Other existing metrics databases, like <a href="https://research.facebook.com/publications/scuba-diving-into-data-at-facebook/">Facebook Scuba</a> also use a push-based approach. </span>. The paper notes several challenges with a <em>pull-based</em> approach to gathering metrics, including that the monitoring system itself needs to implement complex functionality to ensure that relevant data are being collected.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The Monarch paper makes four main contributions:</p>
+
+<ul>
+  <li>An architecture for a time-series database capable of operating at global scale</li>
+  <li>A data model and query language for accessing metrics</li>
+  <li>A three-part implementation, covering a collection pipeline for ingesting metrics, a query interface, and a configuration system</li>
+  <li>An analysis of the system running that scale</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<h3 id="architecture">Architecture</h3>
+
+<p>To implement these features at a worldwide scale, Monarch contains <em>global</em> and <em>zone</em> components.</p>
+
+<figure><img class="maincolumn-img" src="/assets/monarch/fig1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Global</em> components handles optimal query execution, and store primary copies of global state (like configuration). In contrast, <em>Zone</em> components are responsible for providing functionality for a subset of metrics data stored in the given area, and maintaining replicas of global state.</p>
+
+<p>Dividing Monarch into <em>Global</em> and <em>Zone</em> components enables scaling and availability of the system. In the presence of availability issues with <em>global</em> components, <em>zones</em>  can still operate independently. <em>Zones</em> can also operate with stale data, highlighting the consistency tradeoff that Monarch makes in order to gain availability.</p>
+
+<p>At the bottom level of the Monarch stack are <em>Leaf</em> nodes that store metrics data in-memory (formatted as described in the next section on the data model). <em>Leaves</em> respond to requests from other parts of the system in order to receive new data that needs to be stored, or return data in response to a query.</p>
+
+<h3 id="data-model">Data Model</h3>
+
+<p>Monarch stores data in <em>tables</em>. <em>Tables</em> are built from combinations of <em>schemas</em>, which describe data stored in the table (like column names and datatypes).</p>
+
+<figure><img class="maincolumn-img" src="/assets/monarch/fig2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>There are two types of schemas:</p>
+
+<ul>
+  <li><em>Target schemas</em>, which “associate each time series with its source entity (or monitored entity), which is, for example, the process or the VM that generates the time series.” Importantly, target schemas can be used to decide which <em>zone</em> to store data in (as storing data near where it is generated limits network usage).</li>
+  <li><em>Metric schemas</em>, which store metrics metadata and other typed data (int64, boolean, double, string) in a structured format.</li>
+</ul>
+
+<p>Schemas have two types of columns: <em>key columns</em> and <em>value columns</em>. The former is used to query/filter data, while the latter is used for analysis.</p>
+
+<h3 id="query-language">Query Language</h3>
+
+<p>The Monarch query language allows a user to fetch, filter, and process metrics data in a SQL-like language.</p>
+
+<figure><img class="maincolumn-img" src="/assets/monarch/fig6-7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The example query above uses <code class="language-plaintext highlighter-rouge">fetch</code> to get the data, <code class="language-plaintext highlighter-rouge">filter</code> to include matching metrics, <code class="language-plaintext highlighter-rouge">join</code> to combine two streams of metrics, and <code class="language-plaintext highlighter-rouge">group_by</code> to perform an aggregation on the metrics:</p>
+
+<blockquote>
+  <p>[These] operations … are a subset of the available operations, which also include the ability to choose the top n time series according to a value expression, aggregate values across time as well as across different time series, remap schemas and modify key and value columns, union input tables, and compute time series values with arbitrary expressions such as extracting percentiles from distribution values.</p>
+</blockquote>
+
+<h3 id="metric-collection">Metric Collection</h3>
+
+<p>External services push metrics to leaf nodes by using “routers”, of which there are two types:</p>
+
+<ul>
+  <li><em>Ingestion Routers</em> receive requests at the global level, and determine which <em>zone</em> or <em>zones</em> the incoming data needs to be stored in. Metrics are routed for storage in a <em>zone</em> based on several factors, like the origin of the data<label for="storage" class="margin-toggle sidenote-number"></label><input type="checkbox" id="storage" class="margin-toggle" /><span class="sidenote">Storing the data close to its origin limits network traffic. </span>.</li>
+  <li><em>Leaf Routers</em> receive requests from <em>Ingestion Routers</em> and handle communication with the <em>leaves</em> in a zone.</li>
+</ul>
+
+<p>Metrics are assigned to a destination set of leafs within a zone using a component called the <em>Range Assigner</em>. The <em>Range Assigner</em> handles load balancing metrics data across <em>leaves</em> in order to ensure balanced usage of storage and other resources.</p>
+
+<h3 id="query-execution">Query Execution</h3>
+
+<p>To respond to queries, Monarch implements two main components: <em>Mixers</em> and <em>Index Servers</em>. Copies of these components run at both the <em>Global</em> and <em>Zone</em> level.</p>
+
+<p><em>Mixers</em> receive queries, and issue requests to the different components of the Monarch stack, and return the results. <em>Root Mixers</em> run in the <em>global</em> component of Monarch, while <em>Zone Mixers</em> run in each zone. When <em>Root Mixers</em> receive a query, they attempt to break it down into subqueries that can be issued independently to each <em>zone</em>. When a <em>Zone Mixer</em> receives a request, it performs a similar function, fanning out to <em>leaves</em>.</p>
+
+<p>In order to determine which zones or leaves to send queries to, the <em>Mixer</em> communicates with an <em>Index Server</em>. Like <em>Mixers</em>, <em>Index Servers</em> run at the <em>global</em> and <em>zone</em> level - <em>Root Index Servers</em> store which zone data can be found in, while <em>Zone Index Servers</em> store which leaves data can be found on.</p>
+
+<p>Monarch implements several strategies to improve the reliability of query execution. One example is <em>Zone Pruning</em>, where the global Monarch query executor will stop sending requests to a zone if it is unhealthy (detected by network latency to the given zone). Another example strategy for improving reliability is <em>hedged reads</em>. For redundancy, Monarch stores multiple copies of a metric in a zone. As a result, the <em>Zone Mixer</em> can issue multiple reads to different copies, returning when it has an acceptable result from one replica.</p>
+
+<h3 id="configuration">Configuration</h3>
+
+<p>To configure Monarch, users interact with a global component that stores data in <a href="https://research.google/pubs/pub39966/">Spanner</a><label for="spanner" class="margin-toggle sidenote-number"></label><input type="checkbox" id="spanner" class="margin-toggle" /><span class="sidenote">Spanner will have to be the subject of a future paper review! </span>. This configuration is then replicated to each <em>zone</em>.</p>
+
+<p>Configuration controls the schemas discussed above, as well as <em>standing queries</em> that run periodically in the background. <em>Standing queries</em> are often used for implementing alerting based on executions at regular intervals. The paper notes that predominantly all queries in the system are of this type.</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper evalutes several parts of the system, including its scale and query performance.</p>
+
+<p>Monarch’s scale is measured by the number of time series it stores, the memory they consume, and the queries per second:</p>
+
+<blockquote>
+  <p>[Monarch] has sustained fast growth since its inception and is still growing rapidly…As of July 2019, Monarch stored nearly 950 billion time series, consuming around 750TB memory with a highly-optimized data structure.</p>
+</blockquote>
+
+<p>Notably, “Monarch’s internal deployment ingested around <em>2.2 terabytes of data per second</em> in July 2019.”</p>
+
+<figure><img class="maincolumn-img" src="/assets/monarch/scale.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>When evaluating query performance, the paper notes that 95% of queries are <em>standing queries</em>, configured in advance by users. Standing queries are evaluated in parallel at the <em>zone</em> level, enabling significant amounts of data to be filtered out of the query before being returned in a response.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The Monarch paper is a unique example of a metrics database running at global scale. Along the way, the paper includes an interesting discussion of the tradeoffs it makes to increase availability at the cost of consistency.</p>
+
+<p>Time-series databases, including those designed explicitly for metrics, are an active area of research, and I’m looking forward to seeing the development of open-source approaches targeted for similar scale, like <a href="https://thanos.io/tip/thanos/design.md/">Thanos</a> and <a href="https://m3db.io/">M3</a>!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-04-24-monarch-googles-planet-scale-in-memory-time-series-database.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

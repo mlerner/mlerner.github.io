@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Faster and Cheaper Serverless Computing on Harvested Resources</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Faster and Cheaper Serverless Computing on Harvested Resources</h1>
+  
+  <h4>Published November 30, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-11-30-faster-and-cheaper-serverless-computing-on-harvested-resources.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><em>The papers over the next few weeks will be from <a href="https://sosp2021.mpi-sws.org/">SOSP</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read! These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>.</em></p>
+
+<p><a href="https://dl.acm.org/doi/10.1145/3477132.3483580">Faster and Cheaper Serverless Computing on Harvested Resources</a></p>
+
+<p>This week’s paper review is “Faster and Cheaper Serverless Computing on Harvested Resources” and builds on the research group’s previous work<label for="slos" class="margin-toggle sidenote-number"></label><input type="checkbox" id="slos" class="margin-toggle" /><span class="sidenote">Including <a href="https://www.usenix.org/conference/osdi20/presentation/ambati">Providing SLOs for Resource-Harvesting VMs in Cloud Platforms</a> and <a href="https://www.usenix.org/conference/atc20/presentation/shahrad">Serverless in the Wild: Characterizing and Optimizing the Serverless Workload at a Large Cloud Provider</a>. </span> into <em>Harvest Virtual Machines</em> (aka <em>Harvest VMs</em>). 
+The paper shows that this new way of structuring VMs is well suited for serverless workloads, significantly lowering cost and allowing 3x to 10x more resources for the same budget.</p>
+
+<p><em>Harvest VMs</em> are similar to relatively cheap<label for="spot" class="margin-toggle sidenote-number"></label><input type="checkbox" id="spot" class="margin-toggle" /><span class="sidenote">Spot resources are generally cheaper than “reserved” resources as spot VMs can be interrupted, while reserved resources can not - in other words, users of cloud providers pay a premium for the predictability of their resources. The paper notes that on Azure, “Spot VMs are 48% to 88% cheaper than the same size regular
+VMs”. </span> “spot” resources available from many cloud providers, with one key difference - Harvest VMs can grow and shrink dynamically (down to a set minimum and up to a maximum) according to the available resources in the host system, while spot resources can not.</p>
+
+<p>While Harvest VMs pose great potential, using them poses its own challenges. For example, Harvest VMs are evicted from a machine if the Harvest VM’s minimum resources are needed by higher priority applications. Furthermore, dynamic resizing of Harvest VMs means that applications scheduled to run with the original resources may be constrained after a resize.</p>
+
+<p>This paper in particular focuses on whether the Harvest VM paradigm can be used to efficiently and cheaply execute serverless workloads - an important contribution as the serverless paradigm is growing in popularity and more players (including Cloudflare) are entering the space<label for="popularity" class="margin-toggle sidenote-number"></label><input type="checkbox" id="popularity" class="margin-toggle" /><span class="sidenote">See <a href="https://www.datadoghq.com/state-of-serverless/">Datadog’s State of Serverless</a>, <a href="https://techcrunch.com/2021/11/23/vercel-raises-150m-series-d-as-it-looks-to-build-an-end-to-end-front-end-development-platform/">Vercel’s Series D</a>, and <a href="https://cacm.acm.org/magazines/2021/5/252179-what-serverless-computing-is-and-should-become/fulltext">What Serverless Computing Is and Should Become: The Next Phase of Cloud Computing</a>. </span>.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes four contributions: characterization of Harvest VMs and serverless workloads on Microsoft Azure using production traces, the design of a system for running serverless workloads on Harvest VMs, a concrete implementation of the design, and an evaluation of the system.</p>
+
+<h2 id="characterization">Characterization</h2>
+
+<p>The first part of the paper evaluates whether Harvest VMs and serverless workloads are compatible. Harvest VMs dynamically resize according to the available resources on the host machine. If resizing happens too frequently or the Harvest VM is evicted (because the minimum resources needed to maintain the VM are no longer available), that could impact the viability of using the technique for serverless workloads.</p>
+
+<h3 id="characterizing-harvest-vms">Characterizing Harvest VMs</h3>
+
+<p>First, the paper looks at two properties of the Harvest VMs:</p>
+
+<ul>
+  <li><em>Eviction rate</em>: evictions happen when the scheduling of higher priority VMs (like normal VMs) require that the Harvest VM shrink below its minimum resources<label for="mentioned" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mentioned" class="margin-toggle" /><span class="sidenote">Harvest VMs are configured with minimum and maximum resource bounds, where the maximum specifies the most cores/memory that the VM can consume. </span>. If evictions occur often enough, it wouldn’t be possible for serverless functions to complete, meaning that the workload might be better suited for more expensive reserved resources where pre-emption is not possible.</li>
+  <li><em>Resource variability</em>: Harvest VMs grow and shrink according to the available resources on the host. If this variation happens too frequently, the Harvest VM may become resource constrained and unable to process work assigned to it in a timely manner - for example, if 32 cores worth of work is assigned, but the Harvest VM is shortly thereafter downsized to 16 cores, the machine may not be able to execute the assigned computation.</li>
+</ul>
+
+<p>To understand eviction rate, the paper evaluates Harvest VM lifetime:</p>
+
+<blockquote>
+  <p>The average lifetime [of Harvest VMs] is 61.5 days, with more than 90% of Harvest VMs living longer than 1 day. More than 60% survive longer than 1 month.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To understand resource variability, the paper determines the timing and magnitude of resizing events in Harvest VMs - in other words, how frequently and how large the resources swings are (specifically in CPU).</p>
+
+<p>In the CDF<label for="cdf" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cdf" class="margin-toggle" /><span class="sidenote">CDF stands for Cumulative Distribution Function and is a handy way to visualize the distribution of data in a dataset - helpful reference video <a href="https://www.youtube.com/watch?v=FhZdVPX1rf0">here</a>. </span> of intervals between Harvest VM CPU changes:</p>
+
+<blockquote>
+  <p>The expected interval is 17.8 hours, with around 70% of them being longer than 10 minutes, and around 35% longer than 1 hour. 62.2% of the studied Harvest VMs experienced at least one CPU shrinkage and 54.1% experienced at least one CPU expansion. 35.1% VMs never experienced any CPU changes.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>When graphing the sizes of CPU change, the paper notes that:</p>
+
+<blockquote>
+  <p>The distribution tends to be symmetric with most of CPU changes falling within 20 CPUs. The average and maximum CPU change size are 12 and 30 for both shrinkage and expansion</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>In summary, the Harvest VMs are actually relatively long-lived, and while resource variability does exist, there are not constant resizing events to Harvest VMs.</p>
+
+<h3 id="characterizing-serverless-workloads">Characterizing Serverless Workloads</h3>
+
+<p>To evaluate whether serverless workloads are compatible with Harvest VMs, the authors reference the findings from the previous section’s characterization of eviction rates and resource variability. In particular, the paper focuses on the time required of serverless workloads. In each case, the paper focuses on a 30-second cut off, as Harvest VMs receive equivalent advance notice that they are about to be resized (and if a serverless finishes within that grace period, there are few repercussions).</p>
+
+<p>First, the paper slices by application (of which there are many) in the production trace from Azure:</p>
+
+<blockquote>
+  <p>20.6% of the applications have at least one invocation (maximum) longer than 30 seconds. We refer to these applications as “long” applications. 16.7% and 12.3% of applications have 99.9𝑡ℎ and 99𝑡ℎ percentile durations longer than 30 seconds, respectively</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Another important point evaluated by the graphs is a distribution of the duration of all serverless invocations<label for="invoke" class="margin-toggle sidenote-number"></label><input type="checkbox" id="invoke" class="margin-toggle" /><span class="sidenote">Invocation is a fancy word for execution or call. </span>, which indicates that there are few invocations that take over 30 seconds (around 4.1%), but these “long” invocations, “take over 82.0% of the total execution time of all invocations”. Furthermore, applications containing long invocations tend to be long themselves.</p>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>In summary, “Resource variation on Harvest VMs is much more common than evictions but compared to the short duration of most invocations, the number of CPUs of Harvest VMs can be considered relatively stable”.</p>
+
+<p>Importantly, the paper notes the importance of a load balancer capable of accomodating resource changes to Harvest VMs - without the knowledge of a Harvest VM’s current resources, a scheduler might overload the given VM with too much work (for example, by assuming the VM has 32 cores when it really has 16).</p>
+
+<h2 id="design">Design</h2>
+
+<p>Based on characterization of Harvest VMs and serverless workloads, the authors note that any system for running serverless workloads on Harvest VMs must account for both “short” (faster than 30 second) and “long” applications, while handling evictions and resource variation. Furthermore, both short and long running serverless applications face the “cold start” problem of fetching dependencies before a serverless function can execute.</p>
+
+<h3 id="handling-evictions">Handling evictions</h3>
+
+<p>To solve this set of problems, the paper proposes a load balancer that assigns serverless invocations to VMs using three strategies:</p>
+
+<ul>
+  <li><em>No failures</em>: assign invocations from long running applications to more costly reserved resources and those from short running applications to Harvest VMs.</li>
+  <li><em>Bounded failures</em>: assign invocations from both short and long running applications to Harvest VMs, targeting that no more than a given percentage of long-running applications are pre-empted<label for="slo" class="margin-toggle sidenote-number"></label><input type="checkbox" id="slo" class="margin-toggle" /><span class="sidenote">This idea relies on Service Level Objectives (SLOs), a common way of evaluating the amount of accepted failures in large scale systems - see the <a href="https://sre.google/sre-book/service-level-objectives/">SRE book</a> for more information. </span>.</li>
+  <li><em>Live and let die</em>: run all serverless applications on Harvest VMs, accepting that some number of them will fail due to eviction.</li>
+</ul>
+
+<p>Each strategy trades off using Harvest VMs (and ultimately cost savings) for reliability. For example, the <em>No failures</em> strategy ensures high reliability, but at high cost (as reserved resources are more expensive than harvested ones).</p>
+
+<p>Ultimately, the authors select <em>Live and Let Die</em> as it allows a serverless workload to be run entirely on Harvest VMs while achieving high reliability (99.99% invocation success rate). While it may be surprising that the decision to allow pre-emption operates with a low failure rate, the paper notes:</p>
+
+<blockquote>
+  <p>Intuitively, failures caused by VM evictions are rare because they require two low-probability events to happen simultaneously: a Harvest VM gets evicted while it is running a long invocation.</p>
+</blockquote>
+
+<h3 id="handling-resource-variability">Handling Resource Variability</h3>
+
+<p>Resource variability causes unique problems for applications running on Harvest VMs. Serverless workloads in particular run into the “cold start” problem - when a serverless function runs on a machine for the first time, it needs to download associated dependencies and perform setup, which takes valuable time.</p>
+
+<p>To minimize the impact of cold-starts on execution and to ensure serverless workloads are resilient to changing underlying resources, the paper proposes a load balancer that allocates work among Harvest VMs in the cluster.</p>
+
+<p>The authors evaluate two load balancing algorithms to allocate work:  <em>Join-the-Shortest-Queue (JSQ)</em> and <em>Min-Worker-Set (MSQ)</em>.</p>
+
+<p><em>Join-the-shortest-queue (JSQ)</em> assign work to the least loaded Harvest VM in the cluster using an approximation of each machine’s current load.</p>
+
+<p><em>Min-Worker-Set (MSQ)</em> first tries to assign work to a Harvest VM where the given serverless function has run previously (to limit the impact of cold starts). If no worker has the resources to process the work, the algorithm expands the set of Harvest VMs that the serverless function can run on. The iterative growing process (keeping the total number of workers small) limits the number of Harvest VMs used by a function, as running work across many Harvest VMs increases the chances that one of them is evicted.</p>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>To run serverless workloads on Harvest VMs, the paper outlines infrastructure that takes eviction and resource variability into account. The implementation is based on <a href="https://openwhisk.apache.org/">Apache OpenWhisk</a> (which is compatible with a number of deployment strategies, including Kubernetes).</p>
+
+<p>There are four<label for="basic" class="margin-toggle sidenote-number"></label><input type="checkbox" id="basic" class="margin-toggle" /><span class="sidenote">There are also other, more generic parts of the architecture common to OpenWhisk, including the load balancer that receives requests to run serverless functions. </span> main components of the implementation: <em>Controllers</em>, <em>Invokers</em>, <em>Harvest Monitors</em>, and a <em>Resource Monitor</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/arch.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Controllers</em> are provided by OpenWhisk<label for="openwhisk" class="margin-toggle sidenote-number"></label><input type="checkbox" id="openwhisk" class="margin-toggle" /><span class="sidenote"><a href="https://thenewstack.io/behind-scenes-apache-openwhisk-serverless-platform/">Here</a> is an overview of OpenWhisk building blocks. </span>, and make scheduling decisions that assign serverless invocations to Harvest VMs - these scheduling decisions are written to a log that consumers can read from. The paper modifies the provided <em>Controllers</em> to implement the <em>Min-Worker-Set (MSQ)</em> algorithm. Additionally, <em>Controllers</em> receive feedback about function invocations, allowing the component to base their scheduling decisions off of perceived load on a <em>Harvest VM</em>.</p>
+
+<p><em>Invokers</em> handle the execution of the workload and consume the log of scheduling decisions written by the <em>Controllers</em> to receive information about the functions they should run - the Harvest VM implementation customizes the OpenWhisk <em>Invoker</em> to account for resource variability.</p>
+
+<p><em>Harvest Monitors</em> (a novel feature not provided by OpenWhisk) run on every Harvest VM and gather (then report to the <em>Controllers</em>) metadata about the associated VM - this metadata includes CPU allocations, CPU usage, and whether the Harvest VM is about to be evicted.</p>
+
+<p>Lastly, the <em>Resource Monitor</em> tracks “the resource variation in the system. It periodically queries for the total available resources (e.g. CPUs) and spins up new VMs to maintain a minimum pool of available resources, if they fall below a pre-configured threshold”.</p>
+
+<h2 id="evaluation">Evaluation</h2>
+
+<p>To evaluate the implementation, the paper considers whether the use of Harvest VMs results in faster and cheaper serverless computing<label for="benchmarks" class="margin-toggle sidenote-number"></label><input type="checkbox" id="benchmarks" class="margin-toggle" /><span class="sidenote">Benchmarks rely on <a href="https://github.com/kmu-bigdata/serverless-faas-workbench">FunctionBench</a>, which aims, “to measure performance of resources exclusively”. </span>.</p>
+
+<p>First, the paper runs workloads on Harvest VMs, load-balancing using the <em>Join-the-shortest-queue (JSQ)</em>,  <em>Min-Worker-Set (MSQ)</em> or “vanilla” OpenWhisk scheduling algorithm (which is unaware of the unique properties of Harvest VMs). The paper demonstrates that <em>MSQ</em> achieves high throughput and minimizes the cold start problem.</p>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure12.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure13.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Next, the paper runs serverless workloads in clusters with three different resource churn patterns - <em>active</em> clusters representing the worst case Harvest VM resource variability, <em>normal</em> clusters with typical Harvest VM resource variability, and <em>dedicated</em> clusters using only regular VMs (and not Harvest VMs). Predictably, dedicated clusters are capable of executing the most requests per second. For active and normal clusters, the results show the continued impact of the load-balancing algorithm.</p>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/figure15.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To address whether using harvested resources to execute serverless workloads is in fact cheaper, the paper presents a cost model that shows, for the same budget, the resources available under different eviction and Harvest VM percentages. The amount of additional resources affordable to a fixed budget varies from 3x to 10x.</p>
+
+<figure><img class="maincolumn-img" src="/assets/faster-cheaper-serverless/table3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This paper builds on several pieces of previous work that rely on making the tradeoff between cost and accepted failures - this idea also shows up in Site Reliability Engineering practice as <a href="https://sre.google/sre-book/service-level-objectives/">Service Level Objectives</a>. I also enjoyed how the authors relied on production traces and results to guide the design and verify the implementation.</p>
+
+<p>As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback! Until next time.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-11-30-faster-and-cheaper-serverless-computing-on-harvested-resources.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

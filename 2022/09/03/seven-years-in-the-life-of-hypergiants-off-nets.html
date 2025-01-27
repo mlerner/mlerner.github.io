@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Seven years in the life of Hypergiants' off-nets</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Seven years in the life of Hypergiants' off-nets</h1>
+  
+  <h4>Published September 03, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-09-03-seven-years-in-the-life-of-hypergiants-off-nets.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+      
+    <p>
+      <em>
+        These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!
+
+        
+      </em>
+    </p>
+
+     <p><a href="https://dl.acm.org/doi/pdf/10.1145/3452296.3472928">Seven years in the life of Hypergiants’ off-nets</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>Many large tech organizations<label for="faang" class="margin-toggle sidenote-number"></label><input type="checkbox" id="faang" class="margin-toggle" /><span class="sidenote">For example, Akamai, <a href="https://news.ycombinator.com/item?id=29032516">FAANG/MAGMA/MANGA/other abbreviations</a>, and Alibaba. </span> (also known as <em>hypergiants</em>) serve multimedia content (like video and games)<label for="cdn" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cdn" class="margin-toggle" /><span class="sidenote">There is a <a href="https://youtu.be/jGnVcCQUCdk">related talk</a>, <em>Internet Traffic 2009-2019</em> from Craig Labovitz that describes how the, “Internet is now largely a video and game delivery system”. </span> to users all around the world. Serving this content with low latency poses difficult technical challenges. One solution is placing servers close to users in <em>off-net</em><label for="offnet" class="margin-toggle sidenote-number"></label><input type="checkbox" id="offnet" class="margin-toggle" /><span class="sidenote">This approach is called <em>off-net</em> because the servers are “off” the main network. </span> networks that consumers directly connect to via their Internet Service Provider (ISP)<label for="eyeball" class="margin-toggle sidenote-number"></label><input type="checkbox" id="eyeball" class="margin-toggle" /><span class="sidenote">Networks that consumers directly connect to are sometimes called <a href="https://en.wikipedia.org/wiki/Eyeball_network">eyeball networks</a> - more information on these peering arrangements is <a href="https://archive.ph/19jFb">here</a>. </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/hypergiants/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The authors argue that understanding off-nets is important, as the growth of the pattern could change internet structure, routing, and performance. At the same time, there was limited tooling to understand the prevalence of off-net services, meaning that researchers had minimal visibility into the pattern’s impact. The paper aims to address this problem by increasing internet observability, and unlocking future research into off-nets.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions:</p>
+
+<ul>
+  <li>Development of a new approach to characterize off-nets, providing a new dataset on their deployment.</li>
+  <li>Validation of the approach using third-party datasets.</li>
+  <li>Analysis of the off-net dataset, providing insight into the pattern’s usage worldwide by multiple large tech organizations.</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<h3 id="methodology">Methodology</h3>
+
+<p>One of the paper’s main goals is reliably detecting hypergiant off-nets worldwide.</p>
+
+<p>The paper’s implementation differs from previous attempts to characterize off-nets. Prior research relied on DNS resolvers<label for="yt" class="margin-toggle sidenote-number"></label><input type="checkbox" id="yt" class="margin-toggle" /><span class="sidenote">See example paper on studying <a href="https://ieeexplore.ieee.org/document/5961681">Youtube’s server selection</a>. Interestingly, this paper used <a href="https://planetlab.cs.princeton.edu/">PlanetLab</a>, a global research network that was truly ahead of its time! </span> or enumerating patterns in hypergiant DNS records<label for="nflxenumerate" class="margin-toggle sidenote-number"></label><input type="checkbox" id="nflxenumerate" class="margin-toggle" /><span class="sidenote">See <a href="https://arxiv.org/abs/1606.05519">Open Connect Everywhere: A Glimpse at the Internet Ecosystem through the Lens of the Netflix CDN</a>, a paper on Netflix’s <a href="https://openconnect.netflix.com/en/">Open Connect</a> or <a href="https://anuragbhatia.com/2018/03/networking/isp-column/mapping-facebooks-fna-cdn-nodes-across-the-world/">this blog post</a> on Facebook’s CDN. </span> to find servers. Both approaches had their downsides - for example, the first could stress open DNS resolver infrastructure, while the latter relied on fragile DNS enumeration techniques.</p>
+
+<p>To implement their solution, the authors use a new approach that relies on two datasources,  <em>Transport Layer Security (TLS) certificates</em><label for="tls" class="margin-toggle sidenote-number"></label><input type="checkbox" id="tls" class="margin-toggle" /><span class="sidenote">There is great background on TLS from Julia Evan’s blog - see <a href="https://jvns.ca/blog/2017/01/31/whats-tls/">Dissecting a TLS certificate</a>, and her <a href="https://wizardzines.com/comics/certificates/">related zine</a>. </span> and <em>HTTP(s) fingerprints</em>.</p>
+
+<p>Predominantly all<label for="tlsadopt" class="margin-toggle sidenote-number"></label><input type="checkbox" id="tlsadopt" class="margin-toggle" /><span class="sidenote">See <a href="https://www.f5.com/labs/articles/threat-intelligence/the-2021-tls-telemetry-report">this report</a> on TLS usage. </span> hypergiants use <em>TLS certificates</em>  to encrypt user traffic. Because hypergiants deploy the same services in off-nets and on-nets, similar certificates are present on servers in both network types - as a result, it is theoretically possible to identify off-nets for a hypergiant if a server on the network is reusing the same certificate on-net.</p>
+
+<p>The paper discusses several complications with putting this idea into practice:</p>
+
+<ul>
+  <li>For legacy reasons, subsidiaries of a hypergiant might not be using the same certificates - the paper cites LinkedIn and Github (acquisitions of Microsoft) using different certificates than the parent company.</li>
+  <li>Hypergiants issue certificates for customers to deploy to their own servers, so the presence of a certificate doesn’t necessarily mean the server is owned by the hypergiant<label for="cloudflare" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cloudflare" class="margin-toggle" /><span class="sidenote">Cloudflare <a href="https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/">provides this option for customers</a>, meaning that one would have a Cloudflare signed certificate on <em>your</em> origin server. </span>.</li>
+</ul>
+
+<p>To limit the impact of these complications, the approach implemented by the paper also verifies <em>HTTP(S) fingerprints</em>, checking that a candidate off-net server returns stable/known headers for a given hypergiant.</p>
+
+<figure><img class="maincolumn-img" src="/assets/hypergiants/table1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The implementation combines both <em>TLS certificates</em> and <em>HTTP(s) Fingerprints</em> in a two pass process.</p>
+
+<p>The first pass scrapes valid TLS certificates from a Hypergiant’s on-nets, searching for the name of the organization in the Subject Info of returned certificates<label for="certigo" class="margin-toggle sidenote-number"></label><input type="checkbox" id="certigo" class="margin-toggle" /><span class="sidenote">There are open source tools for inspecting TLS certificates, including <a href="https://github.com/square/certigo">certigo</a>, that you can use! </span>. Using this data, the system issues queries to IP addresses outside of a hypergiant to identify candidate off-net servers (looking for a TLS certificate match).</p>
+
+<p>Because of the complications (discussed above) of solely relying on certificates to determine off-nets, the paper then makes a second pass over the candidate off-net servers using <em>HTTP(S) Fingerprints</em>. If a server returns headers matching the expected hypergiant<label for="first" class="margin-toggle sidenote-number"></label><input type="checkbox" id="first" class="margin-toggle" /><span class="sidenote">From the first pass, a candidate off-net server has a matching certificate with a hypergiant on-net server. </span>, the implementation mark that the off-net server’s IP address belongs to hypergiant off-net.</p>
+
+<p>From there, the IPs are mapped to an Autonomous System (AS)<label for="as" class="margin-toggle sidenote-number"></label><input type="checkbox" id="as" class="margin-toggle" /><span class="sidenote">See Cloudflare’s docs on <a href="https://www.cloudflare.com/learning/network-layer/what-is-an-autonomous-system/">Autonomous Systems</a>. </span>. As ASes can represent large networks with defined ownership, this mapping<label for="routeviews" class="margin-toggle sidenote-number"></label><input type="checkbox" id="routeviews" class="margin-toggle" /><span class="sidenote">The paper links to a few resources it uses, one of which is a neat tool called <a href="http://www.routeviews.org/routeviews/index.php/map/">RouteViews</a>. </span> is helpful to develop an understanding of when a hypergiant has a server in a network owned by an <a href="https://en.wikipedia.org/wiki/Internet_service_provider">internet service provider (ISP)</a> or another organization that provides internet service to consumers.</p>
+
+<h3 id="validation">Validation</h3>
+
+<p>The paper validates its approach to finding off-nets and assigning them to hypergiants in three ways: <em>comparing to open source datasets</em>, <em>consulting with the hypergiants themselves</em>, and <em>evaluating relative to previously published results</em>.</p>
+
+<p>First, the authors compare gathered certificates and their assignments to hypergiants against open source databases, namely <a href="https://opendata.rapid7.com/sonar.ssl/">Rapid7</a> and <a href="https://search.censys.io/certificates?q=">Censys</a>. The three datasets roughly match, although the existing Rapid7 and Censys datasets have fewer data points<label for="fewer" class="margin-toggle sidenote-number"></label><input type="checkbox" id="fewer" class="margin-toggle" /><span class="sidenote">The authors note their “scan found around 20% more addresses, which we attribute to two causes. First, both Rapid7 and Censys have to respond to complaints and remove IP addresses from their scans. As both scans have run for years, more address space is excluded over time. A second reason for this difference is that our scan took almost four days to execute, which may trigger less rate limiting than the other, faster scans.” </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/hypergiants/table2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The authors also consulted with four hypergiants on the veracity of the paper’s dataset:</p>
+
+<blockquote>
+  <p>All four agreed that the estimation of the off-net footprint is very good. One HG operator indicated that 6% of ASes we identified as hosting the HG’s off-nets were not on the HG’s list, and 11% from the HG’s list were not uncovered by our technique (while also indicating that the HG’s list may not be 100% correct)</p>
+</blockquote>
+
+<p>Lastly, the paper compares against previous research on Facebook and Netflix off-nets, finding that the paper’s dataset roughly matches. A fun anecdote from the Facebook-related identification comes from <a href="https://anuragbhatia.com/2022/07/networking/isp-column/facebook-cache-fna-updates-july-2022/">Anurag Bhatia’s blog</a>:</p>
+
+<blockquote>
+  <p>Back in 2019, I was in San Francisco, California for NANOG 75. While roaming around in the lobby, someone read the NANOG card hanging around my neck and greeted me. His 2nd line after greeting was “Oh I know that name, you are the guy who mapped our caching nodes” and we both laughed. I must say this specific category of the post has brought some attention around.</p>
+</blockquote>
+
+<h2 id="how-is-the-dataset-evaluated">How is the dataset evaluated?</h2>
+
+<p>After verifying the dataset, the paper performs three main analyses: <em>hypergiant off-net footprint growth</em>, <em>calculating hypergiants’ reach to the world’s internet users</em>, and <em>hypergiant deployment overlap</em>.</p>
+
+<p>To measure <em>hypergiant off-net footprint growth</em>, the paper considers counts of ASes where a given hypergiant is present, as well as the size of the network measured by “customer cones”<label for="caida" class="margin-toggle sidenote-number"></label><input type="checkbox" id="caida" class="margin-toggle" /><span class="sidenote">Sizing is based on <a href="http://www.caida.org/data/active/as-relationships/">CAIDA</a> AS relationship dataset, which indicates, “Small ASes have customer cones ≤ 10 ASes, Medium ASes have customer cones ≤ 100 ASes, Large ASes ≤ 1000 ASes, and XLarge ASes &gt; 1000 ASes.” </span>. Interestingly, the authors call out that hypergiants are present in many more Large/XLarge ASes than is typical for the internet (5% for hypergiants, vs 0.5% for the rest of the internet) - this conclusion makes sense in light of off-net deployments aiming to reach as many customers as possible.</p>
+
+<figure><img class="maincolumn-img" src="/assets/hypergiants/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/hypergiants/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also represents off-net deployments by region. It is possible to see growth in off-net locations from hypergiants like Facebook, who the authors note started heavily investing in an internal CDN mid-2017<label for="traffic" class="margin-toggle sidenote-number"></label><input type="checkbox" id="traffic" class="margin-toggle" /><span class="sidenote">The paper cites <a href="https://seekingalpha.com/article/3613736-apple-microsoft-and-facebook-bring-traffic-to-in-house-cdns-impacting-akamais-media-business">this article</a> when discussing FB’s movie. <a href="https://research.facebook.com/publications/engineering-egress-with-edge-fabric/">Engineering Egress with Edge Fabric: Steering Oceans of Content to the World</a> on the Facebook blog also discusses integration with many networks around the world. I hope to read papers on traffic engineering in a future paper review! </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/hypergiants/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>These regional investments in off-nets impact the ability to put content closer to users, as visible from an increase to the percent of Internet users connected to “ASes hosting Facebook’s off-net servers”.</p>
+
+<figure><img class="maincolumn-img" src="/assets/hypergiants/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, the paper graphs the total number of ASes with off-nets, and the presence of hypergiants in them. Since 2013, the distinct number of ASes with a hypergiant has grown significantly. As of mid-2021, if an AS hosts any off-net for a top four hypergiant, it is very likely to also host an off-net for another of the top four. At the same time, the number of ASes that host more than one hypergiant has grown significantly.</p>
+
+<figure><img class="maincolumn-img" src="/assets/hypergiants/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>I found this paper interesting as it creates a novel datasource based on publically available networking information (now made usable due to the increase in TLS-based encryption). Beyond developing a new methodology, the authors verify it using baselines from previous studies, advancing the internet observability state of the art. High performance networking and traffic engineering at scale makes for a fascinating set of technical topics, and I’m looking forward to diving into related research in future paper reviews.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-09-03-seven-years-in-the-life-of-hypergiants-off-nets.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

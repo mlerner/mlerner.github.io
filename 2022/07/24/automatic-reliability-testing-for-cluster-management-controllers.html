@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Automatic Reliability Testing For Cluster Management Controllers</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Automatic Reliability Testing For Cluster Management Controllers</h1>
+  
+  <h4>Published July 24, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-07-24-automatic-reliability-testing-for-cluster-management-controllers.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+      
+    <p>
+      <em>
+        These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!
+
+        
+      </em>
+    </p>
+
+     <p><a href="https://www.usenix.org/conference/osdi22/presentation/sun">Automatic Reliability Testing For Cluster Management Controllers</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>To run applications at scale, many companies deploy servers in the cloud. Managing these servers is a complex task, often handled by a cluster manager like <a href="https://kubernetes.io/">Kubernetes</a><label for="omega" class="margin-toggle sidenote-number"></label><input type="checkbox" id="omega" class="margin-toggle" /><span class="sidenote">One of the critical parts of Kubernetes, its scheduler, is based on learnings from building <a href="https://queue.acm.org/detail.cfm?id=2898444">Omega and Borg</a> at Google. </span>. Kubernetes controls what is deployed on a cluster by relying on state-based <em>operators</em><label for="operator" class="margin-toggle sidenote-number"></label><input type="checkbox" id="operator" class="margin-toggle" /><span class="sidenote">Great documentation on operators is <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/operator/#writing-operator">here</a>. </span> that consume the state of the cluster through API calls. These operators then send configuration messages to ensure that the cluster converges to a desired state.</p>
+
+<p>The <em>operator</em> pattern is powerful and useful<label for="ossoperators" class="margin-toggle sidenote-number"></label><input type="checkbox" id="ossoperators" class="margin-toggle" /><span class="sidenote">As evidenced by <a href="https://operatorhub.io/">hundreds of open source operators</a>. </span>, but it can be difficult to test how operators perform in a real-life distributed environment (where they must handle cases like executing actions based on stale state, missing updates, and operation in the face of crashes).</p>
+
+<p>To address this difficulty, the paper aims to automate the testing by mutating the state that an operator depends on, and observing the effects. The authors implemented their design in an open source project, called <a href="https://github.com/sieve-project/sieve">Sieve</a>. Since its release, the project found numerous bugs in open source Kubernetes components, demonstrating the approach’s utility and a promising future for the approach in the toolkit of developers working on Kubernetes operators.</p>
+
+<h2 id="background">Background</h2>
+
+<p>The paper focuses on an implementation of automated testing targeted at a primary open source cluster manager, Kubernetes. Following commands issued by a CLI<label for="kubectl" class="margin-toggle sidenote-number"></label><input type="checkbox" id="kubectl" class="margin-toggle" /><span class="sidenote">Like <a href="https://kubernetes.io/docs/reference/kubectl/">kubectl</a>. </span> or via automated processes, Kubernetes changes what is deployed on a cluster (and where), with the goal of making the cluster converge to a desired state. A critical component Kubernetes uses to <a href="https://kubernetes.io/docs/concepts/architecture/controller/">control</a> resources is the <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/operator/">Operator</a> pattern.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To change the cluster, a <a href="https://kubernetes.io/docs/concepts/architecture/controller/">controller</a> reads a view of cluster state (which may be cached to limit the number of read requests) from API servers. This state-based approach allows a testing framework to systematically manipulate cluster information, introducing common problems that occur in distributed systems (like components operating with stale state of the world incorrectly issuing commands).</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions:</p>
+
+<ul>
+  <li>A technique that allows automatic testing of cluster management systems</li>
+  <li>An implementation of the design, published as the <a href="https://github.com/sieve-project/sieve">Sieve</a> open source project</li>
+  <li>An evaluation of the approach based on real-world bugs discovered with Sieve</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>Kubernetes controllers rely on state to make decisions. Sieve relies on this fact in order to test the performance of controllers in the presence of various failure modes. After altering cluster state, Sieve records the actions an operator takes following this altered state, comparing them to the controller’s actions in baseline conditions (without injected failures). Any differences between the two sets of actions are flagged for the developer of the Kubernetes controller, allowing them to visualize how an operator behaves in complex conditions.</p>
+
+<p>Before a developer can take advantage of Sieve functionality, they first must add support for the project to their operator<label for="port" class="margin-toggle sidenote-number"></label><input type="checkbox" id="port" class="margin-toggle" /><span class="sidenote">As of 2022-08-13, there is a <a href="https://github.com/sieve-project/sieve/blob/main/docs/port.md">setup script</a> available. </span>. These setup steps not only define the interaction between Sieve and the operator, but also include definitions for workloads representing the critical flows that an operator executes and their desired end states - one example configuration for the MongoDB operator is <a href="https://github.com/sieve-project/sieve/tree/d45beba2b6bbb8a63ce989745b7e7b151a285b77/examples/mongodb-operator">here</a>.</p>
+
+<p>Once configured, Sieve’s testing process roughly divides into three high level steps:</p>
+
+<ul>
+  <li><em>Observing normal system operations</em>: Sieve aims to understand the actions an operator takes in the absence of failure modes.</li>
+  <li><em>Generating and executing test plans</em>: using traces of normal operating behavior, Sieve systematically determines which failures to insert and when. Then, it observes whether failure modes impact operator behavior.</li>
+  <li><em>Checking and outputting results</em>: after inserting failures during test runs, Sieve compares the operator’s behavior to what it does under normal operating conditions.</li>
+</ul>
+
+<h3 id="observing-system-operations">Observing system operations</h3>
+
+<p>Following the initial configuration described above, Sieve <em>collects reference traces</em> representing the interactions that a Kubernetes controller has with other components in the system. The implementation records interactions by intercepting calls in the <a href="https://github.com/kubernetes/client-go">client library</a>, and at Kubernetes API servers<label for="dst" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dst" class="margin-toggle" /><span class="sidenote">Interstingly, the paper mentions that it uses a library called <a href="https://github.com/dave/dst">dst</a> to insert these calls - from spelunking in the code, it looks that an example usage is <a href="https://github.com/sieve-project/sieve/blob/4fdee97ca74fad409b98be1510b0c53be9b6d032/sieve_instrumentation/common.go">here</a>. </span>. This instrumentation allows Sieve to observe commands like <code class="language-plaintext highlighter-rouge">Create</code>, <code class="language-plaintext highlighter-rouge">Update</code>, and <code class="language-plaintext highlighter-rouge">Delete</code> that the operator under test sends.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/table1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="generating-pruning-and-executing-test-plans">Generating, pruning, and executing test plans</h3>
+
+<p>After collecting data on workloads in the normal operation of the system, Sieve <em>generates test plans</em> that it could use to evaluate the impact of different failure modes on an operator’s ability to function correctly.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>When generating test plans, Sieve aims to detect three main types of bugs related to <em>intermediate states</em>, <em>stale states</em>, and <em>unobserved states</em>.</p>
+
+<p><em>Intermediate state</em> bugs often happen when a controller implements a multi-step update process, but incompletely handles crash recovery - Kubernetes controllers are deployed in cloud environments, and must be resilient to crashes that could occur at any time. If a controller crashes while mid-update, the data it uses following recovery may not accurately represent the state of the system before the crash (meaning that the controller may or may not the execute the code path it would have in the absence of the failure).</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Stale state</em> bugs occur when an operator doesn’t completely handle out-of-date views of the cluster. A controller could read stale states because of the multiple levels of caching in a Kubernetes cluster, or because of the distributed nature of the servers that the controller reads state from<label for="stale" class="margin-toggle sidenote-number"></label><input type="checkbox" id="stale" class="margin-toggle" /><span class="sidenote">There is an <a href="https://github.com/kubernetes/kubernetes/issues/59848#issuecomment-1023567709">open bug on the impact of stale reads in Kubernetes</a> where the <a href="https://github.com/kubernetes/kubernetes/issues/59848#issuecomment-1023567709">Sieve</a> have a proposed mitigation. </span>. If a controller reads a stale state of the cluster, it could time-travel backwards, reissuing now out-of-date commands. One case where this could result in unintended behavior is if a controller repeatedly shuts down resources while trying to perform a restart operation <label for="mongodb" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mongodb" class="margin-toggle" /><span class="sidenote">Example <a href="https://jira.percona.com/browse/K8SPSMDB-430">stale-state bug</a> from MongoDB’s controller. </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, <em>unobserved state</em> bugs happen when a controller doesn’t receive feedback (potentially due to lost messages on the network). As a result of this type of bug, a controller could leave dangling resources, wasting cluster resources.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To test for these three types of bugs:</p>
+
+<blockquote>
+  <p>Sieve currently supports several primitives that test plans can compose to introduce complex faults: 1) crash/restart a controller, 2) disconnect/reconnect a controller to an API server, 3) block/unblock a controller from processing events, and 4) block/unblock an API server from processing events.</p>
+</blockquote>
+
+<p>Running all potential test plans would dramatically increase the execution time of Sieve tests. To limit this issue, Sieve <em>prunes ineffective plans</em> using several techniques. One of these ideas is called “pruning by causality”, which relies on relationships between the notifications that a controller receives and the updates that it outputs to other parts of the system - if a notification under normal operating conditions doesn’t result in an output update, Sieve skips manipulating that notification.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Another technique that Sieve uses to prune test plans is skipping controller commands that do not impact the cluster (which could happen if a controller repeatedly reissues the same RPC). While this case theoretically shouldn’t happen (as redundant updates from a controller to the cluster are wasteful of networking/computing resources), the paper notes that hidden bugs could send many versions of the same update unnecessarily.</p>
+
+<p>After <em>pruning ineffective plans</em>, the system <em>executes the test plans</em> according to the configured faults and triggers specified - example test plans are available in the <a href="https://github.com/sieve-project/sieve/blob/main/bug_reproduction_test_plans/cass-operator-intermediate-state-1.yaml">Sieve repository</a>.</p>
+
+<h3 id="checking-results">Checking results</h3>
+
+<p>Following the completion of <em>executing test plans</em>, the system compares normal executions to those with injected failure modes.</p>
+
+<p>Specifically, Sieve checks:</p>
+
+<ul>
+  <li><em>End states</em>: controllers running under injected failures and normal operating conditions should reach the same expected values for deployed components (like successful container turndown/turnup)</li>
+  <li><em>State-Update Summaries</em>: controllers running under injected failures and normal operating conditions should issue the same update commands to the cluster<label for="order" class="margin-toggle sidenote-number"></label><input type="checkbox" id="order" class="margin-toggle" /><span class="sidenote">The paper notes that ordering of commands doesn’t necessarily matter as much as the content of those commands. </span>. This check is important to catch situations where a cluster ends up the same state through buggy behavior.</li>
+</ul>
+
+<p>Following the execution of a test plan, Sieve outputs detected differences (either in end states or in the path to achieve them), and the combination of triggers that caused it</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper evaluates Sieve on three dimensions: “1) Can Sieve find new bugs in real-world controllers? 2) Does Sieve do so efficiently? 3) Are Sieve’s testing results trustworthy?”.</p>
+
+<p>To evaluate the first question, the paper considers several example controllers that the framework is applied to. Sieve was able to find 46 controller bugs in open source controllers that would have been difficult to find otherwise. These bugs have consequences like application outages, data loss, security vulnerabilities, and resource leakage. Notably, Sieve finds issues in official operators with significant developer backing, like the <a href="https://github.com/k8ssandra/cass-operator">cass-operator from DataStax</a> and the <a href="https://github.com/elastic/cloud-on-k8s">elastic-operator from MongoDB</a>. These bugs would be very difficult to find without automated testing that Sieve provides - one <a href="https://k8ssandra.atlassian.net/browse/K8SSAND-1023">example bug</a> from the DataStax cass-operator happens if the controller crashes in a specific step of a multi-step process related to setting up a key store.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/table4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To evaluate whether Sieve efficiently finds bugs, the paper considers the system’s total testing time, and the effectiveness of how it trims the search space of tests to perform. This analysis finds that tests run in tens of hours after reducing the number of test plans.</p>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/table5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<figure><img class="maincolumn-img" src="/assets/automatic/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, Sieve “has a low false positive rate of 3.5%”, meaning that developers are able to trust the system, rather than treating it like a flaky test framework<label for="falsepositives" class="margin-toggle sidenote-number"></label><input type="checkbox" id="falsepositives" class="margin-toggle" /><span class="sidenote">It would be interesting to hear more about why the false positives happened. </span>.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Controllers are a critical part of deploying applications on Kubernetes, but have historically been difficult to test. By employing a state-based approach, Sieve is able to find bugs in even mature projects! Given that there will be continued development of these important components in the future<label for="k8s" class="margin-toggle sidenote-number"></label><input type="checkbox" id="k8s" class="margin-toggle" /><span class="sidenote">And Kubernetes seems here to stay… </span>, automated testing of their behavior is an exciting and extremely useful area of research.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-07-24-automatic-reliability-testing-for-cluster-management-controllers.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

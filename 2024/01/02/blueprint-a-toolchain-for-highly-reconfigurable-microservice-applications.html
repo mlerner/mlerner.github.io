@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications</h1>
+  
+  <h4>Published January 02, 2024</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-02-blueprint-a-toolchain-for-highly-reconfigurable-microservice-applications.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="https://dl.acm.org/doi/10.1145/3600006.3613138">Blueprint: A Toolchain for Highly-Reconfigurable Microservice Applications</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>The Blueprint paper talks about a new <a href="https://gitlab.mpi-sws.org/cld/blueprint/blueprint-compiler">open source framework</a> for configuring, building, and deploying application code. This framework aims to simplify iteration on system design, application development, and configuration.</p>
+
+<p>The authors argue that these tasks are currently difficult to accomplish because many services have tight coupling between application code, framework-level components (like RPC libraries and their behavior), and the actual deployment of the service (e.g. with Docker, Kubernetes, or other systems like Ansible).</p>
+
+<p>By explicitly separating concerns of an application, and explicitly defining their interactions in a programmatic configuration, the authors are able to test out new configurations of a system - for example, quickly reconfiguring a set of independently deployed microservices into a single monolithic binary, then measuring the performance impact of the change.</p>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>Blueprint’s approach divides a system into three types of components:</p>
+
+<ul>
+  <li>Application level workflows: business logic that a developer writes to perform a specific function.</li>
+  <li>Scaffolding: underlying framework-level components like RPC functionality, distributed tracing libraries, and storage backends (like caches and databases).</li>
+  <li>Instantiations: specific configuration for framework-level components (e.g. using a specific RPC library with deadlines set or with novel functionality like <a href="https://martinfowler.com/bliki/CircuitBreaker.html">circuit-breakers</a> enabled.</li>
+</ul>
+
+<p>A system is described in a programmatic configuration called a <em>workflow spec</em> which contains application logic and its external interface.</p>
+
+<figure><img class="maincolumn-img" src="/assets/blueprint/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/blueprint/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Next, a user of Blueprint creates a <em>wiring spec</em> that encode the relationship between pieces of application code and framework-level components. In one example, the authors recreate a simple microservice for posting on a social network, including connection to external caches and databases.</p>
+
+<figure><img class="maincolumn-img" src="/assets/blueprint/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Blueprint then uses the <em>wiring spec</em> to compile an <em>intermediate representation</em> (an idea <a href="https://cs.lmu.edu/~ray/notes/ir/">common to many compilers</a>) of the system. The intermediate representation is effectively a graph with nodes describing code and edges describing dependencies (e.g. service A calls service B).</p>
+
+<figure><img class="maincolumn-img" src="/assets/blueprint/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, the intermediate representation is used to build concrete artifacts representing the components of the system - for example, the build system can compile the code for a service written in Go and wrap it with a Docker image, enabling later deployments to production.</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The authors evaluate several research claims about the implementation, but three themes stood out to me:</p>
+
+<ul>
+  <li>Does Blueprint make it easier for developers to try new configurations of an system’s <em>existing</em> components and libraries?</li>
+  <li>Can Blueprint be used to create system configurations that reproduce reliability issues?</li>
+  <li>What are the costs of the abstractions that Blueprint provides?</li>
+</ul>
+
+<p>To evaluate the first question of whether Blueprint makes it easier to try new configurations for a system’s existing components, the authors considered the lines of code required to enable/disable tracing and to convert a microservice deployment into a monolith.</p>
+
+<p>They were able to perform the first task of making changes to tracing with 5 lines of code. Similarly, by changing ~10 lines of code in the Blueprint configuration, they were able to generate a monolithic version of an application previously deployed as microservices, then quantify the performance impact of this change.</p>
+
+<figure><img class="maincolumn-img" src="/assets/blueprint/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The authors also used Blueprint to reproduce or create reliability issues in a service - in particular they focused on <a href="https://www.micahlerner.com/2022/07/11/metastable-failures-in-the-wild.html">Metastable failures</a> described in a previous paper review. While creating specific configurations of a system to enable reliability testing is not necessarily a unique feature of Blueprint (e.g. <a href="https://www.usenix.org/publications/loginonline/metastable-failures-wild">Metastable Failures in the Wild</a> discusses replicating metastability), the ease with which the authors performed this analysis was intriguing.</p>
+
+<p>Lastly, paper analyzes how long it takes for Blueprint to generate systems of different sizes. While many of the examples are based on prototype systems, the authors also ran Blueprint on a system derived from a <a href="https://dl.acm.org/doi/10.1145/3472883.3487003">microservice dataset published by Alibaba</a>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/blueprint/table5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Blueprint’s idea of separating the concerns involved in an application seems like a promising approach to dramatically increasing the velocity of the software development lifecycle (at least for microservices). One area that seems particularly exciting about Blueprint is the ability to simplify testing different service configurations across infrastructure - for example, rather than rewriting a large body of application code to test out a new tracing library, a developer can simply swap out the code in the Blueprint definition.</p>
+
+<p>From reading the paper, there are several areas of further research for Blueprint, particularly around production readiness. For example, Blueprint’s compilation time for a system of ~3000 microservces described in a paper from Alibaba ran for 12 minutes. For organizations that would have many components in their configuration, the cost to run Blueprint would certainly be non-negligible. To speedup compliation of Blueprint, perhaps it would only recompute parts of the system touched by a developer’s changes.</p>
+
+<p>Furthermore, adoption via onboarding new systems to Blueprint also seems like a challenge, as developers would need to perform some implementation in order to create the definition of their system - perhaps the team behind Blueprint will expand on tooling that automates this process by reading metadata source from a running system (e.g. traces).</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2024-01-02-blueprint-a-toolchain-for-highly-reconfigurable-microservice-applications.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

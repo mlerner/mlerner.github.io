@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Breakfast of Champions: Towards Zero-Copy Serialization with NIC Scatter-Gather</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Breakfast of Champions: Towards Zero-Copy Serialization with NIC Scatter-Gather</h1>
+  
+  <h4>Published July 07, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-07-08-breakfast-of-champions-towards-zero-copy-serialization-with-nic-scatter-gather.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><em>This week’s paper is from HotOS 2021. Many of the HotOS papers (like this one) propose future directions for Operating Systems research, in addition to including prototypes (in contrast with other papers that focus on a single system’s implementation). The full proceedings of the conference are <a href="https://sigops.org/s/conferences/hotos/2021/">here</a> - as always, if there are any papers that stick out to you, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a></em>.</p>
+
+<p><a href="https://www.sigops.org/s/conferences/hotos/2021/papers/hotos21-s10-raghavan.pdf">Breakfast of Champions: Towards Zero-Copy Serialization with NIC Scatter-Gather</a> Deepti Raghavan, Philip Levis, Matei Zaharia, Irene Zhang.</p>
+
+<p>This paper (written by authors from Stanford and Microsoft Research) focuses on how to speed up data serialization associated with Remote Procedure Call (RPC)<label for="rpc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="rpc" class="margin-toggle" /><span class="sidenote">Martin Kleppman, the author of the amazing <a href="https://dataintensive.net/">‘Designing Data-Intensive Applications’</a> has a useful lecture on RPC <a href="https://www.youtube.com/watch?v=S2osKiqQG9s">here</a>. </span> systems in the datacenter. Normally, RPC systems are not focused on as a performance bottleneck, but the authors argue that as we <a href="https://cacm.acm.org/magazines/2017/4/215032-attack-of-the-killer-microseconds/fulltext">enter the “microsecond era”</a><label for="microsecond" class="margin-toggle sidenote-number"></label><input type="checkbox" id="microsecond" class="margin-toggle" /><span class="sidenote">The microsecond era refers to a time when ‘low-latency I/IO devices, ranging from faster datacenter networking to emerging non-volatile memories and accelerators’ are used more widely in industry. A shorter intro is <a href="https://www.youtube.com/watch?v=XEsR5kPHWeU">here</a> </span>, the performance of previously overlooked systems will standout - CPU will become a scarce resource as data center networks become even faster.</p>
+
+<p>RPC systems (like <a href="https://grpc.io/">gRPC</a> and <a href="https://thrift.apache.org/">Apache Thrift</a>) are very popular, but use CPU cycles to move memory in the process of reading data from or writing data to the network. This overhead comes from “coalescing or flattening in-memory data structures” - taking application objects that may contain pointers to separate areas of memory and moving the associated data into a contiguous area of memory (so that the combined object can be sent over the network).</p>
+
+<p>To limit (and possibly eliminate) this overhead, the authors suggest leveraging functions of commodity Network Interface Cards (NICs) with built in support for high performance computing primitives<label for="mellanox" class="margin-toggle sidenote-number"></label><input type="checkbox" id="mellanox" class="margin-toggle" /><span class="sidenote">The paper includes benchmarks from using a Mellanox NIC - see <a href="https://www.nextplatform.com/2015/11/12/mellanox-turns-infiniband-switches-into-mpi-accelerators/">here</a> for a discussion of how Mellanox can accelerate MPI operations. </span>. The primitive focused on in the paper is scatter-gather<label for="scattergather" class="margin-toggle sidenote-number"></label><input type="checkbox" id="scattergather" class="margin-toggle" /><span class="sidenote"><a href="https://people.inf.ethz.ch/asingla/papers/socc20-scattergather.pdf">Specializing the network for scatter-gather workloads</a> describes a number of use cases for scatter-gather, for example: “Web services such as search engines often involve a user-facing server receiving a user request, and in turn, contact hundreds to thousands of back-end servers, e.g.,for queries across a distributed search index”. </span>, which bears a strong resemblance to the function that the authors are trying to optimize (gathering disparate memory to a single location or taking a contiguous piece of memory and distributing it):</p>
+
+<blockquote>
+  <p>Scatter-gather was designed for high-performance computing, where applications frequently move large, statically-sized chunks of memory between servers.</p>
+</blockquote>
+
+<p>Even though some NICs support scatter-gather, an extra step (called <em>kernel bypass</em>) can be taken to ensure that there are no (or at least limited) memory copies made in the serialization/deserialization process. Kernel-bypass is used to build high-speed networking stacks, for example <a href="https://blog.cloudflare.com/kernel-bypass/">at Cloudflare</a>. The technique can make IO devices (like a NIC) available to user-space, ensuring that no unncessary memory movement in or out of the kernel occurs<label for="kernelbypass" class="margin-toggle sidenote-number"></label><input type="checkbox" id="kernelbypass" class="margin-toggle" /><span class="sidenote"><a href="https://www.youtube.com/watch?v=MpjlWt7fvrw">This video</a> contains an in-depth explanation of kernel-bypass for high-speed networking. One of the authors of the paper (Irene Zhang), also has an interesting paper on a system that provides abstractions for kernel-bypass: <a href="https://irenezhang.net/papers/demikernel-hotos19.pdf">I’m Not Dead Yet! The Role of the Operating System in a Kernel-Bypass Era</a>. </span>.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions: it explores the sources of RPC serialization (and deserialization) overhead, proposes a solution to limiting that overhead, and outlines potential areas of research in the future to expand on the proposed approach.</p>
+
+<h2 id="the-limits-of-software-serialization">The Limits of Software Serialization</h2>
+
+<p>To explore performance issues with software serialization (<em>software</em> serialization because no extra hardware, like an <em>accelerator</em>, is used), the paper includes two experimental results that highlight the reasons that CPU-based serialization is inefficient - flattening, moving, and copying data when performing RPC operations incurs CPU cycles.</p>
+
+<figure><img class="maincolumn-img" src="/assets/breakfast/serialize_perf.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The first experiment shows the limits of different RPC serialization/deserialization implementations for a server that is deserializing and serializing a 1024 byte string message<label for="1024" class="margin-toggle sidenote-number"></label><input type="checkbox" id="1024" class="margin-toggle" /><span class="sidenote">A simple string message was chosen because it is a can represent “the minimal overhead for serialization today.” </span>(where the limit is the latency associated with a given throughput). Predominantly all of the implementations are grouped together on the performance graph, with three important gaps.</p>
+
+<p>First, Protobuf performs poorly relatively to the other RPC libraries (as it performs UTF-8 validation on the string message).</p>
+
+<p>The next gap is between an implementation using DPDK<label for="dpdk" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dpdk" class="margin-toggle" /><span class="sidenote"><a href="https://doc.dpdk.org/guides/prog_guide/overview.html">DPDK</a> stands for “Data Plane Development Kit”, and is a software library that allows for NICs to be programmed from user-space, facilitating high speed networking through bypassing the kernel. </span> single core and the RPC libraries. The serialization libraries need to make copies when encoding to or decoding from a wire format (see graph below for a comparison between Protobuf and Cap’n Proto in this regard), and these extra copies mean lower peak throughput (because CPU cycles are spent on moving the memory). In contrast, the DPDK line indicates what would be possible performance wise if serialization libraries could manipulate shared memory with the networking stack, in turn limiting memory copies. This line sets the benchmark for what would be possible in a world where RPC libaries limited copies by integrating with a kernel-bypass library.</p>
+
+<figure><img class="maincolumn-img" src="/assets/breakfast/serialize.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The second experiment is included above - it shows how both Protobuf and Cap’n Proto incur copies when performing serialization/deserialization (and the time for each grow with the size of the message).</p>
+
+<h2 id="leveraging-the-nic-for-serialization">Leveraging the NIC for Serialization</h2>
+
+<p>Before introducing the scatter-gather based implementation, the paper explores the performance of splitting up a payload into differently sized chunks. This experiment uses an echo server benchmark (where a client serializes a message and sends it to a server, which returns it to the client), with the results indicating that objects below a threshold size of 256 bytes do not benefit from a zero-copy scatter-gather approach. Dividing up a payload into smaller packets can hurt performance if the packets are too small relative to the overhead of the NIC building them (where the definition of “too small” varies with the model of NIC being used, a topic that will come up in the next section<label for="pcie" class="margin-toggle sidenote-number"></label><input type="checkbox" id="pcie" class="margin-toggle" /><span class="sidenote">Each scatter/gather chunk of memory is an expensive NIC-to-PCIe round-trip. Different NICs will be able to parallelize fewer or more of these calls. </span>).</p>
+
+<figure><img class="maincolumn-img" src="/assets/breakfast/scatter_gather_array.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>To use a NIC’s scatter-gather functionality to speed up serialization/deserialization, the paper implements a datastructure called a <em>ScatterGatherArray</em> that contains a count of the number of entries, a list of pointers, and the size of each entry - “when applications call serialize, the library produces a scatter-gather array that can be passed to the networking stack instead of a single contiguous buffer”. An associated header contains a bitmap of which fields in the <em>ScatterGatherArray</em> are filled and metadata about the type of the field. When serializing an object, the “resulting wireformat is similar to <a href="https://capnproto.org/encoding.html">Cap’n Proto’s wireformat</a>.”</p>
+
+<p>The paper additionally includes details of deserializing an object. I won’t include full details on deserialization (as they are readily accessible in the paper), but there are several interesting features. For one, the paper discusses pros of a potentially different wire format where information on all fields is stored in the header (in contrast to the implementation which has a header that only includes metadata on a field if it is present) - if all fields are stored, the header would likely be larger, but deserialization could be constant time, rather than requiring a scan of all fields in the header.</p>
+
+<p>Most importantly, the prototype using NIC scatter-gather, kernel-bypass, the <em>ScatterGatherArray</em>, and the wireformat almost reach DPDK single-core performance benchmark from the first experiment outlined in “The Limits of Software Serialization_ above:</p>
+
+<blockquote>
+  <p>The prototype implementation achieves about 9.15 Gbps (highest throughput measured under 15μs of tail latency). The prototype’s performance improves on all the serialization libraries and the 1-copy (”No Serialization”) baseline, but falls about 1.2 Gbps short of the optimal DPDK throughput.</p>
+</blockquote>
+
+<h2 id="open-research-challenges">Open Research Challenges</h2>
+
+<p>There are four main research challenges associated with combining NIC scatter-gather with serialization libraries:</p>
+
+<ul>
+  <li><em>NIC support for scatter gather</em>: the costs of sending payloads using NIC scatter-gather aren’t worth it if the payloads are below a threshold size. Can NICs be designed with this in mind?</li>
+  <li><em>Using scatter-gather efficiently</em>: Different application payloads may or may not work well with different NICs, as different NICs have different performance profiles with small or oddly sized payloads</li>
+  <li><em>Accessing Application Memory for Zero-Copy I/O</em>: Memory that is shared between the NIC and user-space must be pinned, meaning that large amounts of memory could be reserved for an application, but may never be used (or used rarely). Managing what memory is pinned, when it is pinned, and how it is allocated are all active areas of developement (with papers linked to by the authors), as a user of the approach wouldn’t want to incur enormous overhead.</li>
+  <li><em>Providing Zero-Copy I/O with Memory Safety</em>: If the NIC and CPU are both interacting with memory concurrently, they will need a way to do so safely. Other challenges include implementing a way for deserialized responses to be reclaimed once an application is done using them (otherwise the response will stay in memory, which will eventually run out).</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Kernel-bypass and the microsecond era are leading to an exciting time in systems as researchers figure out how to rework existing systems and ensure high performance. Accelerators (and abstracting away the use of them) is an area I hope to cover more in the future. While this paper is a slight deviation from the types of papers that I’ve previously reviewed on this blog, I hope you enjoyed it - if you have feedback feel free to ping me on <a href="https://twitter.com/micahlerner">Twitter</a>. Until next time!</p>
+
+<p><em>Thanks to <a href="https://twitter.com/penberg">Pekka Enberg</a> for reading a draft of this post!</em></p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-07-08-breakfast-of-champions-towards-zero-copy-serialization-with-nic-scatter-gather.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

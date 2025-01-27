@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>PaSh: Light-touch Data-Parallel Shell Processing</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>PaSh: Light-touch Data-Parallel Shell Processing</h1>
+  
+  <h4>Published July 31, 2021</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-07-31-pash-light-touch-data-parallel-shell-processing.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><em>This week’s paper review is the third in a series on “The Future of the Shell”<label for="series" class="margin-toggle sidenote-number"></label><input type="checkbox" id="series" class="margin-toggle" /><span class="sidenote">Here are links to <a href="/2021/07/14/unix-shell-programming-the-next-50-years.html">Part 1</a> and <a href="/2021/07/24/from-laptop-to-lambda-outsourcing-everyday-jobs-to-thousands-of-transient-functional-containers.html">Part 2</a> </span>. These weekly paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, and based on feedback last week I added an <a href="https://www.micahlerner.com/feed.xml">Atom feed</a> to the site. Over the next few weeks I will be reading papers from <a href="https://www.usenix.org/conference/atc21">Usenix ATC</a> and <a href="https://www.usenix.org/conference/osdi21">OSDI</a> - as always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions about papers to read!</em></p>
+
+<p><a href="https://doi.org/10.1145/3447786.3456228">PaSh: Light-touch Data-Parallel Shell Processing</a></p>
+
+<p>This week’s paper discusses <em>PaSh</em>, a system designed to automatically parallelize shell scripts. It accomplishes this goal by transforming a script into a graph of computation, then reworking the graph to enhance parallelism. To ensure that this transformation process is correct, PaSh analyzes a command as annotated with a unique configuration language - this configuration explicitly defines a command’s inputs, outputs, and parallelizability. The final step in applying PaSh transforms the intermediate graph of computation back into a shell script, although the rewritten version of the shell script will (hopefully) be able to take advantage of greater parallelism.</p>
+
+<p>On its own, PaSh can provide dramatic speedups to shell scripts (applying the system to common Unix one-liners accelerates them by up to 60x!), and it would certainly be interesting to see it coupled with other recent innovations in the shell (as discussed in other paper reviews in this series).</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions:</p>
+
+<ul>
+  <li>A study of shell commands and their parallelizability. The outcome of this study are categorizations of shell commands based on their behavior when attempting to parallelize them, and an annotation language used to describe this behavior.</li>
+  <li>A dataflow model<label for="dataflow" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dataflow" class="margin-toggle" /><span class="sidenote">There are many interesting papers that implement a dataflow model, although a foundational one is <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2007/03/eurosys07.pdf">Dryad: Distributed Data-Parallel Programs from Sequential Building Blocks</a> </span> useful for representing a shell script. A given script’s model is informed by the commands in it and the behavior of those commands (each command’s behavior is described with the custom annotation language mentioned above). The intermediate dataflow model is reworked to enhance parallelism, and is finally transformed back into a shell script (which then executes a more parallel version of the original computation).</li>
+  <li>A runtime capable of executing the output shell script, including potentially custom steps that the PaSh system introduces into the script to facilitate parallelization.</li>
+</ul>
+
+<h2 id="shell-commands-and-their-parallelizability">Shell commands and their parallelizability</h2>
+
+<p>PaSh seeks to parallelize shell commands, so the author’s first focus on enumerating the behaviors of shell commands through this lens. The result is four categories of commands:</p>
+
+<ul>
+  <li><em>Stateless</em> commands, as the name suggests, don’t maintain state and are analagous to a “map” function. An example of stateless commands are <code class="language-plaintext highlighter-rouge">grep</code>, <code class="language-plaintext highlighter-rouge">tr</code>, or <code class="language-plaintext highlighter-rouge">basename</code>.</li>
+  <li><em>Parallelizable pure</em> commands produce the “same outputs for same inputs — but maintain internal state across their entire pass”. An example is <code class="language-plaintext highlighter-rouge">sort</code> (which should produce the same sorted output for the same input, but needs to keep track of all elements) or <code class="language-plaintext highlighter-rouge">wc</code> (which should produce the same count for a given input, but needs to maintain a counter).</li>
+  <li><em>Non-parallelizable pure</em> commands are purely functional (as above, same outputs for same inputs), but “cannot be parallelized within a single data stream”. An example command is <code class="language-plaintext highlighter-rouge">sha1sum</code>, which hashes input data - if the stream of data passed to the command is evaluated in a different order, a different output will be generated. This is contrast to a <em>parallelizable pure</em> command like <code class="language-plaintext highlighter-rouge">sort</code> - no matter which order you pass in unsorted data, the same output will be produced, making the computation it performs parallelizable.</li>
+  <li><em>Side-effectful</em> commands alter the state of the system, “for example, updating environment variables, interacting with the filesystem, and accessing the network.”</li>
+</ul>
+
+<p>This categorization system is applied to commands in POSIX and GNU Coreutils.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pash/parclasses.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>While the vast majority of commands (in the <em>non-parallizable pure</em> and <em>side-effectful</em> categories) can not be parallelized without significant complication, a significant portion of commands can be relatively-easily parallelized (<em>stateless</em> or <em>parallelizable pure</em> categories).</p>
+
+<h2 id="shell-command-annotation">Shell command annotation</h2>
+
+<p>To describe the <em>parallelizability class</em> of a given command and argument, the paper’s authors built an <em>extensibility framework</em>. This framework contains two components: an <em>annotation language</em> and <em>custom aggregators</em> which collect the output of commands executing in parallel and stream output to the next command in the script.</p>
+
+<p>The <em>annotation language</em><label for="textproto" class="margin-toggle sidenote-number"></label><input type="checkbox" id="textproto" class="margin-toggle" /><span class="sidenote">The annotation language is defined in JSON which seems helpful for initial development - it would be interesting to see the language ported to a more constrained format, like protobuf/textproto. </span> is used to produce <em>annotations</em> that indicate inputs, outputs, and parallelization class on a per-command basis<label for="opensource" class="margin-toggle sidenote-number"></label><input type="checkbox" id="opensource" class="margin-toggle" /><span class="sidenote">The entirety of PaSh, including annotations, are <a href="https://github.com/binpash/pash">open source on GitHub</a> - the docs include a <a href="https://github.com/binpash/pash/blob/main/annotations/README.md#how-to-annotate-a-command">useful reference for annotating commands</a>. </span>. An example for the default behavior of the <code class="language-plaintext highlighter-rouge">cut</code> command is below:</p>
+
+<p><code class="language-plaintext highlighter-rouge">{ "command": "cut", { "predicate": "default", "class": "stateless", "inputs": ["stdin"], "outputs": ["stdout"] }</code></p>
+
+<p>One can also define behavior for specific command and argument combinations. For example, providing (or omitting) a specific argument might change the parallelizability class or inputs/outputs for a command - an example of this is <code class="language-plaintext highlighter-rouge">cut</code> with the <code class="language-plaintext highlighter-rouge">-z</code> operand (<code class="language-plaintext highlighter-rouge">cut</code> reads from stdin if the <code class="language-plaintext highlighter-rouge">-z</code> operand is not provided):</p>
+
+<p><code class="language-plaintext highlighter-rouge">{ "predicate": {"operator": "exists", "operands": [ "-z" ]}, "class": "n-pure", "inputs": [ "args[:]" ], "outputs": [ "stdout" ] }</code></p>
+
+<p>The second component of the extensibility framework are <em>custom aggregators</em> that coalesce the results of parallelized operations into a result stream - an example aggregator takes in two streams of <code class="language-plaintext highlighter-rouge">wc</code> results and produces an element in an output stream. The <a href="https://github.com/binpash/pash/tree/main/runtime/agg/py">PaSh open source project</a> includes a more complete set of examples that can aggregate the results of other parallelized commands, like <code class="language-plaintext highlighter-rouge">uniq</code>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pash/agg.png" /><figcaption class="maincolumn-figure">Example aggregator that takes two input streams and reduces them to an output</figcaption></figure>
+
+<p>The implementation of PaSh relies on the annotation language and custom aggregators described above in order to transform a shell script into an intermediate state where the script’s commands are represented with a <em>dataflow model</em> - this transformation is covered in the next section.</p>
+
+<h2 id="transforming-a-script">Transforming a script</h2>
+
+<p>There are multiple steps involved in transforming a script to a more-parallel form. First, PaSh parses it, then transforms the parsed script into an intermediate state called a <em>dataflow graph</em> (DFG) model. The annotation language facilitates this transformation by providing hints to the system about each step’s inputs, outputs, and behavior when parallelized. The intermediate dataflow model can be reconfigured to produce a more parallel of the script’s associated commands. Lastly, the resulting graph is transformed back into a shell script.</p>
+
+<p>PaSh implements this transformation process end-to-end using three components: a <em>frontend</em>, the <em>dataflow model</em>, and the <em>backend</em>.</p>
+
+<p>The <em>frontend</em> first parses the provided script into an Abstract Syntax Tree (AST). From there, it “performs a depth-first search” on the AST of the shell script, building <em>dataflow regions</em> as it goes along - a <em>dataflow region</em> corresponds to a section of the script that can be parallelized without hitting a “barrier” that enforces sequential execution<label for="careful" class="margin-toggle sidenote-number"></label><input type="checkbox" id="careful" class="margin-toggle" /><span class="sidenote">It’s worth noting that PaSh also is very conservative when it comes to building <em>dataflow regions</em> that it might try to parallelize later - if an annotation for a command is not defined or it is possible that the parallelizability class of an expression could be altered (for example, if the command relies on an environment variable), then PaSh will not parallelize it. </span>. Examples of barriers are <code class="language-plaintext highlighter-rouge">&amp;&amp;</code>, <code class="language-plaintext highlighter-rouge">||</code>, and <code class="language-plaintext highlighter-rouge">;</code>.  The resulting <em>dataflow model</em> is essentially a graph where the nodes are commands and edges indicate command inputs or outputs.</p>
+
+<figure><img class="maincolumn-img" src="/assets/pash/dfg.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Once the dataflow graphs (DFG) for a script are produced, they can be reworked to take advantage of user-configured parallelism called <em>width</em>. The paper lays out the formal basis for this transformation - as an example, stateless and parallelizable pure commands can be reconfigured to enhance parallelism while still producing the same result (the paper presents the idea that for these two parallelizability classes, the result of reordering nodes is the same).</p>
+
+<figure><img class="maincolumn-img" src="/assets/pash/stateless.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also mentions other useful transformations of the graph - one in particular, adding a relay node between two nodes, is useful for enhancing performance (as described in the next section).</p>
+
+<p>After all transformations are performed on the graph, the <em>Backend</em> transforms the graph back into an executable shell script.</p>
+
+<h2 id="runtime">Runtime</h2>
+
+<p>The output script generated by the application of PaSh can be difficult to execute for several reasons outlined by the paper, although this paper review doesn’t include a complete description of the runtime challenges<label for="runtime" class="margin-toggle sidenote-number"></label><input type="checkbox" id="runtime" class="margin-toggle" /><span class="sidenote">The paper does a better job of noting them than I could and I highly recommend digging in! </span>.</p>
+
+<p>One particularly important detail of the runtime is an approach to overcoming the shell’s “unusual laziness” - the paper notes that the “shell’s evaluation strategy is unusually lazy, in that most commands and shell constructs consume their inputs only when they are ready to process more.” To ensure high resource utilization, PaSh inserts “relay nodes”, which “consume input eagerly while attempting to push data to the output stream, forcing upstream nodes to produce output when possible while also preserving task-based parallelism”. For a number of reasons, other approaches to solving the “eagerness” problem (like not addressing it or using files) result in less performant or even possibly incorrect implementations - this comes into play in the evaluation section of the paper.</p>
+
+<h2 id="evaluation">Evaluation</h2>
+
+<p>The evaluation section of the PaSh paper includes a number of applications, but I choose to focus on three applications that stuck out to me: Common Unix One-liners, NOAA weather analysis, and Wikipedia web indexing.</p>
+
+<p>Applying PaSh to the set of common UNIX one-liners exercises a variety of different scripts that use <em>stateless</em>, <em>parallizable pure</em>, and <em>non-parallelizable pure</em> in different configurations and numbers, speeding up scripts by up to 60x. This set of tests also demonstrates that implementation details like eager evaluating (outlined in the <em>Runtime</em> section above) make a difference<label for="benchmark" class="margin-toggle sidenote-number"></label><input type="checkbox" id="benchmark" class="margin-toggle" /><span class="sidenote">This result is shown by benchmarking against versions of PaSh without the implementation or with a different, blocking implementation. </span>.</p>
+
+<p>The next example I chose applies PaSh to an example data pipeline that analyzes NOAA weather data. PaSh is applied to the entire pipeline and achieves significant speedups - this example is particularly useful at demonstrating that the system can help to parallelize non-compute bound pipelines (the NOAA example downloads a signficant amount of data over the network). In particular, downloading large amounts of data over the network seems to closely relate to ideas discussed in the <a href="/2021/07/14/unix-shell-programming-the-next-50-years.html">first paper in this series</a>, which mentions avoding redundant computation - parallelizing network requests automatically while ensuring that none are repeated unnecessarily (if the script was rerun or slightly changed) would be amazing!</p>
+
+<p>The last example I choose to include in this evaluation section is of Wikipedia web indexing - PaSh is able to achieve a 12X speedup when extracting text from a large body of Wikipedia’s HTML. This example uses scripts written in Python and Javascript, showcasing PaSh’s ability to speedup a pipeline utilizing commands from many different langauges and why the shell is still such a useful tool.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>PaSh presents an intriguing system for automatically transforming shell scripts into more-parallel versions of themselves. I was particularly interested in how PaSh accomplishes its goals by leveraging annotations of shell commands and arguments - it would be interesting to see an open source community sprout up around maintaining or generating these annotations<label for="homebrew" class="margin-toggle sidenote-number"></label><input type="checkbox" id="homebrew" class="margin-toggle" /><span class="sidenote">I felt some similarity to Mac’s <a href="https://brew.sh/">Homebrew</a>, where users define recipes for downloading different open source projects. </span>. PaSh’s use of a dataflow-based architecture also demonstrates how powerful the paradigm is. Last but not least, I’m looking forward to seeing how a system like PaSh could fit in with other related innovations in the shell (like next week’s paper on POSH)!</p>
+
+<p>As always, if you have feedback feel free to reach on <a href="https://twitter.com/micahlerner">Twitter</a>. Until next time!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2021-07-31-pash-light-touch-data-parallel-shell-processing.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

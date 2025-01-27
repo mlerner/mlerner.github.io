@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Empowering Azure Storage with RDMA</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Empowering Azure Storage with RDMA</h1>
+  
+  <h4>Published July 05, 2023</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_drafts/2023-07-05-empowering-azure-storage-with-rdma.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="TODO">Empowering Azure Storage with RDMA</a></p>
+
+<p><em>This is one in a series of papers I’m reading from NSDI. These paper reviews can be <a href="https://newsletter.micahlerner.com/">delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!</em></p>
+
+<p>Azure Storage powers applications in Microsoft’s cloud that write to disk. This paper describes the work that went into using RDMA on their networks instead of TCP/IP for traffic. RDMA is way better because it moves computation from the loop, meaning that there are fewer resources involved in creating the storage service. As a result, Microsoft is able to save on cost, and pass those savings on to their customers.</p>
+
+<p>Unfortunately, deploying RDMA at scale came with its own sets of challenges. For example, TCP/IP datacenter networks are well understood and operate with mostly low-latency. In contrast, RDMA has even stricter requirements of lossless. To accomodate these requirements takes some work. Alternatively, you could bolt on a separate network specifically for RDMA, but that would introduce a lot of cost and additional resources.</p>
+
+<p>So, they wanted to make RDMA work on their existing network, but they had to make changes to hardware to do it. Also, the existing hardware and software it runs had nuanced problems. At the end of the day, RDMA is able to deliver substantial performance benefits and cost savings.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions:</p>
+
+<ul>
+  <li>A description of the RDMA deployment in use by Azure Storage</li>
+  <li>Characeterization of the problems the system faced, along with solutions.</li>
+  <li>Evaluation of the system running at scale.</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<h3 id="architecture">Architecture</h3>
+
+<p>The paper describes two components of Azure storage: the architecture of the network the system runs on, and Azure storage itself.</p>
+
+<h4 id="network">Network</h4>
+
+<p>The architecture of Microsoft Azure regions is made up of Clos topologies (TODO reference Clos!!), with three levels of routers. At the bottom are servers, which are connected to T0 “top of rack” switches. T1 switches contact many T0 switches inside of a cluster.  Higher up the stack T2 switches connect many clusters, forming a datacenter. Lastly, a region is made up of many datacenters. Importantly, the types of switches varies throughout the stack, leading to a quality called heterogenity. It isn’t practical to make all the switches the same because there is failure in the background, along with vendors producing new switches all of the time.</p>
+
+<p>RDMA can run over an existing data center network by wrapping the technology in UDP packets, using a technology called RDMA over Converged Ethernet (RoCE) TODO ref RoCE.</p>
+
+<p>TODO show the packet for RDMA</p>
+
+<h4 id="azure-storage">Azure Storage</h4>
+
+<p>The Azure storage system is divided into compute and storage, following a common pattern of trying to separate these two resources (TODO ref the ECS paper). Compute contains hosts who perform IO, whereas the storage system integrates with backing medium like SSDs.</p>
+
+<p>The storage layer (the focus of the paper), is made up of three layers:</p>
+
+<ul>
+  <li><em>Frontend layer</em>: TODO</li>
+  <li><em>Partition layer</em>: TODO</li>
+  <li><em>Stream layer</em>: TODO</li>
+</ul>
+
+<p>Azure has many qualities in common with other blob store systems (TODO ref Ambry). There is an abstraction on top of raw bytes that the system operates on called an <em>extent</em> - “a file is essentially an ordered list of large storage chunks called <em>extents</em>.” Writes are represented as appends to a distributed log, and the system replicates them to ensure durability (no data loss).</p>
+
+<p>Communication between components of the system is classified as <em>frontend</em> (“between compute and storage servers”) or <em>backend</em> (“between storage servers, e.g., replication and disk reconstruction”). The paper notes that using RDMA for <em>backend</em> traffic is “relatively easy because almost all the backend traffic stays within a storage cluster”, meaning that it is less prone to congestion and packet loss. Frontend traffic is more likely to be cross-cluster because applications using storage aren’t always co-located with the storage they’re using, meaning that traffic can cross the datacenter boundary.</p>
+
+<h3 id="challenges">Challenges</h3>
+
+<p>The authors detail several requirements of their solution, then describe how the current system meets those requirements:</p>
+
+<ul>
+  <li>High performance</li>
+  <li>Reliability and graceful degradation</li>
+  <li>Debuggability and observability</li>
+  <li>Legacy infrastructure needs to work with RDMA</li>
+  <li>Heterogenous hardware (including NICs and switches)</li>
+  <li>Different latency profiles within and among regions</li>
+  <li>Nearly lossless networking conditions, capable of handling congestion</li>
+</ul>
+
+<p>These challenges come up throughout the paper.</p>
+
+<h3 id="rdma-libraries">RDMA Libraries</h3>
+
+<p>To actually use RDMA in Azure storage (enabling the fulfillment of the “high-performance” requirement), the team built two libraries: <em>sU-RDMA</em>, and <em>sK-RDMA</em>. Both of the libraries implement highly optimized usage of the basic RDMA features, for example using a “credit-based flow control” that allows usage of remote memory, while tracking how much memory is being transferred.</p>
+
+<p><em>sU-RDMA</em> was designed to run in user-space code and, “is used for storage backend (storage to storage) communication”. Its focus is providing an abstraction of basic RDMA commands (TODO basic RDMA commands) - for example, implementing a high-performance, general replication function for data between nodes in the system. The library also includes functionality targeted at graceful degradation, and is capable of sending RDMA messages over TCP, rather than the RoCE, if needed.</p>
+
+<p>TODO figure 4</p>
+
+<p><em>sK-RDMA</em> runs in the kernel on machines where applications are. It provides functionality like surfacing disk reads/writes - when an application issues one of these operations, the instruction is actually forwarded in the kernel to Azure storage, rather than a physically attached disk.</p>
+
+<p>TODO figure 5</p>
+
+<h3 id="rdma-extended-statistics-estats">RDMA Extended Statistics (Estats)</h3>
+
+<p>To assist in debuggability and observability into the distributed storage system, the implementers created <em>RDMA Estats</em><label for="estats" class="margin-toggle sidenote-number"></label><input type="checkbox" id="estats" class="margin-toggle" /><span class="sidenote">TODO where this name comes from </span>. The authors describe existing tools, but said they didn’t fill the requirements.</p>
+
+<p>Estats basically measures timing information at different points in the network (specifically, the sender, receiver, and networking hardware). It does this by keeping track of:</p>
+
+<blockquote>
+  <p>a fine-grained breakdown of latency for each RDMA operation, in addition to collecting regular counters such as bytes sent/received and number of NACKs.</p>
+</blockquote>
+
+<p>Each component of the system is integrated with this tool, allowing analysis of how long different steps are taking. Interestingly, the system relies on clock synchronization to make sure that things like latency (differences between two timestamps) is accurate.</p>
+
+<h3 id="software-for-opening-networking-in-the-cloud-sonic">Software for Opening Networking in the Cloud (SONiC)</h3>
+
+<p>To handle the different types of switches from many different vendors, the team built an abstraction they called SONiC. It aims to drive a standardization of the switch software stack so that switches are more configurable and can integrate with the RDMA setup well. TODO describe SONiC consortium?</p>
+
+<p>Standardization of the core components of switches allowed for two types of tests to run on a recurring basis: <em>software-based tests</em> and <em>hardware-based tests</em>. The <em>software-based tests</em> allow testing of things like packet-forwarding behave handled by software. Previously, this was difficult to test because devices didn’t have a system they could just start using. <em>Hardware-based tests</em> intend to test the hardware itself, useful for high performance behavior or things that are predominantly dependent on the actual hardware. These test cases are also open source! https://github.com/sonic-net/sonic-mgmt/</p>
+
+<h3 id="congestion-control">Congestion Control</h3>
+
+<p>Congestion control often happens when networking hardware is overloaded (like switches). One situation in which this happens is when a switch has too many packets in its queue. TODO ref.</p>
+
+<p>By default, an approach called <em>priority-based flow control (PFC)</em> is used in many networks TODO link PFC. PFC starts working when a switch detects that it has too many packets in its buffer.</p>
+
+<p>TODO screenshot from talk</p>
+
+<p>For RDMA, relying on PFC has the opportunity to introduce substantial latency that is unacceptable on the read/write path for IO. It could also lead to potential packet loss, which doesn’t work for RDMA application for TODO reasons. A major downside of PFC is that it is port-based, not flow-based, meaning that multiple flows flowing through the same port can be unintentionally impacted if there is some congestion event.</p>
+
+<p>Instead, the system augments PFC with another approach called DCQCN. DCQCN works by relying on ECN (TODO link ECN), which relies on a sender, congestion point, and notification point (destination). When a switch registers that a packet is causing congestion, it marks it with an ECN signal (TODO reference ECN). Then, the destination can provide feedback to the original sender via congestion notification packets (CNP). ECN is supported on most networking hardware, so building an algorithm that uses it was possible.</p>
+
+<p>Unfortunately, not all devices implement it the same way, and these differences can lead to performanace impact (for example, limiting some flows when they shouldn’t be). To fund these sitatuations, they are able to use automated tests mentioned earlier.</p>
+
+<p>DCQCN also has some parameters that can be tuned, and they did this. This seems like a large area of operational complexity going forward, as the parameters are dependent on the networking configuration.</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The research is evaluated to understand the performance benefits of deploying RDMA. Specifically, they consider <em>CPU usage in absence of RDMA</em>, <em>message completion times</em>, <em>average CPU usage per operation</em>, and <em>operation latency</em>.</p>
+
+<p>First, the authors compare the CPU usage across storage servers with RDMA on, compare to a TCP-based storage implementation. The data indicates that RDMA operates at 80% of the CPU usage of a TCP-based implementation.</p>
+
+<p>TODO figure 7</p>
+
+<p>RDMA also leads to lower message completion times (mapping to faster processing of device IO).</p>
+
+<p>TODO figure 8</p>
+
+<p>When comparing a TCP-based implementation of Azure storage to the RDMA one, the RDMA implementation consumes significantly less CPU for both reads and writes.</p>
+
+<p>TODO figure 9</p>
+
+<p>Lastly, user-facing IO latency is significantly reduced for an RDMA implementation of storage, with the most dramatic impact to large reads and writes.</p>
+
+<p>TODO figure 10</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This paper builds on several previous published works by the authors (TODO reference those), as well as foundational research outside of Microsoft. It talks about making tradeoffs in order to get RDMA into production (for example, not using fancy hardware) that remind me of the Clos topologies paper. To me, the most interesting part was the networking components, as they were able to leverage a system that was inspired by DCTCP (congestion control is an interesting area of research). I’d be interested to hear more about why they chose to make some decisions (like DCQCN instead of TIMELY or another RTT-based solution) - that was mentioned in the DCQCN paper, but is just presented as final here. Overall an interesting paper!</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_drafts/2023-07-05-empowering-azure-storage-with-rdma.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

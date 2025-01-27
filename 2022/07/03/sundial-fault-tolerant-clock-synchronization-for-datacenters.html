@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Sundial: Fault-tolerant Clock Synchronization for Datacenters</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Sundial: Fault-tolerant Clock Synchronization for Datacenters</h1>
+  
+  <h4>Published July 03, 2022</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-07-03-sundial-fault-tolerant-clock-synchronization-for-datacenters.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+      
+    <p>
+      <em>
+        After this paper, I’ll be switching gears a bit and reading/writing about papers from OSDI 2022. These paper reviews can <a href="https://newsletter.micahlerner.com/">be delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!
+
+        
+      </em>
+    </p>
+
+     <p><a href="https://www.usenix.org/conference/osdi20/presentation/li-yuliang">Sundial: Fault-tolerant Clock Synchronization for Datacenters</a></p>
+
+<h2 id="what-is-the-research">What is the research?</h2>
+
+<p>The Sundial paper describes a system for clock synchronization, an approach to building a view of time across many machines in a data center environment. Time is critical to distributed systems, as many applications rely on an accurate time to make decisions - for example, some distributed databases use time to determine when it is safe to commit transactions<label for="spannercommit" class="margin-toggle sidenote-number"></label><input type="checkbox" id="spannercommit" class="margin-toggle" /><span class="sidenote">In particular, this idea is used by <a href="https://research.google/pubs/pub39966/">Spanner</a>. There is a great overview of Spanner from the <a href="https://www.youtube.com/watch?v=ZulDvY429B8&amp;feature=youtu.be">MIT distributed system’s course</a>, and useful summaries by Timilehin Adeniran <a href="https://timilearning.com/posts/mit-6.824/lecture-13-spanner/">here</a> and <a href="http://muratbuffalo.blogspot.com/2013/07/spanner-googles-globally-distributed_4.html">Murat Demirbas</a>. </span>. Furthermore, fast and accurate time enables new applications in data center environments, like basing congestion control algorithms on one way delay<label for="swift" class="margin-toggle sidenote-number"></label><input type="checkbox" id="swift" class="margin-toggle" /><span class="sidenote">The paper cites <a href="https://dl.acm.org/doi/pdf/10.1145/3387514.3406591">Swift: Delay is Simple and Effective for Congestion Control in
+the Datacenter</a>, which I hope to read in a future paper review. </span>.</p>
+
+<p>Unfortunately, building a view of time across many machines is a difficult problem. Clock synchronization, the approach described by the Sundial paper, involves reconciling many individual data points from disparate computers<label for="time" class="margin-toggle sidenote-number"></label><input type="checkbox" id="time" class="margin-toggle" /><span class="sidenote">Accurate time at even a single computer / location is also <a href="https://www.inverse.com/science/redefining-a-second-atomic-clock">a difficult problem</a>! </span>. Implementing systems not only need to build distributed-system-like logic for communication, but also have to handle the failure modes of clocks themselves (including measurement drift due to factors like temperature changes).</p>
+
+<p>Other systems have tackled clock synchronization (in particular TrueTime), and the Sundial paper aims to build on them. In particular, one design choice that the paper reuses is not providing a single global measurement of time. Instead, the machines in the system maintain a time and an associated error bound, which grows and shrinks according to several factors (like how recently the node has synchronized its time with others). In other ways, Sundial differs from prior research - specifically, the system described by the paper prioritizes detection and recovery from failures. As a result, it provides more accurate and resilient time measurements, improving application performance and enabling applications that require time<label for="distributedtracing" class="margin-toggle sidenote-number"></label><input type="checkbox" id="distributedtracing" class="margin-toggle" /><span class="sidenote">While I mentioned that accurate time is useful for congestion control, applications like distributed tracing also benefit - being able to line up events across a system relies on a shared understanding of how they relate to one another.  </span>.</p>
+
+<h2 id="background">Background</h2>
+
+<p>Fast and accurate time measurements are an important problem to solve for datacenter environments, for which there are several existing solutions<label for="existing" class="margin-toggle sidenote-number"></label><input type="checkbox" id="existing" class="margin-toggle" /><span class="sidenote">Existing solutions include <a href="https://www.usenix.org/system/files/conference/nsdi18/nsdi18-geng.pdf">HUYGENS</a>, <a href="https://dl.acm.org/doi/10.1145/2934872.2934885">Datacenter Time Protocol</a> (DTP), and <a href="https://standards.ieee.org/ieee/1588/4355/">Precision Time Protocol</a> (PTP). </span>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/table1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Each implementation makes tradeoffs around:</p>
+
+<ul>
+  <li><em>Type of clocks used</em>: do you use few expensive clocks or many commodity clocks?</li>
+  <li><em>Overhead of clock synchronization</em>: which networking layer does clock synchronization happen on? Hardware support allows lower overhead networking communication, but can require custom devices (which increases the difficulty of implementation).</li>
+  <li><em>Frequency of clock synchronization</em>: how often do nodes in the system synchronize their clocks? Clock synchronization consumes networking resources, but the frequency of synchronization determines how much clocks drift from one another.</li>
+  <li><em>Which nodes communicate with one another</em>: should nodes communicate in a tree or a mesh? Asynchronously or synchronously? This decision also balances networking overhead with clock error.</li>
+</ul>
+
+<p>Deciding the <em>type of clocks used</em> comes down to choosing between cost and clock accuracy. On one end of the spectrum, a system can have expensive and accurate clocks in a network, then connect computers to those sources of truth<label for="truetime" class="margin-toggle sidenote-number"></label><input type="checkbox" id="truetime" class="margin-toggle" /><span class="sidenote"><a href="https://www.allaboutcircuits.com/news/precise-time-keeping-crystal-oscillator-atomic-clock-quantum-clock/">This post from Kevin Sookocheff</a> is a handy overview for TrueTime. </span>. Another approach is to have many commodity datacenter clocks that synchronize with each other to get a global view of time<label for="graham" class="margin-toggle sidenote-number"></label><input type="checkbox" id="graham" class="margin-toggle" /><span class="sidenote"><a href="https://www.usenix.org/system/files/nsdi22-paper-najafi_1.pdf">Graham: Synchronizing Clocks by Leveraging Local Clock Properties</a> is a paper along these lines that I hope to cover in a future paper review. </span> - clocks in these types of systems often use crystal oscillators<label for="crystal" class="margin-toggle sidenote-number"></label><input type="checkbox" id="crystal" class="margin-toggle" /><span class="sidenote"><a href="https://www.allaboutcircuits.com/news/precise-time-keeping-crystal-oscillator-atomic-clock-quantum-clock/">This reference</a> talks about the difference between crystal oscillators and more expensive/accurate clocks. </span> which can drift for a variety of reasons, including “factors such as temperature changes, voltage changes, or aging”.</p>
+
+<p>To limit error in time measurements, the clocks periodically sync with one another by transmitting messages on the network.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>This communication contributes to the <em>overhead of clock synchronization</em>. Sending messages on different levels of the network<label for="network" class="margin-toggle sidenote-number"></label><input type="checkbox" id="network" class="margin-toggle" /><span class="sidenote">From the <a href="https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/">OSI model</a>. </span> incurs different overheads, and can also require specialized hardware. For example, one predecessor to Sundial (<a href="https://dl.acm.org/doi/10.1145/2934872.2934885">Datacenter Time Protocol</a>), relies on hardware support (which could be a blocker to adoption). At the same time, Datacenter Time Protocol is able to send messages with zero overhead by making use of special hardware. In contrast, other clock synchronization implementations send messages at higher levels of the network stack, limiting reliance on custom hardware, but incurring higher overheads.</p>
+
+<p>Another set of tradeoffs is deciding the <em>frequency of clock synchronization</em> - more frequent messaging places a bound on how much clocks can drift from one another, increasing accuracy at the cost of networking overhead. This decision also contributes to how fast a node is able to detect failure upstream - assuming that a node fails over to using a different upstream machine after not receiving <em>n</em> messages, longer intervals between each synchronization message will contribute to a longer time for the node to react.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>A clock synchronization implementation also needs to decide <em>which nodes comunicate with each other</em>, and whether there is a single “primary” time that must propagate through the system. Communication can happen through several different structures, including mesh or tree<label for="spanning" class="margin-toggle sidenote-number"></label><input type="checkbox" id="spanning" class="margin-toggle" /><span class="sidenote">The paper talks about using a spanning tree - it is always fun to see content from a datastructures course pop up in research. </span> topologies. Furthermore, nodes in the network can communicately synchronously or asynchrously, potentially blocking on receiving updates from upstream nodes.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure15.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main contributions:</p>
+
+<ul>
+  <li>The design of a system capable of quickly detecting and recovering from clock synchronization failures (leading to time measurement errors).</li>
+  <li>Implementation of the design, including details of novel algorithms associated with failure recovery.</li>
+  <li>Evaluation of the system relative to existing clock synchronization approaches.</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>Based on a study of previous systems, Sundial establishes two design requirements: a <em>small sync interval</em> (to limit error in time measurements), and <em>fast failure recovery</em> (to ensure minimal interruption to clock synchronization when failure occurs).</p>
+
+<p>The <em>small sync interval</em> ensures that a machine sends out synchronization messages periodically and is able to detect when it hasn’t received communication from upstream nodes. To keep track of the interval, the design relies on a periodically incrementing counter in custom hardware (discussed in more detail in the <em>Sundial Hardware</em> section). While implementing such a counter is possible in software, doing so was likely to consume significant CPU. Building a counter in hardware offloads this functionality to a component dedicated for the function.</p>
+
+<p>Each node in a Sundial deployment contains a combination of this specialized hardware and software to handle several situations:  <em>sending synchronization messages</em>, <em>receiving synchronization messages</em>, and <em>responding to failures</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Nodes determine how to <em>send and receive synchronization messages</em> based on a netowrk represented via a spanning tree, and a node’s position in the tree (root or non-root) determines its behavior. Synchronization messages flow through the network from root nodes downwards, and when downstream nodes detect that upstream nodes are not sending these messages, the network reconfigures itself to exclude the failing machines.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="sundial-hardware">Sundial Hardware</h3>
+
+<p>The Sundial Hardware is active in <em>sending synchronization messages</em>, <em>receiving synchronization messages</em>, and <em>responding to failures</em>.</p>
+
+<p>As mentioned above, synchronization messages flow through the tree from root nodes to non-root nodes. Root nodes send messages periodically, using a continuously incrementing interal counter. After the counter reaches a threshold, the root sends synchronization messages downstream.</p>
+
+<p>When a node<label for="root" class="margin-toggle sidenote-number"></label><input type="checkbox" id="root" class="margin-toggle" /><span class="sidenote">Root nodes don’t receive from other nodes. </span> receives a synchronization message, it processes the incoming message (updating its clock and error), resets the timeout used to detect failure in upstream nodes, then sends synchronization messages to its own downstream nodes.</p>
+
+<p>If a node doesn’t receive a synchronization message before several <em>sync intervals</em><label for="syncinterval" class="margin-toggle sidenote-number"></label><input type="checkbox" id="syncinterval" class="margin-toggle" /><span class="sidenote">Each sync interval is defined by a configurable time period associated with ticks of the hardware counter. </span> pass<label for="sync" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sync" class="margin-toggle" /><span class="sidenote">From the paper, “The timeout is set to span multiple sync-intervals, such that occasional message drop or corruption doesn’t trigger it.” </span> (as measured by the hardware counter), the hardware will trigger an interrupt to prompt failure recovery by the software component of Sundial (handling this situation is discussed in more detail in the next section).</p>
+
+<h3 id="sundial-software">Sundial Software</h3>
+
+<p>The Sundial software has two primary responsibilities: <em>handling failure recovery when it is detected by hardware</em>, and <em>pre-calculating a backup plan</em>.</p>
+
+<p>Sundial hardware triggers an interrupt to signal failure when an upstream node stops sending synchronization messages. To recover from failure, a machine follows a backup plan that is computed and distributed to nodes by a central component of Sundial, called the <em>Centralized Controller</em>. The backup plan includes information on which node(s) to treat as the upstream and/or downstream nodes.</p>
+
+<p>To ensure that failure recovery succeeds, the <em>Centralized Controller</em> constructs the backup plan<label for="backupplan" class="margin-toggle sidenote-number"></label><input type="checkbox" id="backupplan" class="margin-toggle" /><span class="sidenote">The paper also describes the details of several subalgorithms involved in calculating the plan, and I highly encourage those interested to reference those very interesting details (which take advantage of several graph/tree algorithms). </span> following several invariants:</p>
+
+<ul>
+  <li><em>No-loop condition</em>: nodes in a subtree must connect to nodes outside of the subtree, otherwise there is no guarantee that the backup plan will connect the subtree to the root node. If the subtree is not connected to the root node, then synchronization messages will not flow.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<ul>
+  <li><em>No-ancestor condition</em>: a node can’t use its ancestor as a backup because the downstream node won’t be connected to the tree if the ancestor fails.</li>
+  <li><em>Reachability condition</em>: the backup plan contains a backup root in case the root fails, and the backup root must have a path to all nodes (otherwise synchronization messages won’t fully propagate).</li>
+  <li><em>Disjoint-failure-domain condition</em>: a node’s backup can’t be impacted by the same failures as the given node, unless the given node <em>also</em> goes down (this stops a node from being isolated).</li>
+  <li><em>Root failure detection</em>: when the root fails, a backup root should be able to be elected (so that recovery is possible).</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper points at several potential issues with a precomputed backup plan - one of which is the idea of concurrent failures that the backup plan hasn’t anticipated. In this situation, error grows large but the controller can still recover due to the <em>Disjoint-failure-domain condition</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure11.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The Sundial paper contains an evaluation on several metrics. First, the paper compares Sundial to other existing implementations of clock synchronization in both non-failure conditions and failure conditions.</p>
+
+<p>In non-failure conditions, Sundial has the lowest error because it is able to maintain a small sync interval and synchronize clocks in the network quickly.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure18.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>In failure conditions, Sundial has fast failure recovery, resulting in the lowest error increases in abnormal conditions (as visible from the lower overall error and small sawtooth pattern in the graph below).</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/figure19.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also evaluates the implementation’s impact on applications. As mentioned at the beginning of the paper, more accurate clock synchronization confers several advantages. The paper evaluates this claim by including commit-wait<label for="spannertxn" class="margin-toggle sidenote-number"></label><input type="checkbox" id="spannertxn" class="margin-toggle" /><span class="sidenote">Timilehin Adeniran’s <a href="https://timilearning.com/posts/mit-6.824/lecture-13-spanner/#commit-wait">article on Spanner</a> covers the idea of commit wait. </span> latency for Spanner - when the database decides to commit a transaction, it waits until a time after the error bound. Thus, reducing the error bound allows Spanner to commit earlier, an affect visible in the latency of a load test that relies on the database.</p>
+
+<figure><img class="maincolumn-img" src="/assets/sundial/table2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The Sundial paper is one of several papers I’ve been reading about time and clock synchronization. In particular, one of the components of the research I enjoyed was its deep dive on the constraints and algorithm internals associated with building a backup plan - it is always intriguing to see how simple data structures represent the core of solutions to complex problems. I also enjoyed the paper’s description of where Sundial is in the design space of the problems it is trying to address. This type of in-depth discussion is often left to the reader, and it is refreshing to see it spelled out explicitly.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2022-07-03-sundial-fault-tolerant-clock-synchronization-for-datacenters.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

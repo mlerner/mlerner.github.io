@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Resiliency at Scale: Managing Google’s TPUv4 Machine Learning Supercomputer</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Resiliency at Scale: Managing Google’s TPUv4 Machine Learning Supercomputer</h1>
+  
+  <h4>Published January 03, 2025</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2025-01-03-resiliency-at-scale-managing-googles-tpuv4-machine-learning-supercomputer.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="https://www.usenix.org/conference/nsdi24/presentation/zu">Resiliency at Scale: Managing Google’s TPUv4 Machine Learning Supercomputer</a></p>
+
+<h2 id="what-is-the-research-and-why-does-it-matter">What is the research and why does it matter?</h2>
+
+<p>This paper shares Google’s techniques for operating a large cluster of machine learning resources (specifically, <a href="https://blog.google/technology/ai/difference-cpu-gpu-tpu-trillium/">tensor processing units, aka “TPUs”</a>) reliably and at scale.</p>
+
+<p>A challenge the research discusses stems from the requirements of modern AI, which need significant computing power to train and serve models - in systems this large, component breakage leads to costly downtime in training and serving, a topic I previously touched on in <a href="https://www.micahlerner.com/2024/01/30/gemini-fast-failure-recovery-in-distributed-training-with-in-memory-checkpoints.html">Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints</a>. The key insight from the paper is that dynamic network reconfiguration (e.g. to route network traffic from training models around faulty TPUs and to working ones) dramatically improves availability and scalability of the system.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<p>There are five main technical components of the system:</p>
+
+<ul>
+  <li>TPU chips and their groupings into <em>cubes</em> (a “cube is a hardware unit with 64 TPU chips arranged in a 4x4x4 3D mesh”) and <em>pods</em> (64 cubes).</li>
+  <li>The <em>inter-chip interconnect (ICI)</em>, that directly interconnects TPUs to allow device-to-device communication (the paper cites <a href="https://blogs.nvidia.com/blog/what-is-rdma/">Remote Direct Memory Access, aka RDMA</a>) without involving the CPUs. The ICI is like the “highway” that connects network traffic.</li>
+  <li><em>Optical circuit switches (OCSes)</em> which contain mirrors that actually point the network traffic (in the form of light) on the right “highway” (provided by the ICI). This technology is discussed in more detail in <a href="https://research.google/pubs/jupiter-evolving-transforming-googles-datacenter-network-via-optical-circuit-switches-and-software-defined-networking/">Jupiter evolving: Transforming Google’s datacenter network via optical circuit switches and software-defined networking</a>.</li>
+  <li>The <em>Borg cluster manager</em> (described in <a href="https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/">previous research</a>) combined with a <em>Pod Manager</em> to handle TPU-specific considerations (e.g. ensuring Pod connectivity and health).</li>
+  <li>Code that allows TPUs to connect to one another (<code class="language-plaintext highlighter-rouge">liptpunet</code>) and evaluates hardware health (<code class="language-plaintext highlighter-rouge">healthd</code>).</li>
+</ul>
+
+<p>The key insight of the paper is that through the combination of existing general technologies (e.g. the Borg cluster scheduler) and TPU-specific adaptations (e.g. dynamically reconfiguring the network if a TPU pod has problems), it is possible to make a more resilient system that recovers from hardware failure/degradation quickly.</p>
+
+<p>The design of the system is influenced by previous versions where connections between TPUs were static (in contrast with the new system where connections can be easily reconfigured) - “in a static pod, all resources in a contiguous set of nodes must be simultaneously healthy to be assigned to a user, which becomes combinatorially less likely as the system scales”.</p>
+
+<p>Furthermore, static configurations posed three other challenges:</p>
+
+<ul>
+  <li><em>Maintenance</em>: updating any part of the stack that connects TPUs mandated downtime.</li>
+  <li><em>Workload defragmentation</em>: a job had to be scheduled across contiguous GPUs, which made it hard to schedule jobs at different priorities (e.g. training jobs vs smaller experiments). With dynamic network reconfiguration, jobs can shift resources and the connections to use them on demand.</li>
+  <li><em>Deployment lead time</em>: a TPU pod wasn’t available until all of the underlying resources were ready and installed. Now, TPU pods are usable even when only partially deployed.</li>
+</ul>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="how-does-reconfigurability-work">How does reconfigurability work?</h3>
+
+<p>A key part of reconfigurability is quickly changing <em>connectivity</em> between TPU cubes/pods in response to failure or degradation. Two components work in concert to provide connectivity - the <em>inter-chip interconnect (ICI)</em> connects TPUs within a machine (4 TPU chips) and cube (16 machines), while the <em>Optical circuit switches (OCSes)</em> connect cubes (each containing 96 TPUs).</p>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/tpu/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The <em>ICI</em> handles multiple levels of the networking stack, with technologies like RDMA (which supports <a href="https://tech.preferred.jp/en/blog/technologies-behind-distributed-deep-learning-allreduce/">collectives</a> like “combine all of the data from other TPUs into a single result”) at the top-level.</p>
+
+<p>The <em>libtpunet</em> software is responsible for setting up the <em>inter-chip interconnect (ICI)</em> according to a job’s needs, as well as discovering (using breadth first search, who said Leetcode isn’t useful!) and monitoring links (the latter of which becomes a factor in reconfiguration). The data generated by <code class="language-plaintext highlighter-rouge">libtpunet</code> also informs scheduling decisions.</p>
+
+<p>Connectivity changes at three points in the lifecycle of a TPU cube: <em>on job start</em>, <em>on failure</em>, and <em>on migration/preemption</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>On job start</em>, after a user submits a job that requires multiple cubes, the <em>Borg scheduler</em> selects which cubes to use. Then, the <em>Pod Manager</em> configures the <em>Optical circuit switches (OCSes)</em> to connect these cubes together in the right pattern. If that happens successfully, the <em>Pod Manager</em> communicates this fact back to Borg, which handles deploying the binary that will be executed and running the job.</p>
+
+<p>Second, connectivity changes <em>on failure</em>, as detected by two software components (<code class="language-plaintext highlighter-rouge">libtpunet</code> and <code class="language-plaintext highlighter-rouge">healthd</code>). For example, when a TPU machine breaks down, an <em>optical circuit switch (OCS)</em> needs maintenance, or a network link starts showing errors. The two aforementioned systems provide signals to Borg/Pod Manager, who update the network topology for running jobs to route around failures. Additionally, these two systems reflect current state in the system’s source of truth, ensuring that future jobs don’t run into the same issues.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/tpu/figure11.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, connectivity changes <em>on migration/preemption</em> - this can happen when the cluster manager chooses to de-frag a job into fewer cubes, or relocate a job to make room for a larger one. In this case, the system needs to ensure that the new resources and networking links are configured correctly.</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>To evaluate the system, the paper includes data on the number of reconfigurations, ability to automate maintenance, and the impact of failure recovery mechanisms on performance.</p>
+
+<p>To evaluate reconfiguration rate, the authors compare the number of <code class="language-plaintext highlighter-rouge">xconnect</code> actions with the number of jobs submitted. <code class="language-plaintext highlighter-rouge">xconnect</code> handles the low-level changes to networking connections, and varies with the number of jobs.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure13.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Additionally, the paper contains information on the failure rate of different system components:</p>
+
+<blockquote>
+  <p>In an average supercomputer, each day, 0.08% of the TPU machines, 0.005% of the ICI cables, and 0.04% of the OCS experience a failure. While these values are small, the number of jobs that are impacted by hardware outages is non-trivial because each supercomputer has a large number of machines, ICIs, and OCS. Machine and ICI outages are automatically tolerated by reconfiguring jobs to use spare healthy cubes.</p>
+</blockquote>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure12.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The claim about automatically reconfiguring the system (both in response to failures and to handle changing workloads) is supported by data shared at the beginning of the paper - availability of the system grows, even with significantly larger TPU pods. Interestingly, being able to reconfigure <em>at all</em> has a much higher impact on availability than support for fault tolerant routing.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Lastly, the paper notes that there is a non-negligible cost to setting up a job for fault-tolerance, although not all jobs take advantage of the technique.</p>
+
+<p>Specifically, fault-tolerant routing can slow down jobs due to congested network links, most notably for collective operations. This is visible in results for training recommendation models which use “embeddings” to represent data (part of training these models is updating embeddings on other chips, which is performed by collectives), and all-to-all communication to access embeddings on different TPUs.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tpu/table3.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The infrastructure challenges this paper addresses have become even more critical with the growth in AI model sizes and associated computational demands (although there is active discussion on <a href="https://x.com/dwarkesh_sp/status/1805613164610175207">scaling walls</a>). I’d be interested to know whether the approach and pod-structure should or would scale beyond the current implementation - for example, what happens with even larger TPU pods (or is increasing TPU pod size a non-goal)? Lastly, I found the opportunity to reduce the impact of failures even further through the use of “hot-standbys” without the use of checkpointing (potentially migrating state from a problematic node), and I’m looking to future research on that front.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2025-01-03-resiliency-at-scale-managing-googles-tpuv4-machine-learning-supercomputer.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

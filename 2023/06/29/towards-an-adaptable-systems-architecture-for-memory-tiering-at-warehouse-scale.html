@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale</h1>
+  
+  <h4>Published June 29, 2023</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-06-29-towards-an-adaptable-systems-architecture-for-memory-tiering-at-warehouse-scale.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p class='discussion'>Discussion on <a href='https://news.ycombinator.com/item?id=36523762'> Hacker News</a></p>   <p><em>This is one in a series of papers I’m reading from ASPLOS. These paper reviews can be <a href="https://newsletter.micahlerner.com/">delivered weekly to your inbox</a>, or you can subscribe to the <a href="https://www.micahlerner.com/feed.xml">Atom feed</a>. As always, feel free to reach out on <a href="https://twitter.com/micahlerner">Twitter</a> with feedback or suggestions!</em></p>
+
+<p><a href="/assets/pdf/adaptable.pdf">Towards an Adaptable Systems Architecture for Memory Tiering at Warehouse-Scale</a></p>
+
+<p>Applications running in datacenter environments require resources to operate, like dynamic random access memory<label for="dram" class="margin-toggle sidenote-number"></label><input type="checkbox" id="dram" class="margin-toggle" /><span class="sidenote">See <a href="https://www.techtarget.com/searchstorage/definition/DRAM">reference</a>. </span>. DRAM is both expensive<label for="expensive" class="margin-toggle sidenote-number"></label><input type="checkbox" id="expensive" class="margin-toggle" /><span class="sidenote">In <a href="https://www.nextplatform.com/2020/04/03/cxl-and-gen-z-iron-out-a-coherent-interconnect-strategy/">this article</a> cited by the paper, a distinguished engineer from Azure cloud at Microsoft said, “About 50 percent of my server cost is memory.” </span> and in high demand<label for="demand" class="margin-toggle sidenote-number"></label><input type="checkbox" id="demand" class="margin-toggle" /><span class="sidenote">Partially <a href="https://www.fool.com/investing/2023/04/23/ai-server-boom-fuels-semiconductor-memory-market-g/">due to the growth of AI applications</a>. </span>. As alternatives to DRAM emerge, new approaches to trading off performance for cost became available to datacenter applications - specifically, the paper mentions <a href="https://www.tomshardware.com/news/intel-optane-dimm-pricing-performance,39007.html">Intel Optane</a>, which offers significant cost savings<label for="cost" class="margin-toggle sidenote-number"></label><input type="checkbox" id="cost" class="margin-toggle" /><span class="sidenote">One point-in-time description of the cost savings is <a href="https://thememoryguy.com/intels-optane-dimm-price-model/">here</a>. </span></p>
+
+<p>To use this new resource type while limiting the impact to application performance, the authors proposed, built, and deployed at scale a new system called <em>Transparent Memory Tiering System (TMTS)</em>. The approach interacts with Google’s Borg scheduler<label for="scheduler" class="margin-toggle sidenote-number"></label><input type="checkbox" id="scheduler" class="margin-toggle" /><span class="sidenote">At scale, cluster schedules abstract allocation of raw resources to an application - see <a href="https://research.google/pubs/pub43438/">Borg from Google</a>, <a href="https://research.facebook.com/publications/twine-a-unified-cluster-management-system-for-shared-infrastructure/">Twine from Facebook</a>, and the open source <a href="https://mesos.apache.org/">Mesos project</a> (used at some point by Twitter and <a href="https://www.infoq.com/news/2015/05/mesos-powers-apple-siri/">Apple</a>). </span> to adaptively move an applications in-memory data from high performance memory to lower cost mediums, an approach it calls <em>memory tiering</em> - based on usage, the system “promotes” in-use memory pages into high performance memory, and “demotes” infrequently-used memory to lower/performance mediums.</p>
+
+<p>When deployed at scale, <em>TMTS</em> replaced 25% of DRAM with lower cost solutions, while incurring little performance impact to the vast majority of applications.</p>
+
+<h2 id="what-are-the-papers-contributions">What are the paper’s contributions?</h2>
+
+<p>The paper makes three main categories of contributions:</p>
+
+<ul>
+  <li>Design and implementation of a memory tiering system.</li>
+  <li>A testing methodology for evaluating changes to the system at scale.</li>
+  <li>Lessons and evaluation from running the implementation in production.</li>
+</ul>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<h3 id="system-metrics">System metrics</h3>
+
+<p>The paper discusses the key tradeoff the system needs to make between potential cost savings and performance degradation. For example, applications on the critical path of user requests (which the paper calls <em>high importance latency sensitive (HILS)</em>) are more sensitive to latency and performance impact than batch workloads.</p>
+
+<p>Furthermore, for a tiered memory system to deliver on its promise of cost savings, it needs to strike the right balance of using lower performance hardware - if the cluster scheduler doesn’t run jobs on the lower performance hardware, the resources intended to save cost will sit around being unutilized (meaning the potential cost savings will not occur <em>and</em> there are more resources that you’ve paid for). On the other hand, if the scheduler assigns latency-sensitive applications to lower performance hardware, performance will suffer.</p>
+
+<p>Using these two considerations, the paper defines two metrics to measure the success of memory tiering:</p>
+
+<ul>
+  <li><em>Secondary Tier Residency Ratio (STRR)</em> represents the “fraction of allocated memory residing in tier2 [lower performance memory]”.</li>
+  <li><em>Secondary Tier Access Ratio (STAR)</em> “is the fraction of all memory accesses of an application directed towards pages resident in tier2”. This is a proxy for application performance impact because an application accessing lower tier memory will likely incur higher latency.</li>
+</ul>
+
+<p>In summary, the goal of the system is to maximize usage of cheaper/lower performance memory (represented via <em>STRR</em>) while minimizing negative impact to application performance (via <em>STAR</em>).</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure1.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="system-architecture">System Architecture</h3>
+
+<p>The memory tiering system is divided into four levels of abstraction: <em>hardware</em>, <em>kernel</em>, <em>userspace</em>, and the <em>cluster scheduler</em>.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure2.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>At the bottom of the stack is the underlying <em>hardware</em>, made up of several types of memory devices with different performance and cost profiles.</p>
+
+<p>Immediately above the hardware is the <em>kernel</em>, which abstracts the hardware into different tiers (<em>tier1</em> for higher performance, <em>tier2</em> for lower performance) and operates on hardware abstractions like memory pages<label for="memory" class="margin-toggle sidenote-number"></label><input type="checkbox" id="memory" class="margin-toggle" /><span class="sidenote">For more context on memory abstractions like pages, I highly recommend <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">Operating Systems: Three Easy Pieces</a>, an amazing <em>free</em> operating systems book. </span>.  Inside the kernel, the system uses daemons to monitor memory accesses, building the dataset that will inform the promotion/demotion process.</p>
+
+<p>Above the kernel is <em>user space</em>, where a management daemon (ufard) makes  demotion and promotion policies for memory between tier1 and tier2, then conveys changes in policies to the kernel. The promotion/demotion policy can change over time based on information that the kernel provides to this userspace daemon - for example, information on how many pages were not accessed recently. Other components of the system also run in user space, including a scheduler component and the applications themselves.</p>
+
+<p>At the top layer, the <em>cluster scheduler</em> makes decision about where to run applications based on their memory needs and performance of the system. The paper describes how the scheduler consumes information about which tiers of memory are available on which machines to make placement decisions.</p>
+
+<h3 id="hot-page-promotion-and-cold-page-demotion">Hot page promotion and cold page demotion</h3>
+
+<p>A key component of the memory system is demoting cold pages to low-cost memory, and promoting hot pages to higher performance resources.</p>
+
+<p>A page is classified as “cold with threshold t if it has not been accessed in the prior t seconds”, but the policy about when to demote pages to cold memory is dependent on the needs of the application.</p>
+
+<p>An application’s policy can also be adaptive, for example:</p>
+
+<blockquote>
+  <p>“the kernel provides the userspace daemon a cold age histogram - the frequency distribution of inter-access interval duration. It answers questions such as how many pages were not accessed for at least 2 minutes. The policy engine uses this to identify application access patterns and adjust parameter values.”</p>
+</blockquote>
+
+<p>To promote pages from tier2 to tier1, the tiered memory system relies on two approaches: <em>proactive promotion</em> and <em>periodic scanning</em>.</p>
+
+<p><em>Proactive promotion</em> aims to move pages from tier2 to tier1 as soon as they are likely to receive more accesses, rather than waiting until a surge of access occurs (which would introduce application latency). This proactive process is informed by signals from hardware, in particular the <em>Performance Monitoring Unit (PMU)</em><label for="pmu" class="margin-toggle sidenote-number"></label><input type="checkbox" id="pmu" class="margin-toggle" /><span class="sidenote">For more info on PMUs, I found <a href="https://easyperf.net/blog/2018/06/01/PMU-counters-and-profiling-basics">this article</a> to be useful. </span>) - for example, sampling last level cache<label for="llc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="llc" class="margin-toggle" /><span class="sidenote">See more information on last level caches <a href="https://cvw.cac.cornell.edu/ClusterArch/LastLevelCache">here</a>. </span> miss events provides insights into which data is actively being used<label for="llc" class="margin-toggle sidenote-number"></label><input type="checkbox" id="llc" class="margin-toggle" /><span class="sidenote">When trying to find an example explanation to link to, I found <a href="https://semiwiki.com/ip/284355-that-last-level-cache-is-pretty-important/">this one</a> I really liked. </span>.</p>
+
+<p><em>Periodic scanning</em> complements the sampling-based approach by scanning pages over repeating periods. and promoting them based on how many consecutive “scan periods” the page has been accessed in. This approach is more accurate, but higher overhead. The system also aims to limit <em>thrashing</em> - if a page is potentially going to be demoted, but was recently promoted, the demotion process waits for a longer time period before taking action.</p>
+
+<p>These monitoring processes use a combination of <a href="https://www.man7.org/linux/man-pages/man2/perf_event_open.2.html">perf_event_open</a><label for="perfevent" class="margin-toggle sidenote-number"></label><input type="checkbox" id="perfevent" class="margin-toggle" /><span class="sidenote">There is a useful guide on Linux performance <a href="https://perf.wiki.kernel.org/index.php/Tutorial">here</a>. </span> and Berkley Packet Filter (BPF) in the kernel<label for="bpf" class="margin-toggle sidenote-number"></label><input type="checkbox" id="bpf" class="margin-toggle" /><span class="sidenote">For more background, I would recommend Julia Evans’ <a href="https://jvns.ca/blog/2017/06/28/notes-on-bpf---ebpf/">blog</a>. BPF has been a hot topic recently for a variety of different use cases, including <a href="https://redcanary.com/blog/ebpf-for-security/">security</a> and <a href="https://www.youtube.com/watch?v=bGAVrtb_tFs">observability</a>. </span> which “optimize[s] the collection of tier2 hot page ages and their page addresses from the in-kernel page.”</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<h3 id="system-evaluation">System Evaluation</h3>
+
+<p>Memory tiering is deployed in production and is constantly evolving to perform more effectively. To evaluate the system, the paper considers three areas: <em>memory utilization / task capacity</em>, <em>residency ratios</em>, <em>access ratios / bandwidth</em>, and <em>overall performance impact</em></p>
+
+<p><em>Memory utilization / task capacity</em> represents the impact that the system has on individual applications - if an application is performing poorly (for example, serving requests with high user facing latency), the scheduler will either schedule more tasks for the application (increasing task capcity) or put fewer tasks on the impacted machines (leading to lower utilization, as there will be machines with fewer tasks). The paper presents data that shows memory utilization and task capacity isn’t significantly impacted by the memory tiering system.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure4.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Residency ratios</em> gauges how successful the system is at storing infrequently used pages in tier2 memory. First, the paper shows that the <em>Secondary Tier Residency Ratio (STRR)</em> is close to the percentage of deployed tier2 hardware, demonstrating effective use of tier2 memory. Additionally, the paper includes data on the ratio of cold memory stored in tier2, which is between 50 and 75% across all clusters - the paper compares this to swap based solutions<label for="swap" class="margin-toggle sidenote-number"></label><input type="checkbox" id="swap" class="margin-toggle" /><span class="sidenote">Specifically citing data from <a href="https://research.google/pubs/pub48551/">Software-Defined Far Memory in Warehouse-Scale Computers</a>. </span> which reach 10-25% memory coverage.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure5.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Access ratios / bandwidth</em> are used to understand if the pages in tier2 are accessed frequently (which would impact performance), and whether accesses result in promotions/demotions - “about 80% of tier2 bandwidth is due to applications accessing pages resident in that tier, promotion being about 1/3 of the remaining and demotion 2/3”. The paper argues, “This suggests the system is effective in selecting pages for demotion while avoiding thrashing/ping-pong effects.”</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure7.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p><em>Overall performance impact</em> is core to the tradeoffs that the tiered memory system is making, and the paper uses instructions per cycle (IPC). The authors were targeting a performance impact of 5%, but TMTS impacted a subset of applications more severely.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure6.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>Digging deeper into the performance impact of tier2 memory, one example discussed by the paper is on huge pages<label for="huge" class="margin-toggle sidenote-number"></label><input type="checkbox" id="huge" class="margin-toggle" /><span class="sidenote">See <a href="https://www.evanjones.ca/hugepages-are-a-good-idea.html">Huge Pages are a Good Idea</a> and <a href="https://www.usenix.org/conference/osdi21/presentation/hunter">previous research on hugepages</a>. </span>. Hugepages can take up to large amounts of memory, but accesses to a small part of the hugepage can cause it be promoted. Demoting hugepages is also difficult because while the system was capable of breaking up the hugepages into smaller components when demoting, a “mostly cold” hugepage wouldn’t be demoted at all. Because many hugepages weren’t demoted, they were occupying space in tier1 memory, lowering tier2 memory. The authors describe two solutions including “migrating hugepages intact, without breaking them apart into 4KB pages on demotion” and compacting huge pages to produce more entirely cold pages (which can then be migrated to tier2).</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure8.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h3 id="policy-evaluation">Policy Evaluation</h3>
+
+<p>Beyond the performance of the system itself, the paper also considers the impact that different policies can have on its northstar metrics (<em>STRR</em> and <em>STAR</em>).</p>
+
+<p>Demotion policies are capable of changing the amount of cold memory in tier2 by trading off performance, for example executing policies more frequently (leading to cold pages moving to tier2 faster). The paper describes tweaking demotion policies according to whether an application serves <em>high importance latency sensitive (HILS)</em>) traffic. Lengthening the time that pages used by <em>HILS</em> applications take to demote to tier2 had minimal impact on percent of tier2 used (STRR), but significant performance impact (represented via <em>STAR</em>, the amount of access ratios for pages in tier2).</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure9.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<p>The paper also discusses promotion policies, and argues that applications are actually more sensitive to situations when a page is not yet promoted to tier1, but is frequently accessed. The paper considers three policies to address this concern: 60s promotion (2, 30 second scans), 30s (1 30s scan), and a combination of 60s promotion with PMU-based sampling. Effectively all policies have the same outcome with respect to memory ending up in tier1, but the combined approach (described earlier in the paper) is able to successfully promote pages faster because the PMU-based sampling datasource provides faster information on accesses to tier2 memory.</p>
+
+<figure><img class="maincolumn-img" src="/assets/tmts/figure10.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+<figure><img class="maincolumn-img" src="/assets/tmts/figure11.png" /><figcaption class="maincolumn-figure"></figcaption></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>I found the tiered memory paper interesting because it illustrates the tradeoffs between performance and cost for hardware resources deployed at scale at scale. The research also builds on previous work, but uniquely includes many lessons from production - for example, evaluating policies based on their impact to north star metrics gathered from the wild. Lastly, the system described by the paper is enabled by integrating with a robust, extensible scheduler capable of making informed decisions about job placement. This abstraction allowed successful deployment at scale without involving individual application developers, dramatically decreasing the time to deployment.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_posts/2023-06-29-towards-an-adaptable-systems-architecture-for-memory-tiering-at-warehouse-scale.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>

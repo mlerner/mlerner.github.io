@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-LKBDWTJ60B"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-LKBDWTJ60B");
+    </script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Slicer: Auto-Sharding for Datacenter Applications</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="all" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta http-equiv="imagetoolbar" content="false" />
+
+    <link href="/css/tufte.css" rel="stylesheet" />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="Atom Feed for www.micahlerner.com"
+      href="/atom.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="RSS Feed for www.micahlerner.com"
+      href="/feed.xml"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/images/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/images/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/images/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/imagessite.webmanifest" />
+  </head>
+
+  <body>
+    <article>
+  <section>
+    <header>
+      <a href="/">
+        <h3>micahlerner.com</h3>
+      </a>
+    </header>
+  </section>
+  <h1>Slicer: Auto-Sharding for Datacenter Applications</h1>
+  
+  <h4>Published May 26, 2024</h4>
+  <h5>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_drafts/2024-05-26-slicer-auto-sharding-for-datacenter-applications.md"
+      >Submit a pull request!</a
+    >
+  </h5>
+  <section id="post-content">
+       <p><a href="TODO">Slicer: Auto-Sharding for Datacenter Applications</a></p>
+
+<h2 id="what-is-the-research-and-why-does-it-matter">What is the research and why does it matter?</h2>
+
+<p>Slicer is a system for deploying sharded services at Google, similar to those deployed at Meta with Shard Manager (TODO reference). The technique of sharding services often involves assigning a subset of a dataset to tasks deployed in cloud infrastructure - for example, the Slicer paper references giving assigning languages for text to speech to a set of tasks, so that not all tasks need to load the models required to perform the function.</p>
+
+<p>Slicer’s goal is providing a simple API that services that want to adopt sharding can use. This idea of providing a common interface that teams could adopt had significant performance benefits (TODO describe why), while eliminating custom implementations of sharding, which represented technical debt.</p>
+
+<h2 id="how-does-the-system-work">How does the system work?</h2>
+
+<h3 id="design">Design</h3>
+
+<p>Slicer splits the responsibilities of a sharded service across tasks in a datacenter deployment. Sharding operates at the “key” level and each application can decide what key to use (e.g. user id, language in the case of the translation application).</p>
+
+<p>There are three main components of the Slicer design:</p>
+<ul>
+  <li>Centralized Slicer Service which functions as a coordination layer</li>
+  <li>Slicelet, which runs on the sharded service itself</li>
+  <li>Clerk, a library embedded in clients of a sharded service</li>
+</ul>
+
+<p>TODO figure 2</p>
+
+<p>The centralized slicer service generates an assignment mapping key ranges (“slices”) to tasks”, then makes this dataset available to consumers (notably the clients and servers of the sharded system). The keys are hashed and the centralized slicers service job is to make sure that keys are loadbalanced across tasks, preventing “hot spotting”. By default, a key is assigned to a single task, but this is configurable by users of the system.</p>
+
+<p>To integrate with Slicer, systems implement the <em>Slicelet</em> interface. This allows the service to do things like responding when key assignment changes - for example, fetching data from a backing datastore. Services also have the flexibility to respond to requests associated with keys that they don’t handle if they so choose (although why requests are misrouted is confusing)</p>
+
+<p>A consumer the sharded service implements the Clerk interface, which allows it do discover which tasks it should talk to for a given RPC. There are also interactions between a service and other load balancers (for example, the load balancer will select a datacenter, but the task to talk to in that datacenter are up to the individual clien)</p>
+
+<p>TODO figure 3</p>
+
+<p>The paper talks about three main categories of use cases it supports: in-memory caches, in-memory store, and aggregation. For the first use case, the paper talks about an applications which maintain in-memory caches to speed up performance - for example, a meeting scheduler which has a per user cache and a “crawl manager” which extracts and stores metadata about a URL. Second, the paper talks about in-memory store where the system loads data from a backing datasource - the speech recognition example discussed at the beginning is one of these. Second, the paper talks about in-memory store where the system loads data from a backing datasource - the speech recognition example discussed at the beginning is one of these.</p>
+
+<h3 id="implementation">Implementation</h3>
+
+<p>Slicer has two main components: the assigner and distributors.</p>
+
+<p>TODO figure 5</p>
+
+<p>The role of the assigner is to assign shards to tasks. It makes its decision by taking in signals on job size, health, and load. For reliability and scalability, Slicer deploys multiple assigners in datacenters around the world. This adds complexity if multiple assigners are operating on the same application - which assigner is making the final decision?. The system handles this complexity using something akin to optimistic concurrency control.</p>
+
+<p>Distributors handle propagating assignments to clients of the sharded system and the servers. There is complexity in doing this because for large jobs, the assignments can be quite large:</p>
+
+<blockquote>
+  <p>Distribution is a pull model: a subscriber asks a Distributor for a job’s assignment; if the Distributor doesn’t have it, the distrubutor asks the Assigner, which generates and distributes the assignment. Each Clerk and Slicelet library maintains a long-lived stream with the Distributor service using Google’s standard load balancer service, which routes its stream to the closest available instance.</p>
+</blockquote>
+
+<p>The paper also talks about alternative architectures! Ror example, peer to peer sharing of assignments. The reason they don’t do this is to avoid having to expose users of the system to additional complexity.</p>
+
+<p>The paper also talks about the fault tolerance of the system - which appears to be “fail open”. Slicer aims to reduce risk by introducing “backup distributors” which read assignments directly from storage, rather than potentially computing new assignments. Additionally, the components of the system are globally distributed, and in some cases situated in a way where they can function even if the WAN (which connects) datacenters goes down.</p>
+
+<p>Lastly, Slicer implements load balancing which can handle key imbalance and adjust over time by either - “adding or removing redundant tasks for a key or by reassigning keys from one task to another”. Furthermore, the system will dynamically reshard through an algorithm it calls “weighted move” in the paper - the goal of the algorithm is to reduce load imbalance taking into account the impact of moving shards between tasks.  The process of resharding involves splitting up ranges of keys if they are particularly hot, colocating “hot slices” with “cold slices”</p>
+
+<h2 id="how-is-the-research-evaluated">How is the research evaluated?</h2>
+
+<p>The paper evaluates Slicer’s reliablity, load balancing capabilities, and scalability using both produciton data experimental configurations that force the system into certain states.</p>
+
+<p>In production, Slicer is able to successfully to select tasks for a shard for RPC requests 99.98% of the time. Of the RPCs that were sent, 0.004% were misrouted (indicating a disconnect between the selected shard and the production state).</p>
+
+<p>To evaluate production load balancing, the paper shares data on the number of requests handled by a task, movement of the keyspace, and load per task.</p>
+
+<p>TODO figure 6
+TODO figure 7</p>
+
+<p>Additionally, the paper compares load balancing for static allocations of the keyspace over tasks, versus Slicer’s dynamic adjustments, finding that Slicer succeeds at reducing both max and mean load for tasks.</p>
+
+<p>TODO figure 9</p>
+
+<p>To evaluate the assigner, the paper looks at the time to distribute assignments around the system, finding that “95% of assignments reach subscribers within 2 s.”</p>
+
+<p>TODO figure 10</p>
+
+<p>When an assigner fails, there is clear impact on load balancing, however, “ if an Assigner fails, any other Assigner can pick up the slack. We configured a test job with two Assigners, killed the active one, and observed that the other became initialized 17.1 s later”.</p>
+
+<p>TODO figure 12</p>
+
+<p>Lastly, Slicer is able to respond to changing load quickly on shards. TODO describe more</p>
+
+<p>TODO figure 13</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>One aspect of the paper I enjoyed was its discussion of design tradeoffs. For example, they don’t use consistent hashing to generate assignments because:</p>
+
+<blockquote>
+  <p>A variant of consistent hashing [22] with load balancing support [10] yielded both unsatisfactory load balancing and large, fragmented assignments. We refer to this scheme as load-aware consistent hashing. Some applications had too few slice keys (tens to hundreds per task) for consistent hashing to result in good statistical load balancing.</p>
+</blockquote>
+
+<p>While Slicer has many commonolities with systems that followed it, there are a few key differences with systems like Shard Manager - notably Slicer has the framework deciding shards, where in ShardManager, the application code decides the shards. The ShardManager paper makes these case for the latter as it provides more flexibility in which types of applications are supported. While Slicer sharding uses UUIDs (to reduce hotspotting), having non-contiguous data in shards makes “prefix scans” more difficult.</p>
+
+
+    <footer>
+      <form
+        action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+        method="post"
+        id="mc-embedded-subscribe-form"
+        name="mc-embedded-subscribe-form"
+        class="validate"
+        target="_blank"
+        novalidate
+      >
+        <div id="mc_embed_signup_scroll">
+          <h4>
+            Follow me on
+            <a href="https://twitter.com/micahlerner">Twitter</a> or subscribe
+            below to get future paper reviews. Published weekly.
+          </h4>
+          <div>
+            <input
+              type="email"
+              value=""
+              name="EMAIL"
+              class="email"
+              id="tlemail"
+              placeholder="email address"
+              required
+            />
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+            <div style="position: absolute; left: -5000px" aria-hidden="true">
+              <input
+                type="text"
+                name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                tabindex="-1"
+                value=""
+              />
+            </div>
+            <input
+              type="submit"
+              value="Subscribe"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="button"
+            />
+          </div>
+        </div>
+      </form>
+    </footer>
+  </section>
+  <section>
+    Found something wrong?
+    <a
+      href="https://github.com/mlerner/mlerner.github.io/edit/master/_drafts/2024-05-26-slicer-auto-sharding-for-datacenter-applications.md"
+      >Submit a pull request!</a
+    >
+  </section>
+</article>
+
+<div id="portal-root">
+  <div id="subscribe-container">
+    <div id="gh-portal-triggerbtn-wrapper" class="gh-portal-triggerbtn-wrapper">
+      <div class="gh-portal-triggerbtn-container with-label">
+        <svg
+          width="24"
+          height="18"
+          viewBox="0 0 24 18"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style="width: 24px; height: 24px; color: rgb(255, 255, 255)"
+        >
+          <path
+            d="M21.75 1.5H2.25c-.828 0-1.5.672-1.5 1.5v12c0 .828.672 1.5 1.5 1.5h19.5c.828 0 1.5-.672 1.5-1.5V3c0-.828-.672-1.5-1.5-1.5zM15.687 6.975L19.5 10.5M8.313 6.975L4.5 10.5"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+          <path
+            d="M22.88 2.014l-9.513 6.56C12.965 8.851 12.488 9 12 9s-.965-.149-1.367-.426L1.12 2.014"
+            stroke="#fff"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        ><span class="gh-portal-triggerbtn-label"> Subscribe </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="popup-root" style="visibility: hidden">
+  <div class="inner-popup-container">
+    <div class="gh-portal-popup-background"></div>
+    <div class="gh-portal-popup-wrapper signup">
+      <div
+        class="gh-portal-popup-container gh-portal-container-narrow signup"
+        tabindex="-1"
+      >
+        <div class="gh-portal-content signup noplan">
+          <div id="closeicon-email" class="gh-portal-closeicon-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              class="gh-portal-closeicon"
+              alt="Close"
+            >
+              <defs>
+                <style>
+                  .a {
+                    fill: none;
+                    stroke: currentColor;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
+                    stroke-width: 1.2px;
+                  }
+                </style>
+              </defs>
+              <path
+                class="a"
+                d="M.75 23.249l22.5-22.5M23.25 23.249L.75.749"
+              ></path>
+            </svg>
+          </div>
+          <header>
+            <h2 class="gh-portal-main-title">Get essays a bit faster</h2>
+          </header>
+          <section>
+            <div class="gh-portal-section">
+              <form
+                action="https://gmail.us20.list-manage.com/subscribe/post?u=d1654f70a6addb0e9ce8afd83&amp;id=bab65ed2b1"
+                method="post"
+                id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form"
+                class="validate"
+                target="_blank"
+                novalidate=""
+                _lpchecked="1"
+              >
+                <label for="mce-EMAIL"> </label>
+                <p id="mce-email-describe" class="mt0">
+                  I write about computer science research from the fields of
+                  distributed systems and operating systems around once a week.
+                </p>
+                <p></p>
+                <div id="mc_embed_signup_scroll">
+                  <div>
+                    <input
+                      type="email"
+                      value=""
+                      name="EMAIL"
+                      class="email"
+                      id="tlemail"
+                      placeholder="email address"
+                      required=""
+                    />
+
+                    <div
+                      style="position: absolute; left: -5000px"
+                      aria-hidden="true"
+                    >
+                      <input
+                        type="text"
+                        name="b_d1654f70a6addb0e9ce8afd83_bab65ed2b1"
+                        tabindex="-1"
+                        value=""
+                      />
+                    </div>
+                    <input
+                      type="submit"
+                      value="Subscribe"
+                      name="subscribe"
+                      id="mc-embedded-subscribe"
+                      class="button"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="mcjs">
+  var subscribeButton = document.getElementById("gh-portal-triggerbtn-wrapper");
+  var closeButton = document.getElementById("closeicon-email");
+  var popupRoot = document.getElementById("popup-root");
+
+  subscribeButton.addEventListener("click", function () {
+    window.open('https://newsletter.micahlerner.com', '_blank');
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "visible"; -->
+  });
+
+  closeButton.addEventListener("click", function () {
+    <!-- popupRoot.classList.toggle("m-fadeOut"); -->
+    <!-- popupRoot.classList.toggle("m-fadeIn"); -->
+    <!-- popupRoot.style.visibility = "hidden"; -->
+  });
+</script>
+
+  </body>
+</html>
